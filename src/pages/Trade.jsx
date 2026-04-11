@@ -1,26 +1,93 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { useMarket } from '../context/MarketContext';
-import { motion } from 'framer-motion';
-import { Menu, Home, Home as HomeIcon } from 'lucide-react';
+import { motion, AnimatePresence } from 'framer-motion';
+import { Menu, Home as HomeIcon, ChevronDown, Search, X } from 'lucide-react';
 import { Link } from 'react-router-dom';
 
 const Trade = () => {
     const { assets } = useMarket();
-    const [selectedAsset] = useState(assets[0]); // GBP/USD
-    const [activeTime, setActiveTime] = useState('1 min');
+    const [selectedAsset, setSelectedAsset] = useState(assets[0] || { name: 'BTC/USDT', rate: '0.00' });
+    const [activeTime, setActiveTime] = useState('1m');
+    const [showAssetList, setShowAssetList] = useState(false);
+    const [searchTerm, setSearchTerm] = useState('');
+    const container = useRef();
 
-    const timeframes = ['1 min', '5 min', '15 min', '30 min', '60 min', '1 day'];
+    const timeframes = [
+        { label: '1 min', value: '1' },
+        { label: '5 min', value: '5' },
+        { label: '15 min', value: '15' },
+        { label: '30 min', value: '30' },
+        { label: '1 hour', value: '60' },
+        { label: '1 day', value: 'D' },
+        { label: '1 week', value: 'W' }
+    ];
+
+    // Effect to update the local selected asset when the context updates
+    useEffect(() => {
+        if (selectedAsset) {
+            const updated = assets.find(a => a.id === selectedAsset.id);
+            if (updated) setSelectedAsset(updated);
+        }
+    }, [assets]);
+
+    // TradingView Widget Loader
+    useEffect(() => {
+        if (!selectedAsset) return;
+
+        // Clean up previous widget
+        if (container.current) {
+            container.current.innerHTML = '';
+        }
+
+        const script = document.createElement("script");
+        script.src = "https://s3.tradingview.com/external-embedding/embed-widget-advanced-chart.js";
+        script.type = "text/javascript";
+        script.async = true;
+
+        // Map asset name to TradingView symbol
+        let symbol = selectedAsset.name.replace('/', '');
+        if (selectedAsset.category === 'Cryptocurrency') {
+            symbol = `BINANCE:${symbol}`;
+        } else if (selectedAsset.category === 'Foreign Exchange') {
+            symbol = `FX_IDC:${symbol}`;
+        } else if (selectedAsset.name === 'XAU/USD') {
+            symbol = "OANDA:XAUUSD";
+        }
+
+        script.innerHTML = JSON.stringify({
+            "autosize": true,
+            "symbol": symbol,
+            "interval": activeTime,
+            "timezone": "Etc/UTC",
+            "theme": "dark",
+            "style": "1",
+            "locale": "en",
+            "enable_publishing": false,
+            "hide_top_toolbar": true,
+            "hide_legend": true,
+            "save_image": false,
+            "calendar": false,
+            "hide_volume": true,
+            "support_host": "https://www.tradingview.com"
+        });
+
+        container.current.appendChild(script);
+    }, [selectedAsset, activeTime]);
+
+    const filteredAssets = assets.filter(a =>
+        a.name.toLowerCase().includes(searchTerm.toLowerCase())
+    );
 
     return (
         <motion.div
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             style={{
-                backgroundColor: '#111',
+                backgroundColor: '#0a0a0a',
                 minHeight: '100vh',
                 color: '#fff',
                 paddingBottom: '100px',
-                fontFamily: 'system-ui, sans-serif'
+                fontFamily: 'Inter, system-ui, sans-serif'
             }}
         >
             {/* Trading Header */}
@@ -30,16 +97,30 @@ const Trade = () => {
                 justifyContent: 'space-between',
                 padding: '12px 16px',
                 backgroundColor: '#111',
-                borderBottom: '1px solid #222'
+                borderBottom: '1px solid #222',
+                position: 'sticky',
+                top: 0,
+                zIndex: 100
             }}>
                 <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-                    <Menu size={20} color="#fff" />
-                    <div style={{ display: 'flex', alignItems: 'baseline', gap: '8px' }}>
+                    <Menu size={20} color="#fff" onClick={() => setShowAssetList(true)} style={{ cursor: 'pointer' }} />
+                    <div
+                        onClick={() => setShowAssetList(true)}
+                        style={{ display: 'flex', alignItems: 'center', gap: '6px', cursor: 'pointer' }}
+                    >
                         <span style={{ fontWeight: '700', fontSize: '18px' }}>{selectedAsset.name}</span>
-                        <span style={{ color: '#00c087', fontSize: '14px', fontWeight: '600' }}>0.36%</span>
+                        <ChevronDown size={16} color="#888" />
                     </div>
                 </div>
-                <Link to="/">
+                <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end' }}>
+                    <span style={{ fontSize: '18px', fontWeight: '800', color: selectedAsset.change?.startsWith('+') ? '#00c087' : '#ff4d4f' }}>
+                        {selectedAsset.rate}
+                    </span>
+                    <span style={{ fontSize: '11px', color: selectedAsset.change?.startsWith('+') ? '#00c087' : '#ff4d4f' }}>
+                        {selectedAsset.change}
+                    </span>
+                </div>
+                <Link to="/" style={{ marginLeft: '12px' }}>
                     <HomeIcon size={20} color="#fff" />
                 </Link>
             </div>
@@ -48,168 +129,49 @@ const Trade = () => {
             <div style={{
                 display: 'flex',
                 justifyContent: 'space-between',
-                padding: '10px 16px',
+                padding: '12px 16px',
                 fontSize: '12px',
-                color: '#888'
+                color: '#888',
+                backgroundColor: '#111',
+                borderBottom: '1px solid #222'
             }}>
                 {timeframes.map(time => (
                     <div
-                        key={time}
-                        onClick={() => setActiveTime(time)}
+                        key={time.value}
+                        onClick={() => setActiveTime(time.value)}
                         style={{
                             cursor: 'pointer',
-                            color: activeTime === time ? '#fff' : '#888',
-                            borderBottom: activeTime === time ? '2px solid var(--accent-gold)' : 'none',
-                            paddingBottom: '4px'
+                            color: activeTime === time.value ? 'var(--accent-gold)' : '#888',
+                            fontWeight: activeTime === time.value ? '700' : '500',
+                            transition: 'all 0.2s'
                         }}
                     >
-                        {time}
+                        {time.label}
                     </div>
                 ))}
             </div>
 
-            {/* Technical Info Strip */}
-            <div style={{
-                padding: '10px 16px',
-                fontSize: '11px',
-                color: '#666',
-                display: 'grid',
-                gridTemplateColumns: '1fr 1fr',
-                gap: '4px',
-                backgroundColor: '#111'
-            }}>
-                <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px' }}>
-                    <span>Time: 2026-03-06 13:58</span>
-                    <span>Open: 1.336430</span>
-                    <span>High: 1.336690</span>
-                </div>
-                <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px', justifyContent: 'flex-end' }}>
-                    <span>Low: 1.335630</span>
-                    <span>Close: 1.336660</span>
-                    <span>Volume: 696</span>
+            {/* Chart Area */}
+            <div style={{ height: '450px', width: '100%', position: 'relative', backgroundColor: '#000' }}>
+                <div
+                    ref={container}
+                    className="tradingview-widget-container"
+                    style={{ height: '100%', width: '100%' }}
+                >
+                    <div className="tradingview-widget-container__widget" style={{ height: '100%', width: '100%' }}></div>
                 </div>
             </div>
 
-            {/* Indicators Strip */}
-            <div style={{ padding: '4px 16px', fontSize: '11px', display: 'flex', gap: '12px' }}>
-                <span style={{ color: '#555' }}>MA(5,10,20)</span>
-                <span style={{ color: '#f0b90b' }}>MA5: 1.3369</span>
-                <span style={{ color: '#a855f7' }}>MA10: 1.3370</span>
-                <span style={{ color: '#3b82f6' }}>MA20: 1.3372</span>
-            </div>
-
-            {/* Main Chart Area */}
-            <div style={{
-                position: 'relative',
-                height: '400px',
-                width: '100%',
-                borderTop: '1px solid #222',
-                borderBottom: '1px solid #222',
-                marginTop: '8px',
-                backgroundImage: 'linear-gradient(#222 1px, transparent 1px), linear-gradient(90deg, #222 1px, transparent 1px)',
-                backgroundSize: '40px 40px'
-            }}>
-                {/* Right Price Axis */}
-                <div style={{
-                    position: 'absolute',
-                    right: '4px',
-                    top: '0',
-                    bottom: '0',
-                    width: '60px',
-                    display: 'flex',
-                    flexDirection: 'column',
-                    justifyContent: 'space-between',
-                    fontSize: '10px',
-                    color: '#555',
-                    padding: '20px 0',
-                    zIndex: 5
-                }}>
-                    <span>1.338000</span>
-                    <span>1.337700</span>
-                    <span>1.337400</span>
-                    <span>1.337100</span>
-                    <span>1.336800</span>
-                    <span>1.336500</span>
-                    <span>1.336200</span>
+            {/* Trading Info Strip */}
+            <div style={{ padding: '16px', display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px' }}>
+                <div style={{ backgroundColor: '#111', padding: '12px', borderRadius: '8px', border: '1px solid #222' }}>
+                    <div style={{ color: '#555', fontSize: '11px', marginBottom: '4px' }}>24h High</div>
+                    <div style={{ fontWeight: '600' }}>{selectedAsset.high24h || '--'}</div>
                 </div>
-
-                {/* Current Price Line */}
-                <div style={{
-                    position: 'absolute',
-                    top: '60%',
-                    left: 0,
-                    right: '64px',
-                    height: '1px',
-                    borderTop: '1px dashed #00c087',
-                    zIndex: 4
-                }}>
-                    <div style={{
-                        position: 'absolute',
-                        right: '-60px',
-                        top: '-8px',
-                        background: '#00c087',
-                        color: '#fff',
-                        fontSize: '10px',
-                        padding: '2px 4px',
-                        borderRadius: '2px'
-                    }}>
-                        1.336660
-                    </div>
+                <div style={{ backgroundColor: '#111', padding: '12px', borderRadius: '8px', border: '1px solid #222' }}>
+                    <div style={{ color: '#555', fontSize: '11px', marginBottom: '4px' }}>24h Low</div>
+                    <div style={{ fontWeight: '600' }}>{selectedAsset.low24h || '--'}</div>
                 </div>
-
-                {/* Mock Candles & Lines */}
-                <svg width="100%" height="100%" viewBox="0 0 400 300" preserveAspectRatio="none" style={{ position: 'absolute', top: 0, left: 0 }}>
-                    {/* MA Lines */}
-                    <path d="M0 200 Q100 220 200 150 T400 100" fill="none" stroke="#f0b90b" strokeWidth="1" />
-                    <path d="M0 210 Q120 230 220 160 T400 110" fill="none" stroke="#a855f7" strokeWidth="1" />
-                    <path d="M0 220 Q140 240 240 170 T400 120" fill="none" stroke="#3b82f6" strokeWidth="1" />
-
-                    {/* Example Candles */}
-                    {[...Array(20)].map((_, i) => {
-                        const h = 20 + Math.random() * 40;
-                        const y = 100 + Math.random() * 100;
-                        const isUp = Math.random() > 0.5;
-                        return (
-                            <g key={i}>
-                                <line x1={i * 20 + 10} y1={y - 10} x2={i * 20 + 10} y2={y + h + 10} stroke={isUp ? '#00c087' : '#ff4d4f'} strokeWidth="1" />
-                                <rect x={i * 20 + 6} y={y} width="8" height={h} fill={isUp ? '#00c087' : '#ff4d4f'} />
-                            </g>
-                        );
-                    })}
-                </svg>
-            </div>
-
-            {/* Volume Info */}
-            <div style={{ padding: '10px 16px', fontSize: '11px', display: 'flex', gap: '12px' }}>
-                <span style={{ color: '#555' }}>VOL(5,10,20)</span>
-                <span style={{ color: '#f0b90b' }}>MA5: 584</span>
-                <span style={{ color: '#a855f7' }}>MA10: 578</span>
-                <span style={{ color: '#3b82f6' }}>MA20: 565</span>
-            </div>
-            <div style={{ padding: '0 16px', color: '#00c087', fontSize: '11px' }}>VOLUME: 696</div>
-
-            {/* Volume Subchart */}
-            <div style={{ height: '80px', width: '100%', marginBottom: '20px', padding: '0 16px' }}>
-                <svg width="100%" height="100%" viewBox="0 0 400 100" preserveAspectRatio="none">
-                    {[...Array(30)].map((_, i) => {
-                        const h = 20 + Math.random() * 60;
-                        return (
-                            <rect
-                                key={i}
-                                x={i * 13}
-                                y={100 - h}
-                                width="8"
-                                height={h}
-                                fill={Math.random() > 0.5 ? '#00c087' : '#ff4d4f'}
-                                opacity="0.6"
-                            />
-                        );
-                    })}
-                    {/* Time axis labels */}
-                    <text x="50" y="95" fill="#555" fontSize="10">13:27</text>
-                    <text x="200" y="95" fill="#555" fontSize="10">13:39</text>
-                    <text x="350" y="95" fill="#555" fontSize="10">13:51</text>
-                </svg>
             </div>
 
             {/* Bottom Trade Buttons */}
@@ -227,29 +189,101 @@ const Trade = () => {
             }}>
                 <button style={{
                     flex: 1,
-                    background: '#00c087',
+                    background: 'linear-gradient(to right, #00c087, #00d2ad)',
                     color: '#fff',
-                    padding: '14px',
-                    borderRadius: '4px',
+                    padding: '16px',
+                    borderRadius: '12px',
                     border: 'none',
-                    fontWeight: '700',
-                    fontSize: '14px'
+                    fontWeight: '800',
+                    fontSize: '15px',
+                    boxShadow: '0 4px 15px rgba(0, 192, 135, 0.3)'
                 }}>
-                    Buy Long
+                    BUY / LONG
                 </button>
                 <button style={{
                     flex: 1,
-                    background: '#ff6b6b',
+                    background: 'linear-gradient(to right, #ff4d4f, #ff7875)',
                     color: '#fff',
-                    padding: '14px',
-                    borderRadius: '4px',
+                    padding: '16px',
+                    borderRadius: '12px',
                     border: 'none',
-                    fontWeight: '700',
-                    fontSize: '14px'
+                    fontWeight: '800',
+                    fontSize: '15px',
+                    boxShadow: '0 4px 15px rgba(255, 77, 79, 0.3)'
                 }}>
-                    Buy Short
+                    SELL / SHORT
                 </button>
             </div>
+
+            {/* Asset Selection Modal */}
+            <AnimatePresence>
+                {showAssetList && (
+                    <motion.div
+                        initial={{ y: '100%' }}
+                        animate={{ y: 0 }}
+                        exit={{ y: '100%' }}
+                        transition={{ type: 'spring', damping: 25, stiffness: 200 }}
+                        style={{
+                            position: 'fixed',
+                            top: 0,
+                            left: 0,
+                            right: 0,
+                            bottom: 0,
+                            backgroundColor: '#0a0a0a',
+                            zIndex: 1000,
+                            display: 'flex',
+                            flexDirection: 'column'
+                        }}
+                    >
+                        <div style={{ padding: '20px', display: 'flex', alignItems: 'center', gap: '15px', borderBottom: '1px solid #222' }}>
+                            <X size={24} onClick={() => setShowAssetList(false)} style={{ cursor: 'pointer' }} />
+                            <div style={{ flex: 1, backgroundColor: '#1a1a1a', borderRadius: '10px', display: 'flex', alignItems: 'center', padding: '0 12px' }}>
+                                <Search size={18} color="#555" />
+                                <input
+                                    type="text"
+                                    placeholder="Search coins..."
+                                    value={searchTerm}
+                                    onChange={(e) => setSearchTerm(e.target.value)}
+                                    style={{ background: 'none', border: 'none', color: '#fff', padding: '12px', width: '100%', outline: 'none' }}
+                                />
+                            </div>
+                        </div>
+                        <div style={{ flex: 1, overflowY: 'auto', padding: '10px 0' }}>
+                            {filteredAssets.map(asset => (
+                                <div
+                                    key={asset.id}
+                                    onClick={() => {
+                                        setSelectedAsset(asset);
+                                        setShowAssetList(false);
+                                    }}
+                                    style={{
+                                        display: 'flex',
+                                        alignItems: 'center',
+                                        justifyContent: 'space-between',
+                                        padding: '15px 20px',
+                                        borderBottom: '1px solid #111',
+                                        backgroundColor: selectedAsset?.id === asset.id ? '#1a1a1a' : 'transparent'
+                                    }}
+                                >
+                                    <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                                        <img src={asset.flag} alt="" style={{ width: '24px', height: '24px', borderRadius: '50%' }} />
+                                        <div>
+                                            <div style={{ fontWeight: '700' }}>{asset.name}</div>
+                                            <div style={{ fontSize: '11px', color: '#555' }}>{asset.category}</div>
+                                        </div>
+                                    </div>
+                                    <div style={{ textAlign: 'right' }}>
+                                        <div style={{ fontWeight: '700' }}>{asset.rate}</div>
+                                        <div style={{ fontSize: '11px', color: asset.change?.startsWith('+') ? '#00c087' : '#ff4d4f' }}>
+                                            {asset.change}
+                                        </div>
+                                    </div>
+                                </div>
+                            ))}
+                        </div>
+                    </motion.div>
+                )}
+            </AnimatePresence>
         </motion.div>
     );
 };

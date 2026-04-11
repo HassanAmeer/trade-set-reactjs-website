@@ -30,8 +30,8 @@ const Market = () => {
                         key={tab}
                         onClick={() => setActiveTab(tab)}
                         style={{
-                            padding: '8px 4px',
-                            fontSize: '14px',
+                            padding: tab === 'All' ? '6px 20px' : '2px 10px',
+                            fontSize: '12px',
                             fontWeight: '600',
                             cursor: 'pointer',
                             color: activeTab === tab ? '#000' : '#888',
