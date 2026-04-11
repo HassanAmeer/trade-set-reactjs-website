@@ -287,3 +287,69 @@
 .price-pulse {
   animation: pulse 2s infinite;
 }
+
+/* Skeleton Loader */
+.skeleton-loader {
+  background: linear-gradient(90deg, var(--bg-secondary) 25%, var(--border-color) 50%, var(--bg-secondary) 75%);
+  background-size: 200% 100%;
+  animation: skeleton-shimmer 1.5s infinite linear;
+  border-radius: 4px;
+}
+
+@keyframes skeleton-shimmer {
+  0% { background-position: -200% 0; }
+  100% { background-position: 200% 0; }
+}
+
+.trending-coins {
+  display: flex;
+  gap: 12px;
+  overflow-x: auto;
+  padding: 8px 4px;
+  margin-bottom: 24px;
+  scrollbar-width: none;
+}
+
+.trending-coins::-webkit-scrollbar {
+  display: none;
+}
+
+.trending-card {
+  min-width: 140px;
+  background: rgba(255, 255, 255, 0.03);
+  backdrop-filter: blur(10px);
+  border: 1px solid rgba(255, 255, 255, 0.05);
+  border-radius: 16px;
+  padding: 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  transition: all 0.3s ease;
+}
+
+.trending-card:hover {
+  background: rgba(255, 255, 255, 0.06);
+  transform: translateY(-4px);
+  border-color: var(--accent-gold);
+}
+
+.trending-icon {
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+}
+
+.trending-symbol {
+  font-weight: 700;
+  font-size: 14px;
+}
+
+.trending-price {
+  font-family: monospace;
+  font-weight: 600;
+  font-size: 15px;
+}
+
+.trending-change {
+  font-size: 12px;
+}

@@ -8,11 +8,33 @@ import { motion } from 'framer-motion';
 import { useNavigate } from 'react-router-dom';
 
 const Home = () => {
-    const { assets } = useMarket();
-    const [activeTab, setActiveTab] = useState('Foreign Exchange');
+    const { assets, loading } = useMarket();
+    const [activeTab, setActiveTab] = useState('All');
     const navigate = useNavigate();
 
-    const filteredAssets = assets.filter(a => a.category === activeTab);
+    const filteredAssets = assets.filter(a => {
+        if (activeTab === 'All') return true;
+        return a.category?.toLowerCase() === activeTab.toLowerCase();
+    });
+
+    const trendingCoins = assets.filter(a => a.category === 'Cryptocurrency').slice(0, 5);
+
+    const renderSkeleton = () => (
+        <div className="asset-list">
+            {[1, 2, 3, 4, 5].map(i => (
+                <div key={i} className="asset-row" style={{ borderBottom: '1px solid rgba(255,255,255,0.05)' }}>
+                    <div className="asset-info">
+                        <div className="skeleton-loader" style={{ width: '24px', height: '24px', borderRadius: '50%' }}></div>
+                        <div className="skeleton-loader" style={{ width: '80px', height: '16px' }}></div>
+                    </div>
+                    <div className="skeleton-loader" style={{ width: '60px', height: '16px' }}></div>
+                    <div style={{ justifySelf: 'end' }}>
+                        <div className="skeleton-loader" style={{ width: '70px', height: '32px', borderRadius: '6px' }}></div>
+                    </div>
+                </div>
+            ))}
+        </div>
+    );
 
     return (
         <motion.div
@@ -61,62 +83,86 @@ const Home = () => {
                 </div>
             </div>
 
-            <div className="ticker-section">
-                {assets.slice(0, 3).map(asset => (
-                    <div key={asset.id} className="ticker-card">
-                        <div className="ticker-pair">{asset.name}</div>
-                        <div className="ticker-price">{asset.rate}</div>
-                        <div className="ticker-change" style={{ color: asset.change.startsWith('+') ? 'var(--accent-green)' : 'var(--accent-red)' }}>
-                            {asset.change}
-                        </div>
-                    </div>
-                ))}
+            <div style={{ marginBottom: '12px', padding: '0 4px' }}>
+                <h3 style={{ fontSize: '16px', fontWeight: '700', color: 'var(--text-primary)', marginBottom: '12px' }}>Trending Markets</h3>
+                <div className="trending-coins">
+                    {loading ? (
+                        [1, 2, 3].map(i => (
+                            <div key={i} className="trending-card">
+                                <div className="skeleton-loader" style={{ width: '32px', height: '32px', borderRadius: '50%' }}></div>
+                                <div className="skeleton-loader" style={{ width: '60px', height: '14px' }}></div>
+                                <div className="skeleton-loader" style={{ width: '80px', height: '18px' }}></div>
+                                <div className="skeleton-loader" style={{ width: '40px', height: '12px' }}></div>
+                            </div>
+                        ))
+                    ) : (
+                        trendingCoins.map(coin => (
+                            <div key={coin.id} className="trending-card" onClick={() => navigate('/trade')}>
+                                <img src={coin.flag} alt={coin.name} className="trending-icon" />
+                                <span className="trending-symbol">{coin.symbol}</span>
+                                <span className="trending-price">${coin.rate}</span>
+                                <span className="trending-change" style={{ color: coin.change.startsWith('+') ? 'var(--accent-green)' : 'var(--accent-red)' }}>
+                                    {coin.change}
+                                </span>
+                            </div>
+                        ))
+                    )}
+                </div>
             </div>
 
-            <div className="asset-tabs">
-                {['Foreign Exchange', 'Cryptocurrency', 'Precious Metals'].map(tab => (
+            <div className="asset-tabs" style={{ overflowX: 'auto', paddingBottom: '12px', scrollbarWidth: 'none' }}>
+                {['All', 'Foreign Exchange', 'Cryptocurrency', 'Precious Metals'].map(tab => (
                     <div
                         key={tab}
                         className={`tab ${activeTab === tab ? 'active' : ''}`}
                         onClick={() => setActiveTab(tab)}
+                        style={{ whiteSpace: 'nowrap' }}
                     >
                         {tab}
                     </div>
                 ))}
             </div>
 
-            <div className="asset-list">
-                <div className="asset-header">
-                    <span>Currency</span>
-                    <span>New exchange rate</span>
-                    <span style={{ textAlign: 'center' }}>Exchange rate changes</span>
-                </div>
+            {loading ? renderSkeleton() : (
+                <div className="asset-list">
+                    <div className="asset-header">
+                        <span>Currency</span>
+                        <span>Price</span>
+                        <span style={{ textAlign: 'center' }}>Change in 1m</span>
+                    </div>
 
-                {filteredAssets.map((asset, index) => {
-                    const isUp = asset.change.startsWith('+');
-                    return (
-                        <motion.div
-                            layout
-                            key={asset.id}
-                            className="asset-row"
-                            style={{ '--index': index }}
-                        >
-                            <div className="asset-info">
-                                <img src={asset.flag} alt={asset.name} className="asset-flag" />
-                                <span className="asset-name">{asset.name}</span>
-                            </div>
-                            <div className="asset-rate">{asset.rate}</div>
-                            <div style={{ justifySelf: 'end' }}>
-                                <div className={`rate-btn ${isUp ? 'rate-up' : 'rate-down'}`}>
-                                    {asset.change}
+                    {filteredAssets.length > 0 ? filteredAssets.slice(0, 30).map((asset, index) => {
+                        const isUp = asset.change.startsWith('+');
+                        return (
+                            <motion.div
+                                layout
+                                key={asset.id}
+                                className="asset-row"
+                                style={{ '--index': index }}
+                                onClick={() => navigate('/trade')}
+                            >
+                                <div className="asset-info">
+                                    <img src={asset.flag} alt={asset.name} className="asset-flag" />
+                                    <span className="asset-name">{asset.name}</span>
                                 </div>
-                            </div>
-                        </motion.div>
-                    );
-                })}
-            </div>
+                                <div className="asset-rate">{asset.rate}</div>
+                                <div style={{ justifySelf: 'end' }}>
+                                    <div className={`rate-btn ${isUp ? 'rate-up' : 'rate-down'}`}>
+                                        {asset.change}
+                                    </div>
+                                </div>
+                            </motion.div>
+                        );
+                    }) : (
+                        <div style={{ textAlign: 'center', padding: '40px 0', color: 'var(--text-secondary)' }}>
+                            No data available for this category
+                        </div>
+                    )}
+                </div>
+            )}
         </motion.div>
     );
 };
+
 
 export default Home;

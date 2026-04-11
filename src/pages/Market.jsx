@@ -3,10 +3,13 @@ import { useMarket } from '../context/MarketContext';
 import { motion } from 'framer-motion';
 
 const Market = () => {
-    const { assets } = useMarket();
-    const [activeTab, setActiveTab] = useState('Foreign Exchange');
+    const { assets, loading } = useMarket();
+    const [activeTab, setActiveTab] = useState('All');
 
-    const filteredAssets = assets.filter(a => a.category === activeTab);
+    const filteredAssets = assets.filter(a => {
+        if (activeTab === 'All') return true;
+        return a.category?.toLowerCase() === activeTab.toLowerCase();
+    });
 
     return (
         <motion.div
@@ -21,8 +24,8 @@ const Market = () => {
             </div>
 
             {/* Tabs */}
-            <div style={{ display: 'flex', gap: '15px', padding: '0 12px 2px 12px', borderBottom: '1px solid #333', marginBottom: '16px' }}>
-                {['Foreign Exchange', 'Cryptocurrency', 'Precious Metals'].map(tab => (
+            <div style={{ display: 'flex', gap: '15px', padding: '0 12px 2px 12px', borderBottom: '1px solid #333', marginBottom: '16px', overflowX: 'auto', scrollbarWidth: 'none' }}>
+                {['All', 'Foreign Exchange', 'Cryptocurrency', 'Precious Metals'].map(tab => (
                     <div
                         key={tab}
                         onClick={() => setActiveTab(tab)}
@@ -51,43 +54,58 @@ const Market = () => {
 
             {/* Asset List */}
             <div style={{ padding: '0 10px' }}>
-                {filteredAssets.map((asset, index) => {
-                    const isUp = asset.change.startsWith('+');
-                    return (
-                        <motion.div
-                            layout
-                            key={asset.id}
-                            style={{
-                                display: 'grid',
-                                gridTemplateColumns: '1.5fr 1fr 1fr',
-                                alignItems: 'center',
-                                padding: '14px 2px',
-                                borderBottom: '1px solid rgba(255,255,255,0.03)'
-                            }}
-                        >
+                {loading ? (
+                    [1, 2, 3, 4, 5, 6, 7, 8].map(i => (
+                        <div key={i} style={{ display: 'grid', gridTemplateColumns: '1.5fr 1fr 1fr', alignItems: 'center', padding: '14px 2px', borderBottom: '1px solid rgba(255,255,255,0.03)' }}>
                             <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-                                <img src={asset.flag} alt={asset.name} style={{ width: '28px', height: '18px', borderRadius: '1px', objectFit: 'cover' }} />
-                                <span style={{ fontWeight: '700', fontSize: '13px', color: '#fff' }}>{asset.name}</span>
+                                <div className="skeleton-loader" style={{ width: '28px', height: '18px', borderRadius: '1px' }}></div>
+                                <div className="skeleton-loader" style={{ width: '60px', height: '14px' }}></div>
                             </div>
-                            <div style={{ fontSize: '13px', textAlign: 'center', color: '#fff', fontWeight: '500' }}>{asset.rate}</div>
+                            <div className="skeleton-loader" style={{ width: '50px', height: '14px', margin: '0 auto' }}></div>
                             <div style={{ textAlign: 'right' }}>
-                                <div
-                                    className={`rate-btn ${isUp ? 'rate-up' : 'rate-down'}`}
-                                    style={{
-                                        display: 'inline-block',
-                                        width: '110px',
-                                        padding: '8px 0',
-                                        borderRadius: '6px',
-                                        fontSize: '13px',
-                                        fontWeight: '700'
-                                    }}
-                                >
-                                    {asset.change}
-                                </div>
+                                <div className="skeleton-loader" style={{ width: '110px', height: '32px', borderRadius: '6px' }}></div>
                             </div>
-                        </motion.div>
-                    );
-                })}
+                        </div>
+                    ))
+                ) : (
+                    filteredAssets.map((asset, index) => {
+                        const isUp = asset.change.startsWith('+');
+                        return (
+                            <motion.div
+                                layout
+                                key={asset.id}
+                                style={{
+                                    display: 'grid',
+                                    gridTemplateColumns: '1.5fr 1fr 1fr',
+                                    alignItems: 'center',
+                                    padding: '14px 2px',
+                                    borderBottom: '1px solid rgba(255,255,255,0.03)'
+                                }}
+                            >
+                                <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                                    <img src={asset.flag} alt={asset.name} style={{ width: '28px', height: '18px', borderRadius: '1px', objectFit: 'cover' }} />
+                                    <span style={{ fontWeight: '700', fontSize: '13px', color: '#fff' }}>{asset.name}</span>
+                                </div>
+                                <div style={{ fontSize: '13px', textAlign: 'center', color: '#fff', fontWeight: '500' }}>{asset.rate}</div>
+                                <div style={{ textAlign: 'right' }}>
+                                    <div
+                                        className={`rate-btn ${isUp ? 'rate-up' : 'rate-down'}`}
+                                        style={{
+                                            display: 'inline-block',
+                                            width: '110px',
+                                            padding: '8px 0',
+                                            borderRadius: '6px',
+                                            fontSize: '13px',
+                                            fontWeight: '700'
+                                        }}
+                                    >
+                                        {asset.change}
+                                    </div>
+                                </div>
+                            </motion.div>
+                        );
+                    })
+                )}
             </div>
         </motion.div>
     );
