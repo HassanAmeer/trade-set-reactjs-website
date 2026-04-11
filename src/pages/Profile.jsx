@@ -27,7 +27,7 @@ const Profile = () => {
             <div className="glass" style={{ padding: '20px', borderRadius: '16px', marginBottom: '24px' }}>
                 <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '20px', marginBottom: '20px' }}>
                     <div>
-                        <div style={{ fontSize: '11px', color: 'var(--text-secondary)', marginBottom: '4px' }}>Credit score</div>
+                        <div style={{ fontSize: '11px', color: 'var(--text-secondary)', marginBottom: '4px' }}>Total Refferals</div>
                         <div style={{ fontWeight: '700' }}>0</div>
                     </div>
                     <div style={{ textAlign: 'right' }}>

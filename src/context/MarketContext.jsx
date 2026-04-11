@@ -42,6 +42,14 @@ const STATIC_METALS = [
 export const MarketProvider = ({ children }) => {
     const [assets, setAssets] = useState([...FALLBACK_FOREX, ...FALLBACK_CRYPTO, ...STATIC_METALS]);
     const [loading, setLoading] = useState(true);
+    const [selectedAsset, setSelectedAsset] = useState(null);
+
+    // Set initial selected asset once data is loaded
+    useEffect(() => {
+        if (assets.length > 0 && !selectedAsset) {
+            setSelectedAsset(assets.find(a => a.symbol === 'BTC') || assets[0]);
+        }
+    }, [assets]);
 
     const loadMarketData = useCallback(async () => {
         console.log('Fetching market data...');
@@ -76,7 +84,7 @@ export const MarketProvider = ({ children }) => {
     }, [loadMarketData]);
 
     return (
-        <MarketContext.Provider value={{ assets, loading, refreshData: loadMarketData }}>
+        <MarketContext.Provider value={{ assets, loading, refreshData: loadMarketData, selectedAsset, setSelectedAsset }}>
             {children}
         </MarketContext.Provider>
     );
