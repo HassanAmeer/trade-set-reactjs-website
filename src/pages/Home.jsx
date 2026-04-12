@@ -1,17 +1,39 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useMarket } from '../context/MarketContext';
+import { db } from '../firebase-setup';
+import { collection, query, orderBy, onSnapshot } from 'firebase/firestore';
 import {
     CreditCard, Wallet, ArrowRightLeft, Headphones, Volume2, Menu, Mail, Zap,
     Newspaper
 } from 'lucide-react';
 import heroImage from '../assets/hero.png';
-import { motion } from 'framer-motion';
+import { motion, AnimatePresence } from 'framer-motion';
 import { useNavigate } from 'react-router-dom';
 
 const Home = () => {
-    const { assets, loading } = useMarket();
+    const { assets, loading: marketLoading } = useMarket();
     const [activeTab, setActiveTab] = useState('All');
+    const [banners, setBanners] = useState([]);
+    const [currentBannerIndex, setCurrentBannerIndex] = useState(0);
     const navigate = useNavigate();
+
+    useEffect(() => {
+        const q = query(collection(db, 'carousel'), orderBy('timestamp', 'desc'));
+        const unsubscribe = onSnapshot(q, (snapshot) => {
+            const list = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+            setBanners(list);
+        });
+        return () => unsubscribe();
+    }, []);
+
+    // Auto-cycling for banners
+    useEffect(() => {
+        if (banners.length <= 1) return;
+        const timer = setInterval(() => {
+            setCurrentBannerIndex(prev => (prev + 1) % banners.length);
+        }, 5000);
+        return () => clearInterval(timer);
+    }, [banners]);
 
     const filteredAssets = assets.filter(a => {
         if (activeTab === 'All') return true;
@@ -54,39 +76,89 @@ const Home = () => {
                 </div>
             </div>
 
-            <div className="hero-container">
-                <img src={heroImage} alt="Trading Hero" className="hero-image" />
-                <div className="hero-overlay"></div>
+            {/* Hero Carousel */}
+            <div className="hero-container" style={{ position: 'relative', height: '180px', borderRadius: '12px', overflow: 'hidden' }}>
+                <AnimatePresence mode="wait">
+                    {banners.length > 0 ? (
+                        <motion.div
+                            key={banners[currentBannerIndex]?.id}
+                            initial={{ opacity: 0 }}
+                            animate={{ opacity: 1 }}
+                            exit={{ opacity: 0 }}
+                            transition={{ duration: 0.8 }}
+                            style={{ width: '100%', height: '100%', position: 'absolute' }}
+                        >
+                            <img
+                                src={banners[currentBannerIndex]?.imageUrl}
+                                alt="Banner"
+                                style={{ width: '100%', height: '100%', objectFit: 'cover' }}
+                            />
+                            {(banners[currentBannerIndex]?.title || banners[currentBannerIndex]?.description) && (
+                                <div style={{
+                                    position: 'absolute',
+                                    bottom: 0,
+                                    left: 0,
+                                    right: 0,
+                                    padding: '20px',
+                                    background: 'linear-gradient(to top, rgba(0,0,0,0.8), transparent)',
+                                    color: '#fff'
+                                }}>
+                                    {banners[currentBannerIndex]?.title && (
+                                        <h2 style={{ fontSize: '18px', fontWeight: '900', margin: '0 0 5px 0' }}>{banners[currentBannerIndex].title}</h2>
+                                    )}
+                                    {banners[currentBannerIndex]?.description && (
+                                        <p style={{ fontSize: '12px', color: '#ccc', margin: 0 }}>{banners[currentBannerIndex].description}</p>
+                                    )}
+                                </div>
+                            )}
+                        </motion.div>
+                    ) : (
+                        <div style={{ width: '100%', height: '100%' }}>
+                            <img src={heroImage} alt="Static Hero" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                            <div className="hero-overlay"></div>
+                        </div>
+                    )}
+                </AnimatePresence>
+
+                {/* Dots indicator */}
+                {banners.length > 1 && (
+                    <div style={{ position: 'absolute', bottom: '10px', right: '15px', display: 'flex', gap: '6px', zIndex: 10 }}>
+                        {banners.map((_, i) => (
+                            <div key={i} style={{ width: '6px', height: '6px', borderRadius: '50%', background: i === currentBannerIndex ? 'var(--accent-gold)' : 'rgba(255,255,255,0.3)', transition: 'all 0.3s' }} />
+                        ))}
+                    </div>
+                )}
             </div>
 
-            <div className="flex-between" style={{ marginBottom: '16px', padding: '0 4px' }}>
+            {/* <div className="flex-between" style={{ marginBottom: '16px', padding: '0 4px', marginTop: '15px' }}>
                 <Volume2 size={20} color="var(--accent-gold)" />
                 <Newspaper size={24} className='shimmer-icon' onClick={() => navigate('/news')} style={{ cursor: 'pointer' }} />
-            </div>
+            </div> */}
 
             <div className="action-grid">
                 <div className="action-item" onClick={() => navigate('/deposit')}>
-                    <div className="action-icon"><CreditCard size={20} /></div>
+                    <div className="action-icon"><CreditCard size={20} className='shimmer-icon' /></div>
                     <span className="action-label">Deposit</span>
                 </div>
                 <div className="action-item" onClick={() => navigate('/withdrawal')}>
                     <div className="action-icon"><Wallet size={20} /></div>
                     <span className="action-label">Withdrawal</span>
                 </div>
-                <div className="action-item" onClick={() => navigate('/c2c')}>
-                    <div className="action-icon"><ArrowRightLeft size={20} /></div>
-                    <span className="action-label">C2C</span>
-                </div>
+
                 <div className="action-item" onClick={() => navigate('/support')}>
                     <div className="action-icon"><Headphones size={20} /></div>
                     <span className="action-label">Customer service</span>
+                </div>
+                <div className="action-item" onClick={() => navigate('/news')}>
+                    <div className="action-icon"><Newspaper size={20} /></div>
+                    <span className="action-label">News</span>
                 </div>
             </div>
 
             <div style={{ marginBottom: '12px', padding: '0 4px' }}>
                 <h3 style={{ fontSize: '16px', fontWeight: '700', color: 'var(--text-primary)', marginBottom: '12px' }}>Trending Markets</h3>
                 <div className="trending-coins">
-                    {loading ? (
+                    {marketLoading ? (
                         [1, 2, 3].map(i => (
                             <div key={i} className="trending-card">
                                 <div className="skeleton-loader" style={{ width: '32px', height: '32px', borderRadius: '50%' }}></div>
@@ -123,7 +195,7 @@ const Home = () => {
                 ))}
             </div>
 
-            {loading ? renderSkeleton() : (
+            {marketLoading ? renderSkeleton() : (
                 <div className="asset-list">
                     <div className="asset-header">
                         <span>Currency</span>
@@ -163,6 +235,5 @@ const Home = () => {
         </motion.div>
     );
 };
-
 
 export default Home;

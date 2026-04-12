@@ -9,7 +9,8 @@ import AdminKYC from './AdminKYC';
 import AdminBlogs from './AdminBlogs';
 import AdminSettings from './AdminSettings';
 import AdminTrades from './AdminTrades';
-import { BarChart3 } from 'lucide-react';
+import AdminCarousel from './AdminCarousel';
+import { BarChart3, Presentation } from 'lucide-react';
 
 const AdminDashboard = () => {
     const navigate = useNavigate();
@@ -45,6 +46,8 @@ const AdminDashboard = () => {
                 return <AdminSettings />;
             case 'trades':
                 return <AdminTrades />;
+            case 'carousel':
+                return <AdminCarousel />;
             default:
                 return null;
         }
@@ -101,6 +104,12 @@ const AdminDashboard = () => {
                         style={{ ...sidebarBtnStyle, backgroundColor: activeTab === 'kyc' ? 'rgba(0,192,135,0.1)' : 'transparent', color: activeTab === 'kyc' ? '#00c087' : '#888' }}
                     >
                         <ShieldCheck size={18} /> KYC Approvals
+                    </button>
+                    <button
+                        onClick={() => setActiveTab('carousel')}
+                        style={{ ...sidebarBtnStyle, backgroundColor: activeTab === 'carousel' ? 'rgba(0,192,135,0.1)' : 'transparent', color: activeTab === 'carousel' ? '#00c087' : '#888' }}
+                    >
+                        <Presentation size={18} /> Home Banners
                     </button>
                     <button
                         onClick={() => setActiveTab('settings')}
