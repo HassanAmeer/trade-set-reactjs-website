@@ -5,7 +5,8 @@ import Market from './pages/Market';
 import Trade from './pages/Trade';
 import Coin from './pages/Coin';
 import Profile from './pages/Profile';
-import Register from './pages/Register';
+import Login from './pages/Login';
+import Signup from './pages/Signup';
 import Deposit from './pages/Deposit';
 import Withdrawal from './pages/Withdrawal';
 import C2C from './pages/C2C';
@@ -15,11 +16,15 @@ import Messages from './pages/Messages';
 import NewsAndBlog from './pages/NewsAndBlog';
 import { Home as HomeIcon, BarChart2, Activity, Zap, User } from 'lucide-react';
 import { MarketProvider } from './context/MarketContext';
+import { AuthProvider } from './context/AuthContext';
 import './App.css';
 
 const BottomNav = () => {
   const location = useLocation();
   const path = location.pathname;
+
+  // Hide bottom nav on login/signup pages
+  if (path === '/login' || path === '/signup') return null;
 
   const navItems = [
     { name: 'Home', path: '/', icon: HomeIcon },
@@ -47,28 +52,31 @@ const BottomNav = () => {
 
 function App() {
   return (
-    <MarketProvider>
-      <Router>
-        <div style={{ minHeight: '100vh', position: 'relative' }}>
-          <Routes>
-            <Route path="/" element={<Home />} />
-            <Route path="/market" element={<Market />} />
-            <Route path="/trade" element={<Trade />} />
-            <Route path="/coin" element={<Coin />} />
-            <Route path="/profile" element={<Profile />} />
-            <Route path="/register" element={<Register />} />
-            <Route path="/deposit" element={<Deposit />} />
-            <Route path="/withdrawal" element={<Withdrawal />} />
-            <Route path="/c2c" element={<C2C />} />
-            <Route path="/support" element={<CustomerService />} />
-            <Route path="/language" element={<SelectLanguage />} />
-            <Route path="/inbox" element={<Messages />} />
-            <Route path="/news" element={<NewsAndBlog />} />
-          </Routes>
-          <BottomNav />
-        </div>
-      </Router>
-    </MarketProvider>
+    <AuthProvider>
+      <MarketProvider>
+        <Router>
+          <div style={{ minHeight: '100vh', position: 'relative' }}>
+            <Routes>
+              <Route path="/" element={<Home />} />
+              <Route path="/market" element={<Market />} />
+              <Route path="/trade" element={<Trade />} />
+              <Route path="/coin" element={<Coin />} />
+              <Route path="/profile" element={<Profile />} />
+              <Route path="/login" element={<Login />} />
+              <Route path="/signup" element={<Signup />} />
+              <Route path="/deposit" element={<Deposit />} />
+              <Route path="/withdrawal" element={<Withdrawal />} />
+              <Route path="/c2c" element={<C2C />} />
+              <Route path="/support" element={<CustomerService />} />
+              <Route path="/language" element={<SelectLanguage />} />
+              <Route path="/inbox" element={<Messages />} />
+              <Route path="/news" element={<NewsAndBlog />} />
+            </Routes>
+            <BottomNav />
+          </div>
+        </Router>
+      </MarketProvider>
+    </AuthProvider>
   );
 }
 

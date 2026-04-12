@@ -153,7 +153,8 @@ const Trade = () => {
                 </div>
                 <div style={{ display: 'flex', flexDirection: 'row', alignItems: 'flex-end' }}>
                     <span style={{ fontSize: '18px', fontWeight: '800', color: selectedAsset?.change?.startsWith('+') ? '#00c087' : '#ff4d4f' }}>
-                        {selectedAsset?.rate}
+                        {/* {selectedAsset?.rate} */}
+                        {/* in future can be used */}
                     </span>
                     <span style={{ paddingLeft: '10px', fontSize: '11px', color: selectedAsset?.change?.startsWith('+') ? '#00c087' : '#ff4d4f' }}>
                         {selectedAsset?.change}
