@@ -7,6 +7,7 @@ import Coin from './pages/Coin';
 import Profile from './pages/Profile';
 import Login from './pages/Login';
 import Signup from './pages/Signup';
+import Verification from './pages/Verification';
 import Deposit from './pages/Deposit';
 import Withdrawal from './pages/Withdrawal';
 import C2C from './pages/C2C';
@@ -64,6 +65,7 @@ function App() {
               <Route path="/profile" element={<Profile />} />
               <Route path="/login" element={<Login />} />
               <Route path="/signup" element={<Signup />} />
+              <Route path="/verification" element={<Verification />} />
               <Route path="/deposit" element={<Deposit />} />
               <Route path="/withdrawal" element={<Withdrawal />} />
               <Route path="/c2c" element={<C2C />} />

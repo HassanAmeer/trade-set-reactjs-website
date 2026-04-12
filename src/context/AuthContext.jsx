@@ -35,7 +35,7 @@ export const AuthProvider = ({ children }) => {
     const login = async (email, password) => {
         const q = query(collection(db, 'users'), where('email', '==', email), where('password', '==', password));
         const querySnapshot = await getDocs(q);
-        
+
         if (!querySnapshot.empty) {
             const userData = querySnapshot.docs[0];
             const userObj = { id: userData.id, ...userData.data() };
@@ -51,18 +51,26 @@ export const AuthProvider = ({ children }) => {
         // Check if user already exists
         const q = query(collection(db, 'users'), where('email', '==', email));
         const querySnapshot = await getDocs(q);
-        
+
         if (!querySnapshot.empty) {
             return { success: false, message: 'Email already registered' };
         }
 
         const docRef = await addDoc(collection(db, 'users'), {
+            name: email.split('@')[0],
             email,
             phone,
             password, // In a real app, never store passwords in plain text!
             createdAt: new Date().toISOString(),
+            updatedAt: new Date().toISOString(),
+            lastLogin: new Date().toISOString(),
+            cnicFront: "",
+            cnicBack: "",
+            profile: "https://cdn-icons-png.flaticon.com/512/149/149071.png",
+            refUsers: [], //refferal users
             balance: 0,
-            status: 'active'
+            isActive: true,
+            isVerified: false
         });
 
         const userObj = { id: docRef.id, email, phone, balance: 0 };
@@ -76,8 +84,21 @@ export const AuthProvider = ({ children }) => {
         localStorage.removeItem('userId');
     };
 
+    const updateUser = async (data) => {
+        if (!user) return;
+        try {
+            const { updateDoc } = await import('firebase/firestore');
+            await updateDoc(doc(db, 'users', user.id), data);
+            setUser(prev => ({ ...prev, ...data }));
+            return { success: true };
+        } catch (error) {
+            console.error("Error updating user:", error);
+            return { success: false, error: error.message };
+        }
+    };
+
     return (
-        <AuthContext.Provider value={{ user, login, signup, logout, loading }}>
+        <AuthContext.Provider value={{ user, login, signup, logout, updateUser, loading }}>
             {children}
         </AuthContext.Provider>
     );
