@@ -93,9 +93,21 @@ const Messages = () => {
                                     {new Date(msg.timestamp).toLocaleString([], { dateStyle: 'short', timeStyle: 'short' })}
                                 </span>
                             </div>
-                            <p style={{ fontSize: '13px', color: 'var(--text-secondary)', margin: 0, lineHeight: '1.4' }}>
+                            <p style={{ fontSize: '13px', color: 'var(--text-secondary)', margin: '0 0 10px 0', lineHeight: '1.4' }}>
                                 {msg.description}
                             </p>
+                            {(msg.replyImage || msg.replyImages) && (
+                                <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap', marginTop: '10px' }}>
+                                    {[...(msg.replyImages || []), ...(msg.replyImage ? [msg.replyImage] : [])].map((img, i) => (
+                                        <img 
+                                            key={i}
+                                            src={img} 
+                                            alt="Admin Attachment" 
+                                            style={{ width: '80px', height: '80px', borderRadius: '8px', objectFit: 'cover', border: '1px solid #333' }} 
+                                        />
+                                    ))}
+                                </div>
+                            )}
                         </div>
                     </div>
                 ))}

@@ -13,22 +13,26 @@ const CustomerService = () => {
     const [phone, setPhone] = useState('');
     const [message, setMessage] = useState('');
     const [loading, setLoading] = useState(false);
-    const [imageFile, setImageFile] = useState(null);
-    const [imagePreview, setImagePreview] = useState(null);
+    const [imageFiles, setImageFiles] = useState([]);
+    const [previews, setPreviews] = useState([]);
     const [uploading, setUploading] = useState(false);
     const fileInputRef = useRef(null);
 
     const handleImageSelect = (e) => {
-        const file = e.target.files[0];
-        if (file) {
-            setImageFile(file);
-            setImagePreview(URL.createObjectURL(file));
+        const files = Array.from(e.target.files);
+        if (files.length > 0) {
+            const newFiles = [...imageFiles, ...files];
+            setImageFiles(newFiles);
+            const newPreviews = files.map(file => URL.createObjectURL(file));
+            setPreviews([...previews, ...newPreviews]);
         }
     };
 
-    const removeImage = () => {
-        setImageFile(null);
-        setImagePreview(null);
+    const removeImage = (index) => {
+        const filteredFiles = imageFiles.filter((_, i) => i !== index);
+        const filteredPreviews = previews.filter((_, i) => i !== index);
+        setImageFiles(filteredFiles);
+        setPreviews(filteredPreviews);
     };
 
     const handleSubmit = async () => {
@@ -38,17 +42,17 @@ const CustomerService = () => {
         }
 
         setLoading(true);
-        let imageUrl = '';
+        let uploadedUrls = [];
 
         try {
-            // 1. Upload Image if exists
-            if (imageFile) {
+            // 1. Upload Multiple Images
+            if (imageFiles.length > 0) {
                 setUploading(true);
-                const result = await uploadFileChunks(imageFile);
-                if (result.success) {
-                    imageUrl = result.url;
-                } else {
-                    throw new Error("Image upload failed");
+                for (const file of imageFiles) {
+                    const result = await uploadFileChunks(file);
+                    if (result.success) {
+                        uploadedUrls.push(result.url);
+                    }
                 }
             }
 
@@ -58,7 +62,7 @@ const CustomerService = () => {
                 userEmail: user?.email || 'guest',
                 phone: phone,
                 content: message,
-                imageUrl: imageUrl,
+                imageUrls: uploadedUrls, // Array of strings
                 timestamp: new Date().toISOString(),
                 status: 'unread'
             });
@@ -66,8 +70,9 @@ const CustomerService = () => {
             alert('Message submitted successfully. Admin will reply to your Inbox.');
             setMessage('');
             setPhone('');
-            removeImage();
-            navigate('/inbox'); // Optionally navigate to messages to see responses
+            setImageFiles([]);
+            setPreviews([]);
+            navigate('/inbox'); 
         } catch (error) {
             alert('Error: ' + error.message);
         } finally {
@@ -97,7 +102,7 @@ const CustomerService = () => {
             <div style={{ padding: '24px 20px' }}>
                 <div style={{ backgroundColor: '#fff', borderRadius: '16px', padding: '24px', boxShadow: '0 4px 20px rgba(0,0,0,0.05)' }}>
                     <p style={{ fontSize: '14px', color: '#666', lineHeight: '1.6', marginBottom: '24px' }}>
-                        Leave a message and our team will get back to you shortly. Feel free to attach a screenshot if you're facing technical issues.
+                        Leave a message and our team will get back to you shortly. Feel free to attach multiple screenshots if needed.
                     </p>
 
                     <div style={{ marginBottom: '24px' }}>
@@ -113,8 +118,7 @@ const CustomerService = () => {
                                 borderRadius: '8px',
                                 border: '1px solid #ddd',
                                 outline: 'none',
-                                fontSize: '15px',
-                                transition: 'border-color 0.2s'
+                                fontSize: '15px'
                             }}
                         />
                     </div>
@@ -140,38 +144,29 @@ const CustomerService = () => {
 
                     {/* Image Upload Area */}
                     <div style={{ marginBottom: '30px' }}>
-                        <label style={{ display: 'block', fontSize: '13px', fontWeight: '700', color: '#444', marginBottom: '10px' }}>Attachment (Optional)</label>
-                        <div 
-                            onClick={() => fileInputRef.current.click()}
-                            style={{ 
-                                width: '100%', 
-                                border: '2px dashed #ddd', 
-                                borderRadius: '12px', 
-                                padding: '20px', 
-                                textAlign: 'center', 
-                                cursor: 'pointer',
-                                backgroundColor: '#fafafa',
-                                transition: 'all 0.2s'
-                            }}
-                        >
-                            {imagePreview ? (
-                                <div style={{ position: 'relative', display: 'inline-block' }}>
-                                    <img src={imagePreview} alt="Preview" style={{ width: '80px', height: '80px', borderRadius: '8px', objectFit: 'cover' }} />
+                        <label style={{ display: 'block', fontSize: '13px', fontWeight: '700', color: '#444', marginBottom: '10px' }}>Attachments (Max 5)</label>
+                        <div style={{ display: 'flex', flexWrap: 'wrap', gap: '10px', marginBottom: '15px' }}>
+                            {previews.map((src, i) => (
+                                <div key={i} style={{ position: 'relative', width: '70px', height: '70px' }}>
+                                    <img src={src} alt="Preview" style={{ width: '100%', height: '100%', borderRadius: '8px', objectFit: 'cover', border: '1px solid #eee' }} />
                                     <button 
-                                        onClick={(e) => { e.stopPropagation(); removeImage(); }}
-                                        style={{ position: 'absolute', top: '-8px', right: '-8px', backgroundColor: '#ff4d4f', color: '#fff', border: 'none', borderRadius: '50%', width: '24px', height: '24px', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer' }}
+                                        onClick={() => removeImage(i)}
+                                        style={{ position: 'absolute', top: '-6px', right: '-6px', backgroundColor: '#ff4d4f', color: '#fff', border: 'none', borderRadius: '50%', width: '20px', height: '20px', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', fontSize: '10px' }}
                                     >
-                                        <X size={14} />
+                                        <X size={12} />
                                     </button>
                                 </div>
-                            ) : (
-                                <div style={{ color: '#888', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '8px' }}>
-                                    <Camera size={32} />
-                                    <span style={{ fontSize: '13px' }}>Click to upload screenshot</span>
+                            ))}
+                            {previews.length < 5 && (
+                                <div 
+                                    onClick={() => fileInputRef.current.click()}
+                                    style={{ width: '70px', height: '70px', border: '2px dashed #ddd', borderRadius: '8px', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', backgroundColor: '#fafafa', color: '#888' }}
+                                >
+                                    <Plus size={24} />
                                 </div>
                             )}
-                            <input type="file" ref={fileInputRef} onChange={handleImageSelect} accept="image/*" style={{ display: 'none' }} />
                         </div>
+                        <input type="file" ref={fileInputRef} onChange={handleImageSelect} accept="image/*" multiple style={{ display: 'none' }} />
                     </div>
 
                     <button 
@@ -196,7 +191,7 @@ const CustomerService = () => {
                         }}
                     >
                         {(loading || uploading) ? (
-                            <><Loader2 className="animate-spin" size={20} /> Submitting...</>
+                            <><Loader2 className="animate-spin" size={20} /> {(uploading && !loading) ? `Uploading ${imageFiles.length} images...` : 'Submitting...'}</>
                         ) : 'Submit Report'}
                     </button>
                 </div>
@@ -204,7 +199,5 @@ const CustomerService = () => {
         </motion.div>
     );
 };
-
-export default CustomerService;
 
 export default CustomerService;
