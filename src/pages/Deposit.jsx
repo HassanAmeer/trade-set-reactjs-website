@@ -1,118 +1,277 @@
-import React from 'react';
+import React, { useState, useRef } from 'react';
 import { motion } from 'framer-motion';
-import { ChevronLeft, Plus } from 'lucide-react';
+import { ChevronLeft, Upload, Clock, Loader2, Camera, CheckCircle2 } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
+import { useAuth } from '../context/AuthContext';
+import { uploadFileChunks } from '../services/dbs';
+import { db } from '../firebase-setup';
+import { collection, addDoc } from 'firebase/firestore';
 
 const Deposit = () => {
     const navigate = useNavigate();
+    const { user } = useAuth();
+    const [amount, setAmount] = useState('');
+    const [submitting, setSubmitting] = useState(false);
+    const [copied, setCopied] = useState(false);
+    const [screenshot, setScreenshot] = useState(null);
+    const [preview, setPreview] = useState(null);
+    const fileInputRef = useRef(null);
+
+    const usdtAddress = "TMR7XE9h7aA9eApXK4jLqR7p3z"; // Your real address here
+
+    const handleCopy = () => {
+        navigator.clipboard.writeText(usdtAddress);
+        setCopied(true);
+        setTimeout(() => setCopied(false), 2000);
+    };
+
+    const handleFileSelect = (e) => {
+        const file = e.target.files[0];
+        if (!file) return;
+        setScreenshot(file);
+        setPreview(URL.createObjectURL(file));
+    };
+
+    const handleDeposit = async () => {
+        if (!amount || parseFloat(amount) <= 0) {
+            alert("Please enter a valid amount");
+            return;
+        }
+        if (!screenshot) {
+            alert("Please upload your payment screenshot");
+            return;
+        }
+
+        setSubmitting(true);
+        try {
+            // 1. Upload Screenshot
+            const uploadResult = await uploadFileChunks(screenshot);
+            if (!uploadResult.success) throw new Error("Screenshot upload failed");
+
+            // 2. Save to Firestore: users/{userId}/deposits
+            const depositData = {
+                amount: parseFloat(amount),
+                screenshot: uploadResult.url,
+                address: usdtAddress,
+                status: 'pending',
+                timestamp: new Date().toISOString(),
+                type: 'deposit',
+                userEmail: user.email,
+                userId: user.id,
+                uid: user.id
+            };
+
+            await addDoc(collection(db, 'users', user.id, 'deposits'), depositData);
+
+            alert("Deposit submitted! Admin will review it soon.");
+            navigate('/deposit-history');
+        } catch (error) {
+            alert(error.message);
+        } finally {
+            setSubmitting(false);
+        }
+    };
 
     return (
         <motion.div
-            initial={{ opacity: 0, x: 20 }}
-            animate={{ opacity: 1, x: 0 }}
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
             className="app-container"
-            style={{ minHeight: '100vh', background: 'var(--bg-primary)', padding: '0 0 40px 0' }}
+            style={{ paddingBottom: '100px', maxWidth: '480px', margin: '0 auto' }}
         >
-            {/* Header */}
-            <div style={{ display: 'flex', alignItems: 'center', padding: '16px', borderBottom: '1px solid #222' }}>
-                <ChevronLeft size={24} onClick={() => navigate(-1)} style={{ cursor: 'pointer' }} />
-                <h1 style={{ flex: 1, textAlign: 'center', fontSize: '18px', fontWeight: '700', marginRight: '24px' }}>Recharge</h1>
+            <div className="flex-between" style={{ marginBottom: '32px', padding: '10px 0' }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                    <ChevronLeft size={24} onClick={() => navigate(-1)} style={{ cursor: 'pointer' }} />
+                    <h2 style={{ fontSize: '20px', fontWeight: '800' }}>Deposit</h2>
+                </div>
+                <button
+                    onClick={() => navigate('/deposit-history')}
+                    style={{
+                        backgroundColor: 'rgba(255,184,0,0.1)',
+                        border: '1px solid rgba(255,184,0,0.2)',
+                        padding: '8px 12px',
+                        borderRadius: '8px',
+                        color: 'var(--accent-gold)',
+                        fontSize: '12px',
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: '5px',
+                        cursor: 'pointer',
+                        fontWeight: '600'
+                    }}
+                >
+                    <Clock size={14} /> History
+                </button>
             </div>
 
-            <div style={{ padding: '20px 16px' }}>
-                <h2 style={{ fontSize: '18px', fontWeight: '700', color: '#fff', marginBottom: '20px' }}>Deposit</h2>
+            <div className="glass" style={{ padding: '24px', borderRadius: '24px', border: '1px solid rgba(255,255,255,0.05)', textAlign: 'center' }}>
 
-                {/* Tab */}
-                <div style={{ borderBottom: '1px solid var(--accent-gold)', marginBottom: '24px' }}>
+                {/* QR Code Section */}
+                <div style={{ marginBottom: '24px' }}>
                     <div style={{
                         display: 'inline-block',
-                        background: 'var(--accent-gold)',
-                        color: '#000',
-                        padding: '8px 16px',
-                        borderRadius: '4px 4px 0 0',
-                        fontSize: '14px',
-                        fontWeight: '700'
+                        padding: '12px',
+                        backgroundColor: '#fff',
+                        borderRadius: '16px',
+                        boxShadow: '0 10px 30px rgba(0,0,0,0.2)'
                     }}>
-                        USDT Deposit
-                    </div>
-                </div>
-
-                {/* QR Code Placeholder */}
-                <div style={{ display: 'flex', justifyContent: 'center', marginBottom: '24px' }}>
-                    <div style={{ background: '#fff', padding: '10px', borderRadius: '4px' }}>
                         <img
-                            src="https://api.qrserver.com/v1/create-qr-code/?size=180x180&data=TMR7XE9h****eApXK4"
-                            alt="Deposit QR"
-                            style={{ width: '180px', height: '180px' }}
+                            src={`https://api.qrserver.com/v1/create-qr-code/?size=150x150&data=${usdtAddress}`}
+                            alt="Payment QR"
+                            style={{ width: '150px', height: '150px', display: 'block' }}
                         />
                     </div>
+                    <p style={{ color: 'var(--accent-gold)', fontSize: '12px', marginTop: '12px', fontWeight: '600' }}>Scan QR to Pay</p>
                 </div>
 
-                {/* Details */}
-                <div style={{ display: 'flex', flexDirection: 'column', gap: '16px', marginBottom: '24px' }}>
-                    <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '14px' }}>
-                        <span style={{ color: '#fff' }}>Link network</span>
-                        <span style={{ color: '#fff', fontWeight: '600' }}>TRC20</span>
+                {/* Network Info & Address */}
+                <div style={{ marginBottom: '24px', padding: '20px', backgroundColor: 'rgba(255,255,255,0.03)', borderRadius: '20px', border: '1px solid rgba(255,255,255,0.05)', textAlign: 'left' }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '15px' }}>
+                        <span style={{ color: 'var(--text-secondary)', fontSize: '13px' }}>Network</span>
+                        <span style={{ color: '#fff', fontSize: '13px', fontWeight: '800', backgroundColor: 'rgba(255,255,255,0.1)', padding: '2px 10px', borderRadius: '20px' }}>USDT - TRC20</span>
                     </div>
-                    <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '14px' }}>
-                        <span style={{ color: '#fff' }}>USDT Address</span>
-                        <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
-                            <span style={{ color: '#fff', fontSize: '12px' }}>TMR7XE9h****eApXK4</span>
-                            <span style={{ color: 'var(--accent-gold)', fontWeight: '600', cursor: 'pointer' }}>Copy</span>
-                        </div>
+
+                    <div style={{ color: 'var(--text-secondary)', fontSize: '13px', marginBottom: '8px' }}>Payment Address</div>
+                    <div style={{
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'space-between',
+                        backgroundColor: 'rgba(0,0,0,0.2)',
+                        padding: '12px 16px',
+                        borderRadius: '12px',
+                        border: '1px solid rgba(255,255,255,0.05)'
+                    }}>
+                        <span style={{ color: '#fff', fontSize: '12px', wordBreak: 'break-all', fontFamily: 'monospace' }}>{usdtAddress}</span>
+                        <button
+                            onClick={handleCopy}
+                            style={{
+                                backgroundColor: copied ? '#00c087' : 'var(--accent-gold)',
+                                color: '#000',
+                                border: 'none',
+                                padding: '6px 14px',
+                                borderRadius: '8px',
+                                fontSize: '11px',
+                                fontWeight: '800',
+                                cursor: 'pointer',
+                                minWidth: '70px',
+                                transition: 'all 0.3s ease'
+                            }}
+                        >
+                            {copied ? 'COPIED' : 'COPY'}
+                        </button>
                     </div>
                 </div>
 
-                {/* Input */}
-                <div style={{ marginBottom: '24px' }}>
-                    <input
-                        type="text"
-                        placeholder="Enter deposit amount"
-                        style={{
-                            width: '100%',
-                            background: 'transparent',
-                            border: '1px solid #444',
-                            borderRadius: '4px',
-                            padding: '12px',
-                            color: '#fff',
-                            fontSize: '14px'
-                        }}
-                    />
+                <div style={{ marginBottom: '24px', textAlign: 'left' }}>
+                    <div style={{ color: 'var(--text-secondary)', fontSize: '13px', marginBottom: '8px', fontWeight: '600' }}>Recharge Amount</div>
+                    <div style={{ position: 'relative' }}>
+                        <input
+                            type="number"
+                            placeholder="Min 10 USDT"
+                            value={amount}
+                            onChange={(e) => setAmount(e.target.value)}
+                            style={{
+                                width: '100%',
+                                padding: '16px 50px 16px 16px',
+                                backgroundColor: 'rgba(255,255,255,0.03)',
+                                border: '1px solid rgba(255,255,255,0.1)',
+                                borderRadius: '14px',
+                                color: '#fff',
+                                fontSize: '18px',
+                                fontWeight: '700',
+                                outline: 'none'
+                            }}
+                        />
+                        <span style={{ position: 'absolute', right: '5px', top: '50%', transform: 'translateY(-50%)', fontWeight: '700', color: 'var(--text-secondary)' }}>USDT</span>
+                    </div>
+                </div>
+
+                <div style={{ marginBottom: '20px', overflow: 'hidden', textAlign: 'left' }}>
+                    <span className="shimmer-text" style={{ fontSize: '11px' }}>AFTER SENDING PAYMENT YOU SHOULD UPLOAD YOUR SCREENSHOT</span>
                 </div>
 
                 {/* Voucher Upload */}
-                <div style={{ marginBottom: '32px' }}>
-                    <div style={{ color: '#fff', fontSize: '14px', fontWeight: '600', marginBottom: '12px' }}>Recharge voucher</div>
-                    <div style={{
-                        width: '100px',
-                        height: '100px',
-                        border: '1px solid #fff',
-                        borderRadius: '4px',
+                <div style={{ marginBottom: '32px', textAlign: 'left' }}>
+                    <div style={{ color: '#fff', fontSize: '14px', fontWeight: '700', marginBottom: '12px', display: 'flex', alignItems: 'center', gap: '6px' }}>
+                        <Camera size={16} color="var(--accent-gold)" /> Recharge voucher (Screenshot)
+                    </div>
+                    <div
+                        onClick={() => !submitting && fileInputRef.current?.click()}
+                        style={{
+                            width: '100%',
+                            height: '180px',
+                            border: preview ? '2px solid var(--accent-gold)' : '2px dashed rgba(255,255,255,0.1)',
+                            borderRadius: '18px',
+                            display: 'flex',
+                            flexDirection: 'column',
+                            alignItems: 'center',
+                            justifyContent: 'center',
+                            color: '#666',
+                            cursor: submitting ? 'not-allowed' : 'pointer',
+                            overflow: 'hidden',
+                            position: 'relative',
+                            backgroundColor: 'rgba(0,0,0,0.2)'
+                        }}
+                    >
+                        {preview ? (
+                            <img src={preview} alt="Voucher" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                        ) : (
+                            <>
+                                <Upload size={32} color="#333" />
+                                <span style={{ fontSize: '13px', marginTop: '10px', color: '#555' }}>Tap to upload proof</span>
+                            </>
+                        )}
+                        {submitting && (
+                            <div style={{ position: 'absolute', inset: 0, backgroundColor: 'rgba(0,0,0,0.8)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 10 }}>
+                                <div className="circular-loader-simple"></div>
+                            </div>
+                        )}
+                    </div>
+                    <input type="file" ref={fileInputRef} onChange={handleFileSelect} style={{ display: 'none' }} accept="image/*" />
+                </div>
+
+                <button
+                    onClick={handleDeposit}
+                    disabled={submitting || !amount || !screenshot}
+                    style={{
+                        width: '100%',
+                        padding: '18px',
+                        backgroundColor: (submitting || !amount || !screenshot) ? '#1a1a1a' : 'var(--accent-gold)',
+                        color: (submitting || !amount || !screenshot) ? '#444' : '#000',
+                        border: 'none',
+                        borderRadius: '14px',
+                        fontWeight: '800',
+                        fontSize: '16px',
+                        cursor: (submitting || !amount || !screenshot) ? 'not-allowed' : 'pointer',
                         display: 'flex',
                         alignItems: 'center',
                         justifyContent: 'center',
-                        cursor: 'pointer'
-                    }}>
-                        <Plus size={40} color="#fff" strokeWidth={1.5} />
-                    </div>
-                </div>
-
-                {/* Footer Button */}
-                <button style={{
-                    width: '100%',
-                    background: '#a5b4bc',
-                    color: '#fff',
-                    padding: '14px',
-                    border: 'none',
-                    borderRadius: '4px',
-                    fontWeight: '700',
-                    fontSize: '16px',
-                    cursor: 'pointer'
-                }}>
-                    Recharge
+                        gap: '10px',
+                        transition: 'all 0.3s ease',
+                        boxShadow: (submitting || !amount || !screenshot) ? 'none' : '0 10px 20px rgba(255, 184, 0, 0.2)'
+                    }}
+                >
+                    {submitting ? (
+                        <>
+                            <Loader2 className="animate-spin" size={20} />
+                            Processing...
+                        </>
+                    ) : (
+                        'Submit Recharge'
+                    )}
                 </button>
             </div>
-        </motion.div>
+
+            {/* Hint Box */}
+            <div style={{ marginTop: '24px', padding: '16px', backgroundColor: 'rgba(0, 192, 135, 0.05)', borderRadius: '16px', border: '1px solid rgba(0, 192, 135, 0.1)' }}>
+                <div style={{ display: 'flex', gap: '10px' }}>
+                    <CheckCircle2 size={16} color="#00c087" style={{ flexShrink: 0, marginTop: '2px' }} />
+                    <p style={{ fontSize: '12px', color: '#888', lineHeight: '1.5' }}>
+                        After transfer, wait 5-10 minutes for confirmation. If balance is not reflected, contact 24/7 customer support with your voucher.
+                    </p>
+                </div>
+            </div>
+        </motion.div >
     );
 };
 

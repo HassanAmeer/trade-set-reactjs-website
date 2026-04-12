@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { useMarket } from '../context/MarketContext';
 import {
-    CreditCard, Wallet, ArrowRightLeft, Headphones, Volume2, Menu, Mail, Globe, Zap
+    CreditCard, Wallet, ArrowRightLeft, Headphones, Volume2, Menu, Mail, Zap
 } from 'lucide-react';
 import heroImage from '../assets/hero.png';
 import { motion } from 'framer-motion';
@@ -50,7 +50,6 @@ const Home = () => {
                 </div>
                 <div style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
                     <Mail size={22} color="var(--text-primary)" onClick={() => navigate('/inbox')} style={{ cursor: 'pointer' }} />
-                    <Globe size={22} color="var(--text-primary)" onClick={() => navigate('/language')} style={{ cursor: 'pointer' }} />
                 </div>
             </div>
 

@@ -181,12 +181,15 @@ const Profile = () => {
 
             <div className="menu-list" style={{ marginBottom: '30px' }}>
                 {[
-                    { icon: FileText, label: 'Recharge Record' },
-                    { icon: FileText, label: 'Withdrawal Record' },
-                    { icon: Shield, label: 'Transaction history' },
-                    { icon: FileText, label: 'Account Security' },
+                    { icon: FileText, label: 'Recharge Record', path: '/deposit-history' },
+                    { icon: FileText, label: 'Withdrawal Record', path: '/withdrawal-history' },
                 ].map((item, i) => (
-                    <div key={i} className="flex-between" style={{ padding: '16px 4px', borderBottom: '1px solid rgba(255,255,255,0.05)' }}>
+                    <div
+                        key={i}
+                        className="flex-between"
+                        onClick={() => item.path && navigate(item.path)}
+                        style={{ padding: '16px 4px', borderBottom: '1px solid rgba(255,255,255,0.05)', cursor: item.path ? 'pointer' : 'default' }}
+                    >
                         <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
                             <item.icon size={18} color="var(--text-secondary)" />
                             <span style={{ fontSize: '14px' }}>{item.label}</span>
