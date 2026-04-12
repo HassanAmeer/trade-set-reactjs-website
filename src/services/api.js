@@ -11,37 +11,34 @@ const CMC_BASE_URL = 'https://pro-api.coinmarketcap.com/v1';
  */
 export const fetchCryptoMarkets = async () => {
     try {
-        const response = await fetch(
-            `${CMC_BASE_URL}/cryptocurrency/listings/latest?limit=100&convert=USD`,
-            {
-                headers: {
-                    'X-CMC_PRO_API_KEY': CMC_API_KEY,
-                },
-            }
-        );
+        const response = await fetch('https://api.binance.com/api/v3/ticker/24hr');
+        if (!response.ok) throw new Error('Binance response not ok');
+        const data = await response.json();
+        
+        // Define common symbols to match our context
+        const symbols = ['BTCUSDT', 'ETHUSDT', 'BNBUSDT', 'SOLUSDT', 'XRPUSDT', 'ADAUSDT', 'DOGEUSDT', 'TRXUSDT', 'DOTUSDT', 'LTCUSDT', 'MATICUSDT', 'LINKUSDT', 'AVAXUSDT', 'UNIUSDT', 'ATOMUSDT'];
+        const filtered = data.filter(item => symbols.includes(item.symbol));
 
-        if (!response.ok) {
-            throw new Error('Network response was not ok');
-        }
-
-        const result = await response.json();
-        const data = result.data;
-
-        return data.map(coin => ({
-            id: coin.id.toString(),
-            symbol: coin.symbol,
-            name: `${coin.symbol}/USDT`,
-            fullName: coin.name,
-            rate: coin.quote.USD.price.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 4 }),
-            change: `${coin.quote.USD.percent_change_24h >= 0 ? '+' : ''}${coin.quote.USD.percent_change_24h?.toFixed(2)}%`,
-            flag: `https://s2.coinmarketcap.com/static/img/coins/64x64/${coin.id}.png`,
-            category: 'Cryptocurrency',
-            marketCap: coin.quote.USD.market_cap,
-            high24h: 0, // CMC listings doesn't provide high/low in basic quote
-            low24h: 0
-        }));
+        return filtered.map(item => {
+            const rawName = item.symbol.replace('USDT', '');
+            return {
+                id: item.symbol,
+                symbol: rawName,
+                name: `${rawName}/USDT`,
+                fullName: rawName === 'BTC' ? 'Bitcoin' : rawName === 'ETH' ? 'Ethereum' : rawName,
+                rate: parseFloat(item.lastPrice) > 100 ? 
+                    parseFloat(item.lastPrice).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 }) : 
+                    parseFloat(item.lastPrice).toFixed(6),
+                change: (parseFloat(item.priceChangePercent) >= 0 ? '+' : '') + parseFloat(item.priceChangePercent).toFixed(2) + '%',
+                flag: `https://assets.coingecko.com/coins/images/${rawName === 'BTC' ? '1' : rawName === 'ETH' ? '279' : '1'}/small/${rawName.toLowerCase()}.png`,
+                category: 'Cryptocurrency',
+                volume24h: (parseFloat(item.quoteVolume) / 1000000).toFixed(1) + 'M',
+                high24h: parseFloat(item.highPrice).toLocaleString(),
+                low24h: parseFloat(item.lowPrice).toLocaleString()
+            };
+        });
     } catch (error) {
-        console.error('Error fetching crypto markets (CMC):', error);
+        console.error('Error fetching crypto markets (Binance):', error);
         return [];
     }
 };

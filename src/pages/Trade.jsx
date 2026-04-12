@@ -81,7 +81,7 @@ const Trade = () => {
         }, 1500);
 
         return () => clearTimeout(timer);
-    }, [selectedAsset, activeTime]);
+    }, [selectedAsset?.id, activeTime]);
 
     const filteredAssetsBySearchAndCat = assets.filter(a => {
         const matchesSearch = a.name.toLowerCase().includes(searchTerm.toLowerCase());
@@ -115,7 +115,7 @@ const Trade = () => {
         </div>
     );
 
-    if (!assets || assets.length === 0) return renderSkeleton();
+    if (!assets || assets.length === 0 || !selectedAsset) return renderSkeleton();
 
     return (
         <motion.div
@@ -147,16 +147,16 @@ const Trade = () => {
                         onClick={() => setShowAssetList(true)}
                         style={{ display: 'flex', alignItems: 'center', gap: '6px', cursor: 'pointer' }}
                     >
-                        <span style={{ fontWeight: '700', fontSize: '18px' }}>{selectedAsset.name}</span>
+                        <span style={{ fontWeight: '700', fontSize: '18px' }}>{selectedAsset?.name}</span>
                         <ChevronDown size={16} color="#888" />
                     </div>
                 </div>
                 <div style={{ display: 'flex', flexDirection: 'row', alignItems: 'flex-end' }}>
-                    <span style={{ fontSize: '18px', fontWeight: '800', color: selectedAsset.change?.startsWith('+') ? '#00c087' : '#ff4d4f' }}>
-                        {selectedAsset.rate}
+                    <span style={{ fontSize: '18px', fontWeight: '800', color: selectedAsset?.change?.startsWith('+') ? '#00c087' : '#ff4d4f' }}>
+                        {selectedAsset?.rate}
                     </span>
-                    <span style={{ paddingLeft: '10px', fontSize: '11px', color: selectedAsset.change?.startsWith('+') ? '#00c087' : '#ff4d4f' }}>
-                        {selectedAsset.change}
+                    <span style={{ paddingLeft: '10px', fontSize: '11px', color: selectedAsset?.change?.startsWith('+') ? '#00c087' : '#ff4d4f' }}>
+                        {selectedAsset?.change}
                     </span>
                 </div>
                 <Link to="/" style={{ marginLeft: '12px' }}>
@@ -231,17 +231,17 @@ const Trade = () => {
                         <span>Time: <span style={{ color: '#aaa' }}>{new Date().toISOString().slice(0, 16).replace('T', ' ')}</span></span>
                     </div>
                     <div style={{ display: 'flex', gap: '15px' }}>
-                        <span>Open: <span style={{ color: '#aaa' }}>{selectedAsset.rate}</span></span>
-                        <span>High: <span style={{ color: '#aaa' }}>{parseFloat(selectedAsset.rate.replace(/,/g, '')) * 1.002 > 100 ? (parseFloat(selectedAsset.rate.replace(/,/g, '')) * 1.002).toLocaleString(undefined, { minimumFractionDigits: 2 }) : (parseFloat(selectedAsset.rate.replace(/,/g, '')) * 1.002).toFixed(6)}</span></span>
+                        <span>Open: <span style={{ color: '#aaa' }}>{selectedAsset?.rate}</span></span>
+                        <span>High: <span style={{ color: '#aaa' }}>{selectedAsset?.rate ? (parseFloat(selectedAsset.rate.replace(/,/g, '')) * 1.002 > 100 ? (parseFloat(selectedAsset.rate.replace(/,/g, '')) * 1.002).toLocaleString(undefined, { minimumFractionDigits: 2 }) : (parseFloat(selectedAsset.rate.replace(/,/g, '')) * 1.002).toFixed(6)) : '0.00'}</span></span>
                     </div>
                 </div>
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '4px', alignItems: 'flex-end' }}>
                     <div style={{ display: 'flex', gap: '15px' }}>
-                        <span>Low: <span style={{ color: '#aaa' }}>{parseFloat(selectedAsset.rate.replace(/,/g, '')) * 0.998 > 100 ? (parseFloat(selectedAsset.rate.replace(/,/g, '')) * 0.998).toLocaleString(undefined, { minimumFractionDigits: 2 }) : (parseFloat(selectedAsset.rate.replace(/,/g, '')) * 0.998).toFixed(6)}</span></span>
-                        <span>Close: <span style={{ color: '#aaa' }}>{selectedAsset.rate}</span></span>
+                        <span>Low: <span style={{ color: '#aaa' }}>{selectedAsset?.rate ? (parseFloat(selectedAsset.rate.replace(/,/g, '')) * 0.998 > 100 ? (parseFloat(selectedAsset.rate.replace(/,/g, '')) * 0.998).toLocaleString(undefined, { minimumFractionDigits: 2 }) : (parseFloat(selectedAsset.rate.replace(/,/g, '')) * 0.998).toFixed(6)) : '0.00'}</span></span>
+                        <span>Close: <span style={{ color: '#aaa' }}>{selectedAsset?.rate}</span></span>
                     </div>
                     <div>
-                        <span>Volume: <span style={{ color: '#aaa' }}>{selectedAsset.volume24h ? selectedAsset.volume24h : (Math.floor(Math.random() * 900000) + 100000).toLocaleString()}</span></span>
+                        <span>Volume: <span style={{ color: '#aaa' }}>{selectedAsset?.volume24h ? selectedAsset.volume24h : (Math.floor(Math.random() * 900000) + 100000).toLocaleString()}</span></span>
                     </div>
                 </div>
             </div>
