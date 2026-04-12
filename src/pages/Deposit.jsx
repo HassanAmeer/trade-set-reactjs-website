@@ -1,11 +1,11 @@
-import React, { useState, useRef } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import { motion } from 'framer-motion';
 import { ChevronLeft, Upload, Clock, Loader2, Camera, CheckCircle2 } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { uploadFileChunks } from '../services/dbs';
 import { db } from '../firebase-setup';
-import { collection, addDoc } from 'firebase/firestore';
+import { collection, addDoc, doc, getDoc } from 'firebase/firestore';
 
 const Deposit = () => {
     const navigate = useNavigate();
@@ -15,11 +15,26 @@ const Deposit = () => {
     const [copied, setCopied] = useState(false);
     const [screenshot, setScreenshot] = useState(null);
     const [preview, setPreview] = useState(null);
+    const [usdtAddress, setUsdtAddress] = useState('Loading...');
     const fileInputRef = useRef(null);
 
-    const usdtAddress = "TMR7XE9h7aA9eApXK4jLqR7p3z"; // Your real address here
+    useEffect(() => {
+        const fetchAddress = async () => {
+            try {
+                const docRef = doc(db, 'admin_set', 'platform');
+                const snap = await getDoc(docRef);
+                if (snap.exists()) {
+                    setUsdtAddress(snap.data().usdtAddress);
+                }
+            } catch (err) {
+                console.error(err);
+            }
+        };
+        fetchAddress();
+    }, []);
 
     const handleCopy = () => {
+        if (usdtAddress === 'Loading...') return;
         navigator.clipboard.writeText(usdtAddress);
         setCopied(true);
         setTimeout(() => setCopied(false), 2000);

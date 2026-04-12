@@ -1,13 +1,14 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { db } from '../../firebase-setup';
-import { collection, addDoc, getDocs, deleteDoc, doc, orderBy, query } from 'firebase/firestore';
+import { collection, addDoc, getDocs, deleteDoc, doc, orderBy, query, updateDoc } from 'firebase/firestore';
 import { uploadFileChunks } from '../../services/dbs';
-import { Plus, Trash2, Loader2, FileText, Image as ImageIcon } from 'lucide-react';
+import { Plus, Trash2, Loader2, FileText, Image as ImageIcon, Edit, XCircle } from 'lucide-react';
 
 const AdminBlogs = () => {
     const [blogs, setBlogs] = useState([]);
     const [loading, setLoading] = useState(true);
     const [isPosting, setIsPosting] = useState(false);
+    const [editingId, setEditingId] = useState(null);
 
     // Form states
     const [title, setTitle] = useState('');
@@ -24,15 +25,36 @@ const AdminBlogs = () => {
     const fetchBlogs = async () => {
         setLoading(true);
         try {
-            const q = query(collection(db, 'news_blogs'), orderBy('timestamp', 'desc'));
+            const q = query(collection(db, 'news_blogs'), orderBy('timestamp', 'asc')); // asc so oldest first or keep desc for newest first? Usually desc.
             const querySnapshot = await getDocs(q);
             const list = querySnapshot.docs.map(d => ({ id: d.id, ...d.data() }));
-            setBlogs(list);
+            // Manual sort if needed, but Firestore handles it. Let's stick with newest first.
+            const sortedList = [...list].sort((a,b) => new Date(b.timestamp) - new Date(a.timestamp));
+            setBlogs(sortedList);
+            resetForm();
         } catch (error) {
             console.error("Error fetching blogs:", error);
         } finally {
             setLoading(false);
         }
+    };
+
+    const resetForm = () => {
+        setTitle('');
+        setDescription('');
+        setCategory('');
+        setImageFile(null);
+        setImagePreview(null);
+        setEditingId(null);
+    };
+
+    const handleEdit = (blog) => {
+        setEditingId(blog.id);
+        setTitle(blog.title);
+        setDescription(blog.description);
+        setCategory(blog.category);
+        setImagePreview(blog.image);
+        window.scrollTo({ top: 0, behavior: 'smooth' });
     };
 
     const handleImageSelect = (e) => {
@@ -45,7 +67,7 @@ const AdminBlogs = () => {
         }
     };
 
-    const handlePost = async (e) => {
+    const handleSubmit = async (e) => {
         e.preventDefault();
         if (!title || !description) {
             alert('Title and description are required');
@@ -54,7 +76,8 @@ const AdminBlogs = () => {
 
         setIsPosting(true);
         try {
-            let imageUrl = null;
+            let imageUrl = imagePreview; 
+
             if (imageFile) {
                 const uploadRes = await uploadFileChunks(imageFile);
                 if (uploadRes.success) {
@@ -62,27 +85,26 @@ const AdminBlogs = () => {
                 }
             }
 
-            const newBlog = {
+            const blogData = {
                 title,
                 description,
                 category: category || 'General',
                 image: imageUrl,
                 timestamp: new Date().toISOString(),
-                views: 0
             };
 
-            await addDoc(collection(db, 'news_blogs'), newBlog);
+            if (editingId) {
+                await updateDoc(doc(db, 'news_blogs', editingId), blogData);
+                alert('Blog updated successfully!');
+            } else {
+                blogData.views = 0;
+                await addDoc(collection(db, 'news_blogs'), blogData);
+                alert('Blog posted successfully!');
+            }
             
-            // Reset form
-            setTitle('');
-            setDescription('');
-            setCategory('');
-            setImageFile(null);
-            setImagePreview(null);
-            alert('Blog posted successfully!');
             fetchBlogs();
         } catch (error) {
-            alert('Error posting blog: ' + error.message);
+            alert('Error saving blog: ' + error.message);
         } finally {
             setIsPosting(false);
         }
@@ -105,13 +127,24 @@ const AdminBlogs = () => {
             <h2 style={{ color: '#fff', fontSize: '24px', fontWeight: '800', marginBottom: '30px' }}>News & Blogs Management</h2>
             
             <div style={{ display: 'flex', flexWrap: 'wrap', gap: '30px', alignItems: 'flex-start' }}>
-                {/* Create Blog Form */}
+                {/* Create/Update Blog Form */}
                 <div style={{ flex: '1 1 400px', backgroundColor: '#111', padding: '24px', borderRadius: '16px', border: '1px solid #222' }}>
-                    <h3 style={{ color: '#fff', marginBottom: '20px', fontSize: '18px', display: 'flex', alignItems: 'center', gap: '8px' }}>
-                        <Plus size={20} color="#00c087" /> Create New Post
-                    </h3>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px' }}>
+                        <h3 style={{ color: '#fff', fontSize: '18px', display: 'flex', alignItems: 'center', gap: '8px', margin: 0 }}>
+                            {editingId ? <Edit size={20} color="#00c087" /> : <Plus size={20} color="#00c087" />}
+                            {editingId ? "Update Post" : "Create New Post"}
+                        </h3>
+                        {editingId && (
+                            <button 
+                                onClick={resetForm}
+                                style={{ background: 'transparent', border: 'none', color: '#ff4d4f', fontSize: '13px', display: 'flex', alignItems: 'center', gap: '4px', cursor: 'pointer' }}
+                            >
+                                <XCircle size={14} /> Cancel Edit
+                            </button>
+                        )}
+                    </div>
 
-                    <form onSubmit={handlePost}>
+                    <form onSubmit={handleSubmit}>
                         <div style={{ marginBottom: '15px' }}>
                             <label style={{ color: '#888', fontSize: '13px', marginBottom: '6px', display: 'block' }}>Event Title</label>
                             <input 
@@ -169,7 +202,7 @@ const AdminBlogs = () => {
                             disabled={isPosting}
                             style={{ width: '100%', padding: '14px', backgroundColor: '#00c087', color: '#fff', border: 'none', borderRadius: '8px', fontWeight: '800', fontSize: '15px', cursor: isPosting ? 'not-allowed' : 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px' }}
                         >
-                            {isPosting ? <Loader2 className="animate-spin" /> : 'Publish Now'}
+                            {isPosting ? <Loader2 className="animate-spin" /> : (editingId ? 'Update Now' : 'Publish Now')}
                         </button>
                     </form>
                 </div>
@@ -191,9 +224,14 @@ const AdminBlogs = () => {
                                 <div style={{ flex: 1 }}>
                                     <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
                                         <h4 style={{ color: '#fff', margin: '0 0 5px 0', fontSize: '15px' }}>{blog.title}</h4>
-                                        <button onClick={() => handleDelete(blog.id)} style={{ background: 'transparent', border: 'none', color: '#ff4d4f', cursor: 'pointer' }}>
-                                            <Trash2 size={16} />
-                                        </button>
+                                        <div style={{ display: 'flex', gap: '10px' }}>
+                                            <button onClick={() => handleEdit(blog)} style={{ background: 'transparent', border: 'none', color: '#00c087', cursor: 'pointer' }}>
+                                                <Edit size={16} />
+                                            </button>
+                                            <button onClick={() => handleDelete(blog.id)} style={{ background: 'transparent', border: 'none', color: '#ff4d4f', cursor: 'pointer' }}>
+                                                <Trash2 size={16} />
+                                            </button>
+                                        </div>
                                     </div>
                                     <p style={{ color: '#888', fontSize: '12px', margin: '0 0 8px 0', maxHeight: '36px', overflow: 'hidden', textOverflow: 'ellipsis' }}>
                                         {blog.description}

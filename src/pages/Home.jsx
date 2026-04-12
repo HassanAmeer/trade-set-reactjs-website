@@ -1,7 +1,8 @@
 import React, { useState } from 'react';
 import { useMarket } from '../context/MarketContext';
 import {
-    CreditCard, Wallet, ArrowRightLeft, Headphones, Volume2, Menu, Mail, Zap
+    CreditCard, Wallet, ArrowRightLeft, Headphones, Volume2, Menu, Mail, Zap,
+    Newspaper
 } from 'lucide-react';
 import heroImage from '../assets/hero.png';
 import { motion } from 'framer-motion';
@@ -60,7 +61,7 @@ const Home = () => {
 
             <div className="flex-between" style={{ marginBottom: '16px', padding: '0 4px' }}>
                 <Volume2 size={20} color="var(--accent-gold)" />
-                <Menu size={24} color="var(--text-primary)" onClick={() => navigate('/news')} style={{ cursor: 'pointer' }} />
+                <Newspaper size={24} className='shimmer-icon' onClick={() => navigate('/news')} style={{ cursor: 'pointer' }} />
             </div>
 
             <div className="action-grid">

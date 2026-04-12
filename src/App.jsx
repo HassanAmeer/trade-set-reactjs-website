@@ -16,8 +16,10 @@ import C2C from './pages/C2C';
 import CustomerService from './pages/CustomerService';
 import Messages from './pages/Messages';
 import NewsAndBlog from './pages/NewsAndBlog';
+import BlogDetail from './pages/BlogDetail';
 import AdminLogin from './pages/admin/AdminLogin';
 import AdminDashboard from './pages/admin/AdminDashboard';
+import TradesRecord from './pages/TradesRecord';
 import { Home as HomeIcon, BarChart2, Activity, Zap, User } from 'lucide-react';
 import { MarketProvider } from './context/MarketContext';
 import { AuthProvider } from './context/AuthContext';
@@ -65,6 +67,7 @@ const AppContent = () => {
         <Route path="/" element={<Home />} />
         <Route path="/market" element={<Market />} />
         <Route path="/trade" element={<Trade />} />
+        <Route path="/trade-history" element={<TradesRecord />} />
         <Route path="/coin" element={<Coin />} />
         <Route path="/profile" element={<Profile />} />
         <Route path="/login" element={<Login />} />
@@ -78,6 +81,7 @@ const AppContent = () => {
         <Route path="/support" element={<CustomerService />} />
         <Route path="/inbox" element={<Messages />} />
         <Route path="/news" element={<NewsAndBlog />} />
+        <Route path="/news/:id" element={<BlogDetail />} />
         
         {/* Admin Routes */}
         <Route path="/set" element={<AdminLogin />} />

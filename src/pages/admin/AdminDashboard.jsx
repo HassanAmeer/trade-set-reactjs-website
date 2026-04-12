@@ -8,6 +8,8 @@ import AdminSupport from './AdminSupport';
 import AdminKYC from './AdminKYC';
 import AdminBlogs from './AdminBlogs';
 import AdminSettings from './AdminSettings';
+import AdminTrades from './AdminTrades';
+import { BarChart3 } from 'lucide-react';
 
 const AdminDashboard = () => {
     const navigate = useNavigate();
@@ -41,6 +43,8 @@ const AdminDashboard = () => {
                 return <AdminBlogs />;
             case 'settings':
                 return <AdminSettings />;
+            case 'trades':
+                return <AdminTrades />;
             default:
                 return null;
         }
@@ -56,43 +60,49 @@ const AdminDashboard = () => {
                 </div>
 
                 <nav style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: '10px' }}>
-                    <button 
+                    <button
                         onClick={() => setActiveTab('deposits')}
                         style={{ ...sidebarBtnStyle, backgroundColor: activeTab === 'deposits' ? 'rgba(0,192,135,0.1)' : 'transparent', color: activeTab === 'deposits' ? '#00c087' : '#888' }}
                     >
                         <CreditCard size={18} /> Deposits
                     </button>
-                    <button 
+                    <button
                         onClick={() => setActiveTab('withdrawals')}
                         style={{ ...sidebarBtnStyle, backgroundColor: activeTab === 'withdrawals' ? 'rgba(0,192,135,0.1)' : 'transparent', color: activeTab === 'withdrawals' ? '#00c087' : '#888' }}
                     >
                         <Download size={18} /> Withdrawals
                     </button>
-                    <button 
+                    <button
                         onClick={() => setActiveTab('users')}
                         style={{ ...sidebarBtnStyle, backgroundColor: activeTab === 'users' ? 'rgba(0,192,135,0.1)' : 'transparent', color: activeTab === 'users' ? '#00c087' : '#888' }}
                     >
                         <Users size={18} /> Users
                     </button>
-                    <button 
+                    <button
                         onClick={() => setActiveTab('support')}
                         style={{ ...sidebarBtnStyle, backgroundColor: activeTab === 'support' ? 'rgba(0,192,135,0.1)' : 'transparent', color: activeTab === 'support' ? '#00c087' : '#888' }}
                     >
                         <MessageSquare size={18} /> Support Center
                     </button>
-                    <button 
+                    <button
+                        onClick={() => setActiveTab('trades')}
+                        style={{ ...sidebarBtnStyle, backgroundColor: activeTab === 'trades' ? 'rgba(0,192,135,0.1)' : 'transparent', color: activeTab === 'trades' ? '#00c087' : '#888' }}
+                    >
+                        <BarChart3 size={18} /> Global Trades
+                    </button>
+                    <button
                         onClick={() => setActiveTab('blogs')}
                         style={{ ...sidebarBtnStyle, backgroundColor: activeTab === 'blogs' ? 'rgba(0,192,135,0.1)' : 'transparent', color: activeTab === 'blogs' ? '#00c087' : '#888' }}
                     >
                         <FileText size={18} /> News & Blogs
                     </button>
-                    <button 
+                    <button
                         onClick={() => setActiveTab('kyc')}
                         style={{ ...sidebarBtnStyle, backgroundColor: activeTab === 'kyc' ? 'rgba(0,192,135,0.1)' : 'transparent', color: activeTab === 'kyc' ? '#00c087' : '#888' }}
                     >
                         <ShieldCheck size={18} /> KYC Approvals
                     </button>
-                    <button 
+                    <button
                         onClick={() => setActiveTab('settings')}
                         style={{ ...sidebarBtnStyle, backgroundColor: activeTab === 'settings' ? 'rgba(0,192,135,0.1)' : 'transparent', color: activeTab === 'settings' ? '#00c087' : '#888' }}
                     >
@@ -100,10 +110,10 @@ const AdminDashboard = () => {
                     </button>
                 </nav>
 
-                <button 
+                <button
                     className="admin-sidebar-exit"
                     onClick={handleLogout}
-                    style={{ ...sidebarBtnStyle, color: '#ff4d4f', borderTop: '1px solid #222', paddingTop: '20px', borderRadius: 0, justifyContent: 'flex-start' }}
+                    style={{ ...sidebarBtnStyle, backgroundColor: 'transparent', color: '#ff4d4f', borderTop: '1px solid #222', paddingTop: '20px', borderRadius: 0, justifyContent: 'flex-start' }}
                 >
                     <LogOut size={18} /> Exit Panel
                 </button>

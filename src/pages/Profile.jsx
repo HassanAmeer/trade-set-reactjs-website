@@ -181,6 +181,7 @@ const Profile = () => {
 
             <div className="menu-list" style={{ marginBottom: '30px' }}>
                 {[
+                    { icon: FileText, label: 'Trade Record', path: '/trade-history' },
                     { icon: FileText, label: 'Recharge Record', path: '/deposit-history' },
                     { icon: FileText, label: 'Withdrawal Record', path: '/withdrawal-history' },
                 ].map((item, i) => (

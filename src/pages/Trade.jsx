@@ -1,16 +1,22 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useMarket } from '../context/MarketContext';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Menu, Home as HomeIcon, ChevronDown, Search, X } from 'lucide-react';
+import { Menu, Home as HomeIcon, ChevronDown, Search, X, Loader2 } from 'lucide-react';
 import { Link } from 'react-router-dom';
+import { db } from '../firebase-setup';
+import { useAuth } from '../context/AuthContext';
+import { collection, addDoc, updateDoc, doc, increment } from 'firebase/firestore';
 
 const Trade = () => {
     const { assets, selectedAsset, setSelectedAsset } = useMarket();
+    const { user, updateUser } = useAuth();
     const [activeTime, setActiveTime] = useState('D');
     const [showAssetList, setShowAssetList] = useState(false);
     const [searchTerm, setSearchTerm] = useState('');
     const [activeFilter, setActiveFilter] = useState('All');
     const [chartLoading, setChartLoading] = useState(true);
+    const [tradeAmount, setTradeAmount] = useState('10');
+    const [trading, setTrading] = useState(false);
     const container = useRef();
 
     const timeframes = [
@@ -23,7 +29,6 @@ const Trade = () => {
         { label: '1 week', value: 'W' }
     ];
 
-    // Effect to update the local selected asset when the context updates
     useEffect(() => {
         if (selectedAsset) {
             const updated = assets.find(a => a.id === selectedAsset.id);
@@ -31,12 +36,10 @@ const Trade = () => {
         }
     }, [assets]);
 
-    // TradingView Widget Loader
     useEffect(() => {
         if (!selectedAsset) return;
 
         setChartLoading(true);
-        // Clean up previous widget
         if (container.current) {
             container.current.innerHTML = '';
         }
@@ -46,7 +49,6 @@ const Trade = () => {
         script.type = "text/javascript";
         script.async = true;
 
-        // Map asset name to TradingView symbol
         let symbol = selectedAsset.name.replace('/', '');
         if (selectedAsset.category === 'Cryptocurrency') {
             symbol = `BINANCE:${symbol}`;
@@ -75,13 +77,52 @@ const Trade = () => {
 
         container.current.appendChild(script);
 
-        // Hide chart skeleton after a brief delay to allow widget to initialize
         const timer = setTimeout(() => {
             setChartLoading(false);
         }, 1500);
 
         return () => clearTimeout(timer);
     }, [selectedAsset?.id, activeTime]);
+
+    const handlePlaceTrade = async (direction) => {
+        if (!user) {
+            alert("Please login to trade");
+            return;
+        }
+
+        const amount = parseFloat(tradeAmount);
+        if (isNaN(amount) || amount <= 0) {
+            alert("Invalid amount");
+            return;
+        }
+
+        if (user.balance < amount) {
+            alert("Insufficient balance");
+            return;
+        }
+
+        setTrading(true);
+        try {
+            await updateUser({ balance: increment(-amount) });
+
+            await addDoc(collection(db, 'users', user.id, 'trades'), {
+                asset: selectedAsset.name,
+                amount: amount,
+                direction: direction,
+                entryRate: selectedAsset.rate,
+                timestamp: new Date().toISOString(),
+                status: 'open',
+                userEmail: user.email,
+                userId: user.id
+            });
+
+            alert(`Trade placed: ${direction} ${selectedAsset.name} for ${amount} USDT`);
+        } catch (error) {
+            alert("Trade failed: " + error.message);
+        } finally {
+            setTrading(false);
+        }
+    };
 
     const filteredAssetsBySearchAndCat = assets.filter(a => {
         const matchesSearch = a.name.toLowerCase().includes(searchTerm.toLowerCase());
@@ -108,10 +149,6 @@ const Trade = () => {
                 <div className="skeleton-loader" style={{ height: '60px', borderRadius: '8px' }}></div>
                 <div className="skeleton-loader" style={{ height: '60px', borderRadius: '8px' }}></div>
             </div>
-            <div style={{ position: 'fixed', bottom: '80px', left: 0, right: 0, padding: '0 16px', display: 'flex', gap: '12px' }}>
-                <div className="skeleton-loader" style={{ flex: 1, height: '50px', borderRadius: '12px' }}></div>
-                <div className="skeleton-loader" style={{ flex: 1, height: '50px', borderRadius: '12px' }}></div>
-            </div>
         </div>
     );
 
@@ -125,11 +162,10 @@ const Trade = () => {
                 backgroundColor: '#0a0a0a',
                 minHeight: '100vh',
                 color: '#fff',
-                paddingBottom: '100px',
+                paddingBottom: '160px',
                 fontFamily: 'Inter, system-ui, sans-serif'
             }}
         >
-            {/* Trading Header */}
             <div style={{
                 display: 'flex',
                 alignItems: 'center',
@@ -152,10 +188,6 @@ const Trade = () => {
                     </div>
                 </div>
                 <div style={{ display: 'flex', flexDirection: 'row', alignItems: 'flex-end' }}>
-                    <span style={{ fontSize: '18px', fontWeight: '800', color: selectedAsset?.change?.startsWith('+') ? '#00c087' : '#ff4d4f' }}>
-                        {/* {selectedAsset?.rate} */}
-                        {/* in future can be used */}
-                    </span>
                     <span style={{ paddingLeft: '10px', fontSize: '11px', color: selectedAsset?.change?.startsWith('+') ? '#00c087' : '#ff4d4f' }}>
                         {selectedAsset?.change}
                     </span>
@@ -165,7 +197,6 @@ const Trade = () => {
                 </Link>
             </div>
 
-            {/* Timeframes */}
             <div style={{
                 display: 'flex',
                 justifyContent: 'space-between',
@@ -191,7 +222,6 @@ const Trade = () => {
                 ))}
             </div>
 
-            {/* Chart Area */}
             <div style={{ height: '450px', width: '100%', position: 'relative', backgroundColor: '#000' }}>
                 {chartLoading && (
                     <div
@@ -216,7 +246,6 @@ const Trade = () => {
                 </div>
             </div>
 
-            {/* Technical Info Strip (Moved Below Chart) */}
             <div style={{
                 padding: '12px 16px',
                 fontSize: '11px',
@@ -233,21 +262,10 @@ const Trade = () => {
                     </div>
                     <div style={{ display: 'flex', gap: '15px' }}>
                         <span>Open: <span style={{ color: '#aaa' }}>{selectedAsset?.rate}</span></span>
-                        <span>High: <span style={{ color: '#aaa' }}>{selectedAsset?.rate ? (parseFloat(selectedAsset.rate.replace(/,/g, '')) * 1.002 > 100 ? (parseFloat(selectedAsset.rate.replace(/,/g, '')) * 1.002).toLocaleString(undefined, { minimumFractionDigits: 2 }) : (parseFloat(selectedAsset.rate.replace(/,/g, '')) * 1.002).toFixed(6)) : '0.00'}</span></span>
-                    </div>
-                </div>
-                <div style={{ display: 'flex', flexDirection: 'column', gap: '4px', alignItems: 'flex-end' }}>
-                    <div style={{ display: 'flex', gap: '15px' }}>
-                        <span>Low: <span style={{ color: '#aaa' }}>{selectedAsset?.rate ? (parseFloat(selectedAsset.rate.replace(/,/g, '')) * 0.998 > 100 ? (parseFloat(selectedAsset.rate.replace(/,/g, '')) * 0.998).toLocaleString(undefined, { minimumFractionDigits: 2 }) : (parseFloat(selectedAsset.rate.replace(/,/g, '')) * 0.998).toFixed(6)) : '0.00'}</span></span>
-                        <span>Close: <span style={{ color: '#aaa' }}>{selectedAsset?.rate}</span></span>
-                    </div>
-                    <div>
-                        <span>Volume: <span style={{ color: '#aaa' }}>{selectedAsset?.volume24h ? selectedAsset.volume24h : (Math.floor(Math.random() * 900000) + 100000).toLocaleString()}</span></span>
                     </div>
                 </div>
             </div>
 
-            {/* Bottom Trade Buttons */}
             <div style={{
                 position: 'fixed',
                 bottom: '80px',
@@ -255,40 +273,75 @@ const Trade = () => {
                 transform: 'translateX(-50%)',
                 width: '100%',
                 maxWidth: '480px',
+                backgroundColor: 'rgba(17, 17, 17, 0.95)',
+                backdropFilter: 'blur(10px)',
+                padding: '20px 16px',
+                borderTop: '1px solid #222',
                 display: 'flex',
-                gap: '12px',
-                padding: '0 16px',
+                flexDirection: 'column',
+                gap: '15px',
                 zIndex: 100
             }}>
-                <button style={{
-                    flex: 1,
-                    background: 'linear-gradient(to right, #00c087, #00d2ad)',
-                    color: '#fff',
-                    padding: '16px',
-                    borderRadius: '12px',
-                    border: 'none',
-                    fontWeight: '800',
-                    fontSize: '15px',
-                    boxShadow: '0 4px 15px rgba(0, 192, 135, 0.3)'
-                }}>
-                    BUY / LONG
-                </button>
-                <button style={{
-                    flex: 1,
-                    background: 'linear-gradient(to right, #ff4d4f, #ff7875)',
-                    color: '#fff',
-                    padding: '16px',
-                    borderRadius: '12px',
-                    border: 'none',
-                    fontWeight: '800',
-                    fontSize: '15px',
-                    boxShadow: '0 4px 15px rgba(255, 77, 79, 0.3)'
-                }}>
-                    SELL / SHORT
-                </button>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                        <span style={{ fontSize: '13px', color: '#888' }}>Amount:</span>
+                        <div style={{ display: 'flex', alignItems: 'center', backgroundColor: '#000', borderRadius: '8px', padding: '4px 12px', border: '1px solid #333' }}>
+                            <input 
+                                type="number" 
+                                value={tradeAmount}
+                                onChange={(e) => setTradeAmount(e.target.value)}
+                                style={{ width: '60px', background: 'none', border: 'none', color: '#fff', textAlign: 'center', fontSize: '16px', fontWeight: '700', outline: 'none' }} 
+                            />
+                            <span style={{ fontSize: '12px', color: 'var(--accent-gold)', marginLeft: '4px' }}>USDT</span>
+                        </div>
+                    </div>
+                    <div style={{ fontSize: '12px', color: '#888' }}>
+                        Balance: <span style={{ color: '#fff' }}>{user?.balance || '0.00'} USDT</span>
+                    </div>
+                </div>
+
+                <div style={{ display: 'flex', gap: '12px' }}>
+                    <button 
+                        onClick={() => handlePlaceTrade('BUY')}
+                        disabled={trading}
+                        style={{
+                            flex: 1,
+                            background: 'linear-gradient(to right, #00c087, #00d2ad)',
+                            color: '#fff',
+                            padding: '16px',
+                            borderRadius: '12px',
+                            border: 'none',
+                            fontWeight: '800',
+                            fontSize: '15px',
+                            cursor: trading ? 'not-allowed' : 'pointer',
+                            opacity: trading ? 0.7 : 1,
+                            boxShadow: '0 4px 15px rgba(0, 192, 135, 0.3)'
+                        }}
+                    >
+                        {trading ? <Loader2 className="animate-spin" style={{ margin: '0 auto' }} /> : 'BUY / LONG'}
+                    </button>
+                    <button 
+                        onClick={() => handlePlaceTrade('SELL')}
+                        disabled={trading}
+                        style={{
+                            flex: 1,
+                            background: 'linear-gradient(to right, #ff4d4f, #ff7875)',
+                            color: '#fff',
+                            padding: '16px',
+                            borderRadius: '12px',
+                            border: 'none',
+                            fontWeight: '800',
+                            fontSize: '15px',
+                            cursor: trading ? 'not-allowed' : 'pointer',
+                            opacity: trading ? 0.7 : 1,
+                            boxShadow: '0 4px 15px rgba(255, 77, 79, 0.3)'
+                        }}
+                    >
+                        {trading ? <Loader2 className="animate-spin" style={{ margin: '0 auto' }} /> : 'SELL / SHORT'}
+                    </button>
+                </div>
             </div>
 
-            {/* Asset Selection Modal */}
             <AnimatePresence>
                 {showAssetList && (
                     <motion.div
