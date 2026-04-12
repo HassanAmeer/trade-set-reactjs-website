@@ -27,7 +27,15 @@ body {
 }
 
 #root {
+  width: 100%;
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+}
+
+.mobile-layout-wrapper {
   max-width: 480px;
+  width: 100%;
   margin: 0 auto;
   min-height: 100vh;
   display: flex;
@@ -38,12 +46,19 @@ body {
   box-shadow: 0 0 50px rgba(0, 0, 0, 0.5);
 }
 
+.admin-root-wrapper {
+  width: 100%;
+  min-height: 100vh;
+  background-color: #050505;
+}
+
 .glass {
   background: rgba(255, 255, 255, 0.05);
   backdrop-filter: blur(10px);
   -webkit-backdrop-filter: blur(10px);
   border: 1px solid rgba(255, 255, 255, 0.05);
 }
+
 
 .flex-center {
   display: flex;

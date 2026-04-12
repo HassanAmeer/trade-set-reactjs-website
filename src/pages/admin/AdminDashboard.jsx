@@ -1,7 +1,13 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { LayoutDashboard, Users, CreditCard, ShieldCheck, LogOut, ArrowRightLeft } from 'lucide-react';
+import { LayoutDashboard, Users, CreditCard, ShieldCheck, LogOut, Download, Settings, MessageSquare, FileText } from 'lucide-react';
 import AdminDeposits from './AdminDeposits';
+import AdminWithdrawals from './AdminWithdrawals';
+import AdminUsers from './AdminUsers';
+import AdminSupport from './AdminSupport';
+import AdminKYC from './AdminKYC';
+import AdminBlogs from './AdminBlogs';
+import AdminSettings from './AdminSettings';
 
 const AdminDashboard = () => {
     const navigate = useNavigate();
@@ -23,10 +29,18 @@ const AdminDashboard = () => {
         switch (activeTab) {
             case 'deposits':
                 return <AdminDeposits />;
+            case 'withdrawals':
+                return <AdminWithdrawals />;
             case 'users':
-                return <div style={{ color: '#fff' }}>Users Management (Coming Soon)</div>;
+                return <AdminUsers />;
+            case 'support':
+                return <AdminSupport />;
             case 'kyc':
-                return <div style={{ color: '#fff' }}>KYC Approvals (Coming Soon)</div>;
+                return <AdminKYC />;
+            case 'blogs':
+                return <AdminBlogs />;
+            case 'settings':
+                return <AdminSettings />;
             default:
                 return null;
         }
@@ -49,16 +63,40 @@ const AdminDashboard = () => {
                         <CreditCard size={18} /> Deposits
                     </button>
                     <button 
+                        onClick={() => setActiveTab('withdrawals')}
+                        style={{ ...sidebarBtnStyle, backgroundColor: activeTab === 'withdrawals' ? 'rgba(0,192,135,0.1)' : 'transparent', color: activeTab === 'withdrawals' ? '#00c087' : '#888' }}
+                    >
+                        <Download size={18} /> Withdrawals
+                    </button>
+                    <button 
                         onClick={() => setActiveTab('users')}
                         style={{ ...sidebarBtnStyle, backgroundColor: activeTab === 'users' ? 'rgba(0,192,135,0.1)' : 'transparent', color: activeTab === 'users' ? '#00c087' : '#888' }}
                     >
                         <Users size={18} /> Users
                     </button>
                     <button 
+                        onClick={() => setActiveTab('support')}
+                        style={{ ...sidebarBtnStyle, backgroundColor: activeTab === 'support' ? 'rgba(0,192,135,0.1)' : 'transparent', color: activeTab === 'support' ? '#00c087' : '#888' }}
+                    >
+                        <MessageSquare size={18} /> Support Center
+                    </button>
+                    <button 
+                        onClick={() => setActiveTab('blogs')}
+                        style={{ ...sidebarBtnStyle, backgroundColor: activeTab === 'blogs' ? 'rgba(0,192,135,0.1)' : 'transparent', color: activeTab === 'blogs' ? '#00c087' : '#888' }}
+                    >
+                        <FileText size={18} /> News & Blogs
+                    </button>
+                    <button 
                         onClick={() => setActiveTab('kyc')}
                         style={{ ...sidebarBtnStyle, backgroundColor: activeTab === 'kyc' ? 'rgba(0,192,135,0.1)' : 'transparent', color: activeTab === 'kyc' ? '#00c087' : '#888' }}
                     >
                         <ShieldCheck size={18} /> KYC Approvals
+                    </button>
+                    <button 
+                        onClick={() => setActiveTab('settings')}
+                        style={{ ...sidebarBtnStyle, backgroundColor: activeTab === 'settings' ? 'rgba(0,192,135,0.1)' : 'transparent', color: activeTab === 'settings' ? '#00c087' : '#888' }}
+                    >
+                        <Settings size={18} /> Settings
                     </button>
                 </nav>
 

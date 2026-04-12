@@ -3,6 +3,9 @@ import { useNavigate } from 'react-router-dom';
 import { Shield, Lock, Mail, Loader2, KeyRound } from 'lucide-react';
 import { motion } from 'framer-motion';
 
+import { db } from '../../firebase-setup';
+import { doc, getDoc, setDoc } from 'firebase/firestore';
+
 const AdminLogin = () => {
     const [email, setEmail] = useState('');
     const [password, setPassword] = useState('');
@@ -10,20 +13,41 @@ const AdminLogin = () => {
     const [error, setError] = useState('');
     const navigate = useNavigate();
 
-    const handleLogin = (e) => {
+    const handleLogin = async (e) => {
         e.preventDefault();
         setLoading(true);
         setError('');
 
-        setTimeout(() => {
-            if (email === 'admin@gmail.com' && password === '12345678') {
+        try {
+            const adminDocRef = doc(db, 'admin_set', 'config');
+            const snapshot = await getDoc(adminDocRef);
+            let adminData = null;
+
+            if (snapshot.exists()) {
+                adminData = snapshot.data();
+            } else {
+                // Initialize defaults
+                adminData = {
+                    email: 'admin@gmail.com',
+                    password: '12345678',
+                    name: 'Super Admin',
+                    profileUrl: ''
+                };
+                await setDoc(adminDocRef, adminData);
+            }
+
+            if (email === adminData.email && password === adminData.password) {
                 localStorage.setItem('adminToken', 'true');
                 navigate('/admin/dashboard');
             } else {
                 setError('Invalid admin credentials. Access Denied.');
-                setLoading(false);
             }
-        }, 1000);
+        } catch (err) {
+            console.error("Login error:", err);
+            setError('System Error. Cannot verify credentials at this time.');
+        } finally {
+            setLoading(false);
+        }
     };
 
     return (

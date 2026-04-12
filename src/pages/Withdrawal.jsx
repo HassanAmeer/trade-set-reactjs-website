@@ -1,11 +1,66 @@
 import React, { useState } from 'react';
 import { motion } from 'framer-motion';
-import { ChevronLeft, X, Eye } from 'lucide-react';
+import { ChevronLeft, X, Eye, Loader2, CheckCircle2, Clock } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
+import { useAuth } from '../context/AuthContext';
+import { db } from '../firebase-setup';
+import { collection, addDoc } from 'firebase/firestore';
 
 const Withdrawal = () => {
     const navigate = useNavigate();
+    const { user } = useAuth();
     const [activeTab, setActiveTab] = useState('USDT Withdrawal');
+    const [amount, setAmount] = useState('');
+    const [address, setAddress] = useState('');
+    const [password, setPassword] = useState('');
+    const [submitting, setSubmitting] = useState(false);
+    const [showPassword, setShowPassword] = useState(false);
+
+    const handleWithdrawal = async () => {
+        if (!amount || parseFloat(amount) <= 0) {
+            alert('Enter a valid amount');
+            return;
+        }
+        if (parseFloat(amount) > (user?.balance || 0)) {
+            alert('Insufficient balance');
+            return;
+        }
+        if (!address) {
+            alert('Enter withdrawal address');
+            return;
+        }
+        if (!password) {
+            alert('Enter transaction password');
+            return;
+        }
+
+        setSubmitting(true);
+        try {
+            const withdrawalData = {
+                amount: parseFloat(amount),
+                address,
+                status: 'pending',
+                timestamp: new Date().toISOString(),
+                type: 'withdrawal',
+                userEmail: user.email,
+                userId: user.id,
+                uid: user.id,
+                method: activeTab
+            };
+
+            await addDoc(collection(db, 'users', user.id, 'withdrawals'), withdrawalData);
+
+            alert("Withdrawal request submitted! Admin will review it.");
+            // Reset fields
+            setAmount('');
+            setAddress('');
+            setPassword('');
+        } catch (error) {
+            alert(error.message);
+        } finally {
+            setSubmitting(false);
+        }
+    };
 
     return (
         <motion.div
@@ -15,15 +70,37 @@ const Withdrawal = () => {
             style={{ minHeight: '100vh', background: 'var(--bg-primary)', padding: '0 0 40px 0', color: '#fff' }}
         >
             {/* Header */}
-            <div style={{ display: 'flex', alignItems: 'center', padding: '16px', borderBottom: '1px solid #222' }}>
-                <ChevronLeft size={24} onClick={() => navigate(-1)} style={{ cursor: 'pointer' }} />
-                <h1 style={{ flex: 1, textAlign: 'center', fontSize: '18px', fontWeight: '700', marginRight: '24px' }}>Withdrawal Channel</h1>
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '16px', borderBottom: '1px solid #222' }}>
+                <div style={{ display: 'flex', alignItems: 'center', flex: 1 }}>
+                    <ChevronLeft size={24} onClick={() => navigate(-1)} style={{ cursor: 'pointer' }} />
+                    <h1 style={{ flex: 1, textAlign: 'center', fontSize: '18px', fontWeight: '700' }}>Withdrawal Channel</h1>
+                </div>
+                <button 
+                    onClick={() => navigate('/withdrawal-history')}
+                    style={{ 
+                        backgroundColor: 'rgba(255,184,0,0.1)', 
+                        border: '1px solid rgba(255,184,0,0.2)', 
+                        padding: '6px 10px', 
+                        borderRadius: '8px', 
+                        color: 'var(--accent-gold)', 
+                        fontSize: '12px', 
+                        display: 'flex', 
+                        alignItems: 'center', 
+                        gap: '4px',
+                        cursor: 'pointer',
+                        fontWeight: '600',
+                        marginLeft: '10px'
+                    }}
+                >
+                    <Clock size={14} /> History
+                </button>
             </div>
+
 
             <div style={{ padding: '20px 16px' }}>
                 <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '25px' }}>
                     <h2 style={{ fontSize: '18px', fontWeight: '700' }}>Withdraw coins</h2>
-                    <span style={{ color: '#00c087', fontSize: '18px', fontWeight: '700' }}>USDT</span>
+                    <span style={{ color: '#00c087', fontSize: '18px', fontWeight: '700' }}>{activeTab === 'USDT Withdrawal' ? 'USDT' : 'Bank'}</span>
                 </div>
 
                 {/* Tabs */}
@@ -54,17 +131,43 @@ const Withdrawal = () => {
                             cursor: 'pointer'
                         }}
                     >
-                        Bank Withdrawal
+                        Bank Format
                     </div>
                 </div>
 
                 {/* Balance */}
                 <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '24px', fontSize: '15px' }}>
                     <span>Available Balance</span>
-                    <span style={{ color: '#00c087', fontWeight: '600' }}>0 USDT</span>
+                    <span style={{ color: '#00c087', fontWeight: '600' }}>{user?.balance || '0.00'} USDT</span>
                 </div>
 
-                <div style={{ fontSize: '15px', fontWeight: '500', marginBottom: '30px' }}>USDT Address</div>
+                <div style={{ fontSize: '15px', fontWeight: '500', marginBottom: '10px' }}>
+                    {activeTab === 'USDT Withdrawal' ? 'USDT Address' : 'Bank Account Details'}
+                </div>
+                
+                {/* Address Input */}
+                <div style={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    background: '#1a1a1a',
+                    padding: '10px 14px',
+                    borderRadius: '8px',
+                    marginBottom: '30px',
+                    border: '1px solid #333'
+                }}>
+                    <input
+                        type="text"
+                        value={address}
+                        onChange={(e) => setAddress(e.target.value)}
+                        placeholder={activeTab === 'USDT Withdrawal' ? "Enter TRC20 Address" : "Enter Bank details"}
+                        style={{ flex: 1, border: 'none', background: 'transparent', color: '#fff', fontSize: '14px', outline: 'none' }}
+                    />
+                    {address && (
+                        <div onClick={() => setAddress('')} style={{ cursor: 'pointer', width: '22px', height: '22px', background: '#333', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                            <X size={14} color="#fff" />
+                        </div>
+                    )}
+                </div>
 
                 {/* Amount Input */}
                 <div style={{ marginBottom: '24px' }}>
@@ -72,18 +175,18 @@ const Withdrawal = () => {
                     <div style={{
                         display: 'flex',
                         alignItems: 'center',
-                        background: '#fff',
+                        background: '#1a1a1a',
                         padding: '10px 14px',
-                        borderRadius: '4px'
+                        borderRadius: '8px',
+                        border: '1px solid #333'
                     }}>
                         <input
-                            type="text"
-                            defaultValue="devbeast143@gmail.com"
-                            style={{ flex: 1, border: 'none', color: '#000', fontSize: '14px', outline: 'none' }}
+                            type="number"
+                            value={amount}
+                            onChange={(e) => setAmount(e.target.value)}
+                            placeholder="Min. limit is usually 10 USDT"
+                            style={{ flex: 1, border: 'none', background: 'transparent', color: '#fff', fontSize: '14px', outline: 'none' }}
                         />
-                        <div style={{ width: '22px', height: '22px', background: '#555', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                            <X size={14} color="#fff" />
-                        </div>
                     </div>
                 </div>
 
@@ -93,36 +196,56 @@ const Withdrawal = () => {
                     <div style={{
                         display: 'flex',
                         alignItems: 'center',
-                        background: '#fff',
+                        background: '#1a1a1a',
                         padding: '10px 14px',
-                        borderRadius: '4px'
+                        borderRadius: '8px',
+                        border: '1px solid #333'
                     }}>
                         <input
-                            type="password"
-                            defaultValue="........"
-                            style={{ flex: 1, border: 'none', color: '#000', fontSize: '14px', outline: 'none' }}
+                            type={showPassword ? "text" : "password"}
+                            value={password}
+                            onChange={(e) => setPassword(e.target.value)}
+                            placeholder="Enter password"
+                            style={{ flex: 1, border: 'none', background: 'transparent', color: '#fff', fontSize: '14px', outline: 'none' }}
                         />
-                        <div style={{ width: '22px', height: '22px', background: '#555', borderRadius: '4px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                            <Eye size={16} color="#fff" />
+                        <div onClick={() => setShowPassword(!showPassword)} style={{ cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '0 5px' }}>
+                            <Eye size={16} color={showPassword ? "var(--accent-gold)" : "#888"} />
                         </div>
                     </div>
                 </div>
 
                 {/* Footer Button */}
-                <button style={{
+                <button 
+                    onClick={handleWithdrawal}
+                    disabled={submitting}
+                    style={{
                     width: '100%',
-                    background: 'var(--accent-gold)',
-                    color: '#000',
-                    padding: '14px',
+                    background: submitting ? '#333' : 'var(--accent-gold)',
+                    color: submitting ? '#888' : '#000',
+                    padding: '16px',
                     border: 'none',
-                    borderRadius: '4px',
-                    fontWeight: '700',
-                    fontSize: '18px',
-                    cursor: 'pointer',
-                    marginTop: '10px'
+                    borderRadius: '12px',
+                    fontWeight: '800',
+                    fontSize: '16px',
+                    cursor: submitting ? 'not-allowed' : 'pointer',
+                    display: 'flex',
+                    justifyContent: 'center',
+                    alignItems: 'center',
+                    gap: '10px'
                 }}>
-                    Withdrawal
+                    {submitting ? <><Loader2 className="animate-spin" size={20} /> Processing...</> : 'Submit Withdrawal'}
                 </button>
+            </div>
+            
+            <div style={{ marginTop: '24px', padding: '0 16px' }}>
+                <div style={{ padding: '16px', backgroundColor: 'rgba(0, 192, 135, 0.05)', borderRadius: '16px', border: '1px solid rgba(0, 192, 135, 0.1)' }}>
+                    <div style={{ display: 'flex', gap: '10px' }}>
+                        <CheckCircle2 size={16} color="#00c087" style={{ flexShrink: 0, marginTop: '2px' }} />
+                        <p style={{ fontSize: '12px', color: '#888', lineHeight: '1.5' }}>
+                            Withdrawals are processed manually. Please ensure your receiving address is correct. Any lost funds due to wrong network or address can not be recovered.
+                        </p>
+                    </div>
+                </div>
             </div>
         </motion.div>
     );

@@ -11,6 +11,7 @@ import Verification from './pages/Verification';
 import Deposit from './pages/Deposit';
 import DepositHistory from './pages/DepositHistory';
 import Withdrawal from './pages/Withdrawal';
+import WithdrawalHistory from './pages/WithdrawalHistory';
 import C2C from './pages/C2C';
 import CustomerService from './pages/CustomerService';
 import Messages from './pages/Messages';
@@ -53,35 +54,46 @@ const BottomNav = () => {
   );
 };
 
+const AppContent = () => {
+  const location = useLocation();
+  const path = location.pathname;
+  const isAdminRoute = path.startsWith('/set') || path.startsWith('/admin');
+
+  return (
+    <div className={isAdminRoute ? "admin-root-wrapper" : "mobile-layout-wrapper"}>
+      <Routes>
+        <Route path="/" element={<Home />} />
+        <Route path="/market" element={<Market />} />
+        <Route path="/trade" element={<Trade />} />
+        <Route path="/coin" element={<Coin />} />
+        <Route path="/profile" element={<Profile />} />
+        <Route path="/login" element={<Login />} />
+        <Route path="/signup" element={<Signup />} />
+        <Route path="/verification" element={<Verification />} />
+        <Route path="/deposit" element={<Deposit />} />
+        <Route path="/deposit-history" element={<DepositHistory />} />
+        <Route path="/withdrawal" element={<Withdrawal />} />
+        <Route path="/withdrawal-history" element={<WithdrawalHistory />} />
+        <Route path="/c2c" element={<C2C />} />
+        <Route path="/support" element={<CustomerService />} />
+        <Route path="/inbox" element={<Messages />} />
+        <Route path="/news" element={<NewsAndBlog />} />
+        
+        {/* Admin Routes */}
+        <Route path="/set" element={<AdminLogin />} />
+        <Route path="/admin/*" element={<AdminDashboard />} />
+      </Routes>
+      <BottomNav />
+    </div>
+  );
+};
+
 function App() {
   return (
     <AuthProvider>
       <MarketProvider>
         <Router>
-          <div style={{ minHeight: '100vh', position: 'relative' }}>
-            <Routes>
-              <Route path="/" element={<Home />} />
-              <Route path="/market" element={<Market />} />
-              <Route path="/trade" element={<Trade />} />
-              <Route path="/coin" element={<Coin />} />
-              <Route path="/profile" element={<Profile />} />
-              <Route path="/login" element={<Login />} />
-              <Route path="/signup" element={<Signup />} />
-              <Route path="/verification" element={<Verification />} />
-              <Route path="/deposit" element={<Deposit />} />
-              <Route path="/deposit-history" element={<DepositHistory />} />
-              <Route path="/withdrawal" element={<Withdrawal />} />
-              <Route path="/c2c" element={<C2C />} />
-              <Route path="/support" element={<CustomerService />} />
-              <Route path="/inbox" element={<Messages />} />
-              <Route path="/news" element={<NewsAndBlog />} />
-              
-              {/* Admin Routes */}
-              <Route path="/set" element={<AdminLogin />} />
-              <Route path="/admin/*" element={<AdminDashboard />} />
-            </Routes>
-            <BottomNav />
-          </div>
+          <AppContent />
         </Router>
       </MarketProvider>
     </AuthProvider>
