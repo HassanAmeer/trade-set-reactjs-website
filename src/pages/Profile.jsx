@@ -128,7 +128,7 @@ const Profile = () => {
 
             <div className="glass" style={{ padding: '20px', borderRadius: '16px', marginBottom: '24px' }}>
                 <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '20px', marginBottom: '20px' }}>
-                    <div 
+                    <div
                         onClick={() => navigate('/verification')}
                         style={{ cursor: 'pointer' }}
                     >
@@ -145,17 +145,18 @@ const Profile = () => {
 
                 <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '10px' }}>
                     <div style={{ textAlign: 'center' }}>
-                        <div style={{ fontSize: '10px', color: 'var(--text-secondary)', marginBottom: '4px' }}>Friends</div>
+                        <div style={{ fontSize: '10px', color: 'var(--text-secondary)', marginBottom: '4px' }}>Referral Users</div>
                         <div style={{ fontWeight: '600' }}>0</div>
                     </div>
                     <div style={{ textAlign: 'center' }}>
-                        <div style={{ fontSize: '10px', color: 'var(--text-secondary)', marginBottom: '4px' }}>Level</div>
-                        <div style={{ fontWeight: '600' }}>VIP 1</div>
-                    </div>
-                    <div style={{ textAlign: 'center' }}>
-                        <div style={{ fontSize: '10px', color: 'var(--text-secondary)', marginBottom: '4px' }}>Revenue</div>
+                        <div style={{ fontSize: '10px', fontWeight: '800', letterSpacing: '1px', color: 'var(--text-secondary)', marginBottom: '4px' }}>Revenue</div>
                         <div style={{ fontWeight: '600' }}>0.00</div>
                     </div>
+                    <div style={{ textAlign: 'center' }}>
+                        <div style={{ fontSize: '10px', color: 'var(--text-secondary)', marginBottom: '4px' }}>Today</div>
+                        <div style={{ fontWeight: '600' }}>0.00</div>
+                    </div>
+
                 </div>
             </div>
 
