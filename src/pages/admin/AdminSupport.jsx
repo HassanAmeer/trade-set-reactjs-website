@@ -1,18 +1,19 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { db } from '../../firebase-setup';
 import { collection, getDocs, doc, updateDoc, addDoc, deleteDoc, query, orderBy, onSnapshot } from 'firebase/firestore';
-import { MessageSquare, Send, CheckCircle2, Trash2, ExternalLink, Image as ImageIcon, Camera, Loader2, User, Phone, Mail, Clock, Filter } from 'lucide-react';
+import { MessageSquare, Send, CheckCircle2, Trash2, ExternalLink, Image as ImageIcon, Camera, Loader2, User, Phone, Mail, Clock, Filter, X } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { uploadFileChunks } from '../../services/dbs';
 
 const AdminSupport = () => {
     const [tickets, setTickets] = useState([]);
     const [loading, setLoading] = useState(true);
+    const [selectedTicket, setSelectedTicket] = useState(null);
     const [replyText, setReplyText] = useState({});
     const [replyImages, setReplyImages] = useState({});
     const [sending, setSending] = useState(null);
     const [filter, setFilter] = useState('all');
-    const [uploadingImage, setUploadingImage] = useState(null);
+    const [search, setSearch] = useState('');
     const fileInputRefs = useRef({});
 
     useEffect(() => {
@@ -25,17 +26,18 @@ const AdminSupport = () => {
             }));
             setTickets(list);
             setLoading(false);
+            if (!selectedTicket && list.length > 0) setSelectedTicket(list[0]);
         });
-
         return () => unsubscribe();
     }, []);
 
     const handleDelete = async (id) => {
-        if (!window.confirm('Are you sure you want to delete this ticket?')) return;
+        if (!window.confirm('Delete this ticket Permanently?')) return;
         try {
             await deleteDoc(doc(db, 'support_messages', id));
+            if (selectedTicket?.id === id) setSelectedTicket(null);
         } catch (error) {
-            alert('Failed to delete ticket');
+            alert('Error deleting');
         }
     };
 
@@ -49,10 +51,8 @@ const AdminSupport = () => {
 
     const handleReplyImageSelect = (ticketId, e) => {
         const files = Array.from(e.target.files);
-        if (files.length > 0) {
-            const existing = replyImages[ticketId] || [];
-            setReplyImages({ ...replyImages, [ticketId]: [...existing, ...files] });
-        }
+        const existing = replyImages[ticketId] || [];
+        setReplyImages({ ...replyImages, [ticketId]: [...existing, ...files] });
     };
 
     const removeReplyImage = (ticketId, index) => {
@@ -70,209 +70,211 @@ const AdminSupport = () => {
         let uploadedReplyUrls = [];
 
         try {
-            // Upload Multiple Reply Images
             if (files.length > 0) {
-                setUploadingImage(ticket.id);
                 for (const file of files) {
                     const res = await uploadFileChunks(file);
                     if (res.success) uploadedReplyUrls.push(res.url);
                 }
             }
-
-            // 1. Update ticket
             await updateDoc(ticket.ref, {
                 status: 'replied',
-                reply: text || 'View attached images',
-                replyImages: uploadedReplyUrls, // Array 
+                reply: text || 'Resolution provided via attachment',
+                replyImages: uploadedReplyUrls,
                 repliedAt: new Date().toISOString()
             });
-
-            // 2. Push to user inbox
             if (ticket.userId !== 'guest') {
                 await addDoc(collection(db, 'users', ticket.userId, 'messages'), {
                     type: 'info',
-                    title: 'Customer Support Reply',
-                    description: text || 'Admin replied with images.',
-                    replyImages: uploadedReplyUrls, // Array
+                    title: 'Support Resolution',
+                    description: text || 'Admin sent a resolution with images.',
+                    replyImages: uploadedReplyUrls,
                     timestamp: new Date().toISOString(),
                     ticketId: ticket.id
                 });
             }
-
-            alert('Reply sent successfully!');
             setReplyText({ ...replyText, [ticket.id]: '' });
             setReplyImages({ ...replyImages, [ticket.id]: [] });
         } catch (error) {
-            alert('Failed to send reply: ' + error.message);
+            alert('Error: ' + error.message);
         } finally {
             setSending(null);
-            setUploadingImage(null);
         }
     };
 
-    const filteredTickets = tickets.filter(t => filter === 'all' || t.status === filter);
+    const filteredTickets = tickets.filter(t => {
+        const matchFilter = filter === 'all' || t.status === filter;
+        const matchSearch = t.userEmail.toLowerCase().includes(search.toLowerCase()) || (t.phone && t.phone.includes(search));
+        return matchFilter && matchSearch;
+    });
 
-    if (loading) return (
-        <div style={{ display: 'flex', alignItems: 'center', gap: '10px', color: '#888' }}>
-            <Loader2 className="animate-spin" /> Loading support hub...
-        </div>
-    );
+    if (loading) return <div style={{ color: '#888', display: 'flex', alignItems: 'center', gap: '10px', padding: '50px' }}><Loader2 className="animate-spin" /> Fetching support data...</div>;
 
     return (
-        <div style={{ color: '#fff' }}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '30px' }}>
-                <div>
-                    <h2 style={{ fontSize: '28px', fontWeight: '900', color: '#00c087', margin: 0 }}>Support Hub</h2>
-                    <p style={{ color: '#666', fontSize: '14px', marginTop: '5px' }}>Manage user complaints and inquiries in real-time</p>
+        <div style={{ display: 'flex', height: 'calc(100vh - 120px)', gap: '2px', background: '#080808', border: '1px solid #111', borderRadius: '20px', overflow: 'hidden' }}>
+            {/* Sidebar: Ticket List */}
+            <div style={{ width: '380px', background: '#0a0a0a', borderRight: '1px solid #111', display: 'flex', flexDirection: 'column' }}>
+                <div style={{ padding: '20px', borderBottom: '1px solid #111' }}>
+                    <h2 style={{ fontSize: '20px', fontWeight: '900', color: '#00c087', marginBottom: '15px' }}>Inquiries</h2>
+                    <div style={{ position: 'relative', marginBottom: '15px' }}>
+                        <Filter size={14} style={{ position: 'absolute', left: '12px', top: '11px', color: '#444' }} />
+                        <input
+                            placeholder="Search by email..."
+                            value={search}
+                            onChange={(e) => setSearch(e.target.value)}
+                            style={{ width: '100%', padding: '10px 10px 10px 35px', background: '#111', border: '1px solid #222', borderRadius: '8px', color: '#fff', fontSize: '13px' }}
+                        />
+                    </div>
+                    <div style={{ display: 'flex', gap: '5px', flexWrap: 'wrap' }}>
+                        {['all', 'unread', 'replied'].map(f => (
+                            <button
+                                key={f}
+                                onClick={() => setFilter(f)}
+                                style={{ padding: '4px 12px', borderRadius: '6px', fontSize: '11px', fontWeight: '800', border: 'none', cursor: 'pointer', background: filter === f ? '#00c087' : '#1a1a1a', color: filter === f ? '#000' : '#888', textTransform: 'uppercase' }}
+                            >
+                                {f}
+                            </button>
+                        ))}
+                    </div>
                 </div>
-                
-                <div style={{ display: 'flex', gap: '10px' }}>
-                    {['all', 'unread', 'replied', 'resolved'].map(f => (
-                        <button
-                            key={f}
-                            onClick={() => setFilter(f)}
+
+                <div style={{ flex: 1, overflowY: 'auto' }}>
+                    {filteredTickets.map(t => (
+                        <div
+                            key={t.id}
+                            onClick={() => setSelectedTicket(t)}
                             style={{
-                                padding: '8px 16px',
-                                borderRadius: '8px',
-                                border: '1px solid #222',
-                                backgroundColor: filter === f ? '#00c087' : '#111',
-                                color: filter === f ? '#fff' : '#888',
-                                fontSize: '12px',
-                                fontWeight: '700',
-                                textTransform: 'uppercase',
+                                padding: '15px 20px',
+                                borderBottom: '1px solid #111',
                                 cursor: 'pointer',
+                                background: selectedTicket?.id === t.id ? 'rgba(0,192,135,0.05)' : 'transparent',
+                                borderLeft: selectedTicket?.id === t.id ? '4px solid #00c087' : '4px solid transparent',
                                 transition: 'all 0.2s'
                             }}
                         >
-                            {f}
-                        </button>
+                            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+                                <span style={{ fontSize: '14px', fontWeight: '800', color: selectedTicket?.id === t.id ? '#00c087' : '#eee', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', maxWidth: '180px' }}>{t.userEmail}</span>
+                                <span style={{ fontSize: '10px', padding: '2px 8px', borderRadius: '10px', background: t.status === 'unread' ? '#ff4d4f' : '#222', color: '#fff' }}>{t.status}</span>
+                            </div>
+                            <div style={{ fontSize: '12px', color: '#555', marginTop: '5px' }}>{new Date(t.timestamp).toLocaleDateString()}</div>
+                        </div>
                     ))}
                 </div>
             </div>
-            
-            <div style={{ display: 'grid', gap: '25px' }}>
-                <AnimatePresence>
-                    {filteredTickets.map((ticket) => (
-                        <motion.div
-                            layout
-                            initial={{ opacity: 0, y: 20 }}
-                            animate={{ opacity: 1, y: 0 }}
-                            exit={{ opacity: 0, scale: 0.95 }}
-                            key={ticket.id}
-                            style={{ backgroundColor: '#111', border: '1px solid #222', borderRadius: '16px', overflow: 'hidden', boxShadow: '0 4px 20px rgba(0,0,0,0.2)' }}
-                        >
-                            <div style={{ padding: '20px 25px', borderBottom: '1px solid #222', display: 'flex', justifyContent: 'space-between', alignItems: 'center', backgroundColor: '#161616' }}>
-                                <div style={{ display: 'flex', gap: '25px', alignItems: 'center' }}>
-                                    <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-                                        <div style={{ width: '40px', height: '40px', borderRadius: '10px', backgroundColor: 'rgba(0,192,135,0.1)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#00c087' }}>
-                                            <User size={20} />
-                                        </div>
-                                        <div>
-                                            <div style={{ fontSize: '15px', fontWeight: '800', color: '#fff' }}>{ticket.userEmail}</div>
-                                            <div style={{ display: 'flex', gap: '12px', fontSize: '11px', color: '#666', marginTop: '2px' }}>
-                                                <span style={{ display: 'flex', alignItems: 'center', gap: '4px' }}><Phone size={10} /> {ticket.phone}</span>
-                                                <span style={{ display: 'flex', alignItems: 'center', gap: '4px' }}><Clock size={10} /> {new Date(ticket.timestamp).toLocaleString()}</span>
-                                            </div>
-                                        </div>
-                                    </div>
+
+            {/* Main Content: Ticket Detail */}
+            <div style={{ flex: 1, display: 'flex', flexDirection: 'column', background: '#0a0a0a' }}>
+                {selectedTicket ? (
+                    <>
+                        <div style={{ padding: '25px 35px', borderBottom: '1px solid #111', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: '15px' }}>
+                                <div style={{ width: '45px', height: '45px', borderRadius: '14px', background: 'linear-gradient(45deg, #00c087, #0056b3)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                                    <User color="#fff" />
                                 </div>
-                                <div style={{ display: 'flex', alignItems: 'center', gap: '15px' }}>
-                                    <select 
-                                        value={ticket.status} 
-                                        onChange={(e) => handleUpdateStatus(ticket.id, e.target.value)}
-                                        style={{ backgroundColor: '#1a1a1a', color: '#888', border: '1px solid #333', borderRadius: '6px', padding: '6px 12px', fontSize: '12px', outline: 'none' }}
-                                    >
-                                        <option value="unread">Unread</option>
-                                        <option value="pending">Pending</option>
-                                        <option value="replied">Replied</option>
-                                        <option value="resolved">Resolved</option>
-                                    </select>
-                                    <button onClick={() => handleDelete(ticket.id)} style={{ padding: '8px', color: '#ff4d4f', background: 'transparent', border: 'none', cursor: 'pointer' }} title="Delete Ticket">
-                                        <Trash2 size={18} />
-                                    </button>
+                                <div>
+                                    <h3 style={{ margin: 0, fontSize: '18px', fontWeight: '800' }}>{selectedTicket.userEmail}</h3>
+                                    <div style={{ fontSize: '13px', color: '#555', display: 'flex', gap: '15px', marginTop: '2px' }}>
+                                        <span><Phone size={12} /> {selectedTicket.phone}</span>
+                                    </div>
                                 </div>
                             </div>
+                            <div style={{ display: 'flex', gap: '10px' }}>
+                                <button onClick={() => handleDelete(selectedTicket.id)} style={{ padding: '8px', color: '#ff4d4f', background: 'rgba(255,77,79,0.1)', border: 'none', borderRadius: '8px', cursor: 'pointer' }}><Trash2 size={18} /></button>
+                            </div>
+                        </div>
 
-                            <div style={{ padding: '25px' }}>
-                                <div style={{ display: 'grid', gridTemplateColumns: (ticket.imageUrl || (ticket.imageUrls && ticket.imageUrls.length > 0)) ? '1fr 200px' : '1fr', gap: '20px' }}>
-                                    <div style={{ backgroundColor: '#1a1a1a', padding: '20px', borderRadius: '12px', borderLeft: '4px solid #00c087', color: '#ccc', fontSize: '15px', lineHeight: '1.6' }}>
-                                        {ticket.content}
-                                    </div>
-                                    
-                                    {(ticket.imageUrl || ticket.imageUrls) && (
-                                        <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px' }}>
-                                            {[...(ticket.imageUrls || []), ...(ticket.imageUrl ? [ticket.imageUrl] : [])].map((img, i) => (
-                                                <div key={i} style={{ width: '90px', height: '90px', borderRadius: '10px', overflow: 'hidden', border: '1px solid #333', cursor: 'pointer' }} onClick={() => window.open(img, '_blank')}>
-                                                    <img src={img} alt="User Upload" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
-                                                </div>
+                        <div style={{ flex: 1, overflowY: 'auto', padding: '35px' }}>
+                            <div style={{ marginBottom: '40px' }}>
+                                <div style={{ display: 'flex', gap: '10px', alignItems: 'center', color: '#00c087', fontSize: '12px', fontWeight: '700', textTransform: 'uppercase', marginBottom: '15px' }}>
+                                    <MessageSquare size={14} /> Opening Request
+                                </div>
+                                <div style={{ background: '#111', padding: '25px', borderRadius: '16px', border: '1px solid #1a1a1a', color: '#eee', lineHeight: '1.7', fontSize: '15px' }}>
+                                    {selectedTicket.content}
+
+                                    {(selectedTicket.imageUrls || selectedTicket.imageUrl) && (
+                                        <div style={{ display: 'flex', flexWrap: 'wrap', gap: '12px', marginTop: '20px' }}>
+                                            {[...(selectedTicket.imageUrls || []), ...(selectedTicket.imageUrl ? [selectedTicket.imageUrl] : [])].map((img, i) => (
+                                                <img
+                                                    key={i}
+                                                    src={img}
+                                                    onClick={() => window.open(img, '_blank')}
+                                                    style={{ width: '120px', height: '120px', objectFit: 'cover', borderRadius: '10px', border: '2px solid #222', cursor: 'pointer' }}
+                                                />
                                             ))}
                                         </div>
                                     )}
                                 </div>
+                            </div>
 
-                                <div style={{ marginTop: '25px', paddingTop: '25px', borderTop: '1px solid #222' }}>
-                                    {ticket.status === 'replied' ? (
-                                        <div style={{ backgroundColor: 'rgba(0,192,135,0.03)', padding: '20px', borderRadius: '12px', border: '1px solid rgba(0,192,135,0.1)' }}>
-                                            <div style={{ fontSize: '13px', color: '#00c087', fontWeight: '800', marginBottom: '10px', display: 'flex', alignItems: 'center', gap: '8px' }}>
-                                                <CheckCircle2 size={16} /> ADMINISTRATOR RESPONSE
+                            {selectedTicket.status === 'replied' && (
+                                <motion.div initial={{ opacity: 0, x: -10 }} animate={{ opacity: 1, x: 0 }}>
+                                    <div style={{ display: 'flex', gap: '10px', alignItems: 'center', color: '#00c087', fontSize: '12px', fontWeight: '700', textTransform: 'uppercase', marginBottom: '15px' }}>
+                                        <CheckCircle2 size={14} /> Official Resolution
+                                    </div>
+                                    <div style={{ background: 'rgba(0,192,135,0.05)', padding: '25px', borderRadius: '16px', border: '1px solid rgba(0,192,135,0.1)', color: '#00c087', lineHeight: '1.7', fontSize: '15px' }}>
+                                        {selectedTicket.reply}
+                                        {selectedTicket.replyImages && (
+                                            <div style={{ display: 'flex', gap: '10px', marginTop: '15px' }}>
+                                                {selectedTicket.replyImages.map((img, i) => (
+                                                    <img key={i} src={img} style={{ width: '100px', height: '100px', borderRadius: '12px', objectFit: 'cover' }} />
+                                                ))}
                                             </div>
-                                            <div style={{ color: '#aaa', fontSize: '14px', lineHeight: '1.5' }}>{ticket.reply}</div>
-                                            {(ticket.replyImage || ticket.replyImages) && (
-                                                <div style={{ display: 'flex', gap: '8px', marginTop: '15px' }}>
-                                                    {[...(ticket.replyImages || []), ...(ticket.replyImage ? [ticket.replyImage] : [])].map((img, i) => (
-                                                        <img key={i} src={img} alt="Reply" style={{ width: '100px', height: '100px', borderRadius: '8px', objectFit: 'cover' }} />
-                                                    ))}
-                                                </div>
-                                            )}
-                                        </div>
-                                    ) : (
-                                        <div style={{ display: 'flex', flexDirection: 'column', gap: '15px' }}>
-                                            <div style={{ fontSize: '13px', color: '#888', fontWeight: '700' }}>Admin Reply</div>
-                                            <textarea 
-                                                value={replyText[ticket.id] || ''} 
-                                                onChange={(e) => setReplyText({ ...replyText, [ticket.id]: e.target.value })}
-                                                placeholder="Write a clear resolution for the user..." 
-                                                style={{ width: '100%', height: '80px', padding: '15px', backgroundColor: '#1a1a1a', border: '1px solid #333', borderRadius: '12px', color: '#fff', outline: 'none', resize: 'none' }}
-                                            />
-                                            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                                                <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-                                                    <div style={{ display: 'flex', gap: '6px' }}>
-                                                        {(replyImages[ticket.id] || []).map((img, i) => (
-                                                            <div key={i} style={{ position: 'relative' }}>
-                                                                <ImageIcon size={16} color="#00c087" />
-                                                                <button onClick={() => removeReplyImage(ticket.id, i)} style={{ position: 'absolute', top: -10, right: -10, fontSize: '10px', color: '#ff4d4f', background: 'none', border: 'none' }}>×</button>
-                                                            </div>
-                                                        ))}
-                                                    </div>
-                                                    <button 
-                                                        onClick={() => fileInputRefs.current[ticket.id]?.click()}
-                                                        style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '12px', color: '#888', background: 'transparent', border: 'none', cursor: 'pointer' }}
-                                                    >
-                                                        <Camera size={16} /> { (replyImages[ticket.id]?.length > 0) ? `${replyImages[ticket.id].length} Files` : 'Attach Screenshot'}
-                                                    </button>
-                                                    <input 
-                                                        type="file" 
-                                                        ref={el => fileInputRefs.current[ticket.id] = el}
-                                                        onChange={(e) => handleReplyImageSelect(ticket.id, e)}
-                                                        multiple
-                                                        style={{ display: 'none' }}
-                                                    />
-                                                </div>
-                                                <button 
-                                                    onClick={() => handleReply(ticket)}
-                                                    disabled={sending === ticket.id || (!replyText[ticket.id] && (!replyImages[ticket.id] || replyImages[ticket.id].length === 0))}
-                                                    style={{ backgroundColor: '#00c087', color: '#fff', border: 'none', padding: '12px 30px', borderRadius: '10px', fontWeight: '800', display: 'flex', alignItems: 'center', gap: '10px', cursor: 'pointer', opacity: (sending === ticket.id) ? 0.6 : 1 }}
+                                        )}
+                                    </div>
+                                </motion.div>
+                            )}
+                        </div>
+
+                        {selectedTicket.status !== 'replied' && (
+                            <div style={{ padding: '30px 35px', background: '#0c0c0c', borderTop: '1px solid #111' }}>
+                                {/* Image Previews before dispatch */}
+                                {replyImages[selectedTicket.id]?.length > 0 && (
+                                    <div style={{ display: 'flex', gap: '10px', marginBottom: '15px', overflowX: 'auto' }}>
+                                        {replyImages[selectedTicket.id].map((file, i) => (
+                                            <div key={i} style={{ position: 'relative', width: '60px', height: '60px', borderRadius: '8px', overflow: 'hidden', border: '1px solid #00c087' }}>
+                                                <img src={URL.createObjectURL(file)} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                                                <button
+                                                    onClick={() => removeReplyImage(selectedTicket.id, i)}
+                                                    style={{ position: 'absolute', top: 0, right: 0, background: '#ff4d4f', color: '#fff', border: 'none', borderRadius: '0 0 0 8px', padding: '2px 5px', cursor: 'pointer', fontSize: '10px' }}
                                                 >
-                                                    {sending === ticket.id ? <Loader2 className="animate-spin" size={16} /> : <><Send size={16} /> Dispatch Resolution</>}
+                                                    ×
                                                 </button>
                                             </div>
-                                        </div>
-                                    )}
+                                        ))}
+                                    </div>
+                                )}
+                                <textarea
+                                    value={replyText[selectedTicket.id] || ''}
+                                    onChange={(e) => setReplyText({ ...replyText, [selectedTicket.id]: e.target.value })}
+                                    placeholder="Type your official resolution..."
+                                    style={{ width: '100%', height: '100px', background: '#111', border: '1px solid #222', borderRadius: '12px', color: '#fff', padding: '15px', outline: 'none', resize: 'none', fontSize: '14px' }}
+                                />
+                                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: '15px' }}>
+                                    <div style={{ display: 'flex', gap: '10px' }}>
+                                        <button
+                                            onClick={() => fileInputRefs.current[selectedTicket.id]?.click()}
+                                            style={{ display: 'flex', alignItems: 'center', gap: '8px', padding: '8px 16px', background: '#111', border: '1px solid #222', borderRadius: '8px', color: '#888', cursor: 'pointer', fontSize: '13px' }}
+                                        >
+                                            <Camera size={16} /> Attach Files {(replyImages[selectedTicket.id]?.length > 0) && `(${replyImages[selectedTicket.id].length})`}
+                                        </button>
+                                        <input type="file" multiple ref={el => fileInputRefs.current[selectedTicket.id] = el} onChange={(e) => handleReplyImageSelect(selectedTicket.id, e)} style={{ display: 'none' }} />
+                                    </div>
+                                    <button
+                                        onClick={() => handleReply(selectedTicket)}
+                                        disabled={sending === selectedTicket.id}
+                                        style={{ padding: '10px 30px', background: '#00c087', color: '#000', fontWeight: '900', border: 'none', borderRadius: '10px', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '10px' }}
+                                    >
+                                        {sending === selectedTicket.id ? <Loader2 className="animate-spin" size={18} /> : <><Send size={18} /> Reply</>}
+                                    </button>
                                 </div>
                             </div>
-                        </motion.div>
-                    ))}
-                </AnimatePresence>
+                        )}
+                    </>
+                ) : (
+                    <div style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', color: '#333' }}>
+                        <MessageSquare size={80} style={{ opacity: 0.1, marginBottom: '20px' }} />
+                        <span style={{ fontSize: '18px', fontWeight: '700' }}>Select a ticket to begin resolution</span>
+                    </div>
+                )}
             </div>
         </div>
     );

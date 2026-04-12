@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
-import { motion } from 'framer-motion';
-import { ChevronLeft, Bell, Info } from 'lucide-react';
+import { motion, AnimatePresence } from 'framer-motion';
+import { ChevronLeft, Bell, Info, X } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { db } from '../firebase-setup';
@@ -11,6 +11,7 @@ const Messages = () => {
     const { user } = useAuth();
     const [messages, setMessages] = useState([]);
     const [loading, setLoading] = useState(true);
+    const [selectedImg, setSelectedImg] = useState(null);
 
     useEffect(() => {
         if (user) {
@@ -103,7 +104,8 @@ const Messages = () => {
                                             key={i}
                                             src={img} 
                                             alt="Admin Attachment" 
-                                            style={{ width: '80px', height: '80px', borderRadius: '8px', objectFit: 'cover', border: '1px solid #333' }} 
+                                            onClick={() => setSelectedImg(img)}
+                                            style={{ width: '80px', height: '80px', borderRadius: '8px', objectFit: 'cover', border: '1px solid #333', cursor: 'pointer' }} 
                                         />
                                     ))}
                                 </div>
@@ -117,6 +119,46 @@ const Messages = () => {
                     </div>
                 )}
             </div>
+
+            {/* Modal for full screen image view */}
+            <AnimatePresence>
+                {selectedImg && (
+                    <motion.div
+                        initial={{ opacity: 0 }}
+                        animate={{ opacity: 1 }}
+                        exit={{ opacity: 0 }}
+                        onClick={() => setSelectedImg(null)}
+                        style={{
+                            position: 'fixed',
+                            top: 0,
+                            left: 0,
+                            right: 0,
+                            bottom: 0,
+                            backgroundColor: 'rgba(0,0,0,0.95)',
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'center',
+                            zIndex: 1000,
+                            padding: '20px'
+                        }}
+                    >
+                        <motion.img 
+                            initial={{ scale: 0.8 }}
+                            animate={{ scale: 1 }}
+                            exit={{ scale: 0.8 }}
+                            src={selectedImg} 
+                            alt="Full View" 
+                            style={{ maxWidth: '100%', maxHeight: '100%', borderRadius: '12px', boxShadow: '0 0 30px rgba(0,0,0,0.5)' }} 
+                        />
+                        <button 
+                            onClick={() => setSelectedImg(null)}
+                            style={{ position: 'absolute', top: '20px', right: '20px', background: 'rgba(255,255,255,0.1)', border: 'none', color: '#fff', padding: '10px', borderRadius: '50%', cursor: 'pointer' }}
+                        >
+                            <X size={24} />
+                        </button>
+                    </motion.div>
+                )}
+            </AnimatePresence>
         </motion.div>
     );
 };
