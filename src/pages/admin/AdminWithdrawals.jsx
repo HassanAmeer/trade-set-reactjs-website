@@ -1,15 +1,22 @@
 import React, { useState, useEffect } from 'react';
 import { db } from '../../firebase-setup';
-import { collectionGroup, getDocs, updateDoc } from 'firebase/firestore';
-import { CheckCircle2, XCircle, ExternalLink } from 'lucide-react';
+import { collectionGroup, getDocs, updateDoc, doc, increment, getDoc, deleteDoc } from 'firebase/firestore';
+import { CheckCircle2, XCircle, ExternalLink, Trash2, Copy, Check } from 'lucide-react';
 
 const AdminWithdrawals = () => {
     const [withdrawals, setWithdrawals] = useState([]);
     const [loading, setLoading] = useState(true);
+    const [copiedId, setCopiedId] = useState(null);
 
     useEffect(() => {
         fetchAllWithdrawals();
     }, []);
+
+    const handleCopy = (address, id) => {
+        navigator.clipboard.writeText(address);
+        setCopiedId(id);
+        setTimeout(() => setCopiedId(null), 2000);
+    };
 
     const fetchAllWithdrawals = async () => {
         setLoading(true);
@@ -30,13 +37,32 @@ const AdminWithdrawals = () => {
         }
     };
 
-    const handleUpdateStatus = async (itemRef, newStatus) => {
+    const handleUpdateStatus = async (item, newStatus) => {
         try {
-            await updateDoc(itemRef, { status: newStatus });
-            // Refresh list
+            if (newStatus === 'rejected') {
+                // Refund balance if rejected (since it was deducted on request)
+                const userRef = doc(db, 'users', item.userId);
+                await updateDoc(userRef, {
+                    balance: increment(Number(item.amount))
+                });
+            }
+            // If approved, we just update status (balance was already cut)
+            
+            await updateDoc(item.ref, { status: newStatus });
             fetchAllWithdrawals();
         } catch (error) {
-            alert('Failed to update status');
+            console.error(error);
+            alert('Failed to update status: ' + error.message);
+        }
+    };
+
+    const handleDelete = async (itemRef) => {
+        if (!window.confirm("Delete this record?")) return;
+        try {
+            await deleteDoc(itemRef);
+            fetchAllWithdrawals();
+        } catch (error) {
+            alert("Delete failed");
         }
     };
 
@@ -75,7 +101,15 @@ const AdminWithdrawals = () => {
                                     {item.method || 'USDT'}
                                 </td>
                                 <td style={{ padding: '16px', fontSize: '12px', fontFamily: 'monospace' }}>
-                                    {item.address}
+                                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                                        <span style={{ color: '#fff' }}>{item.address}</span>
+                                        <div 
+                                            onClick={() => handleCopy(item.address, item.id)}
+                                            style={{ cursor: 'pointer', color: copiedId === item.id ? '#00c087' : '#888' }}
+                                        >
+                                            {copiedId === item.id ? <Check size={14} /> : <Copy size={14} />}
+                                        </div>
+                                    </div>
                                 </td>
                                 <td style={{ padding: '16px' }}>
                                     <span style={{ 
@@ -90,22 +124,31 @@ const AdminWithdrawals = () => {
                                         {item.status}
                                     </span>
                                 </td>
-                                <td style={{ padding: '16px', display: 'flex', gap: '8px' }}>
+                                <td style={{ padding: '16px', display: 'flex', gap: '8px', alignItems: 'center' }}>
                                     {item.status === 'pending' && (
                                         <>
                                             <button 
-                                                onClick={() => handleUpdateStatus(item.ref, 'approved')}
+                                                onClick={() => handleUpdateStatus(item, 'approved')}
                                                 style={{ backgroundColor: '#00c087', color: '#fff', border: 'none', padding: '6px 12px', borderRadius: '6px', fontSize: '12px', fontWeight: '700', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '4px' }}
                                             >
                                                 <CheckCircle2 size={14} /> Approve
                                             </button>
                                             <button 
-                                                onClick={() => handleUpdateStatus(item.ref, 'rejected')}
+                                                onClick={() => handleUpdateStatus(item, 'rejected')}
                                                 style={{ backgroundColor: '#ff4d4f', color: '#fff', border: 'none', padding: '6px 12px', borderRadius: '6px', fontSize: '12px', fontWeight: '700', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '4px' }}
                                             >
                                                 <XCircle size={14} /> Reject
                                             </button>
                                         </>
+                                    )}
+                                    {/* Delete icon ONLY if status is approved */}
+                                    {item.status === 'approved' && (
+                                        <button 
+                                            onClick={() => handleDelete(item.ref)}
+                                            style={{ backgroundColor: 'transparent', color: '#666', border: 'none', padding: '6px', borderRadius: '6px', cursor: 'pointer' }}
+                                        >
+                                            <Trash2 size={16} />
+                                        </button>
                                     )}
                                 </td>
                             </tr>

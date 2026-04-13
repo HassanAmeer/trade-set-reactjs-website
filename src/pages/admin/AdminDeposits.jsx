@@ -1,11 +1,12 @@
 import React, { useState, useEffect } from 'react';
 import { db } from '../../firebase-setup';
-import { collectionGroup, getDocs, doc, updateDoc } from 'firebase/firestore';
-import { CheckCircle2, XCircle, Clock, ExternalLink } from 'lucide-react';
+import { collectionGroup, getDocs, doc, updateDoc, increment, getDoc, deleteDoc } from 'firebase/firestore';
+import { CheckCircle2, XCircle, Clock, ExternalLink, Trash2 } from 'lucide-react';
 
 const AdminDeposits = () => {
     const [deposits, setDeposits] = useState([]);
     const [loading, setLoading] = useState(true);
+    const [selectedVoucher, setSelectedVoucher] = useState(null);
 
     useEffect(() => {
         fetchAllDeposits();
@@ -30,20 +31,48 @@ const AdminDeposits = () => {
         }
     };
 
-    const handleUpdateStatus = async (depositRef, newStatus) => {
+    const handleUpdateStatus = async (item, newStatus) => {
         try {
-            await updateDoc(depositRef, { status: newStatus });
-            // Refresh list
+            if (newStatus === 'approved') {
+                const uid = item.userId || item.uid;
+                if (!uid) throw new Error("User ID not found in deposit record!");
+
+                console.log("Updating balance for user:", uid, "Amount:", item.amount);
+                const userRef = doc(db, 'users', uid);
+                const userSnap = await getDoc(userRef);
+                
+                if (userSnap.exists()) {
+                    await updateDoc(userRef, {
+                        balance: increment(Number(item.amount))
+                    });
+                    console.log("Balance updated successfully");
+                } else {
+                    console.error("User document does not exist in /users/", uid);
+                    alert("User record not found in database. Balance NOT added.");
+                }
+            }
+            await updateDoc(item.ref, { status: newStatus });
             fetchAllDeposits();
         } catch (error) {
-            alert('Failed to update status');
+            console.error(error);
+            alert('Error: ' + error.message);
+        }
+    };
+
+    const handleDelete = async (itemRef) => {
+        if (!window.confirm("Delete this record?")) return;
+        try {
+            await deleteDoc(itemRef);
+            fetchAllDeposits();
+        } catch (error) {
+            alert("Delete failed");
         }
     };
 
     if (loading) return <div style={{ color: '#fff' }}>Loading deposits...</div>;
 
     return (
-        <div>
+        <div style={{ position: 'relative' }}>
             <h2 style={{ color: '#fff', fontSize: '24px', fontWeight: '800', marginBottom: '20px' }}>Deposit Requests</h2>
             
             <div className="admin-table-container">
@@ -53,7 +82,7 @@ const AdminDeposits = () => {
                             <th style={{ padding: '16px', fontSize: '13px', color: '#888' }}>Date / Time</th>
                             <th style={{ padding: '16px', fontSize: '13px', color: '#888' }}>User Email</th>
                             <th style={{ padding: '16px', fontSize: '13px', color: '#888' }}>Amount</th>
-                            <th style={{ padding: '16px', fontSize: '13px', color: '#888' }}>Voucher</th>
+                            <th style={{ padding: '16px', fontSize: '13px', color: '#888' }}>Voucher Thumbnail</th>
                             <th style={{ padding: '16px', fontSize: '13px', color: '#888' }}>Status</th>
                             <th style={{ padding: '16px', fontSize: '13px', color: '#888' }}>Actions</th>
                         </tr>
@@ -61,61 +90,89 @@ const AdminDeposits = () => {
                     <tbody>
                         {deposits.map((item) => (
                             <tr key={item.id} style={{ borderBottom: '1px solid #222' }}>
-                                <td style={{ padding: '16px', fontSize: '13px' }}>
+                                <td style={{ padding: '16px', fontSize: '12px', color: '#888' }}>
                                     {new Date(item.timestamp).toLocaleString()}
                                 </td>
-                                <td style={{ padding: '16px', fontSize: '13px', color: '#00c087' }}>
-                                    {item.userEmail || item.uid}
+                                <td style={{ padding: '16px', fontSize: '13px', color: '#00c087', fontWeight: '600' }}>
+                                    {item.userEmail || "N/A"}
+                                    <div style={{ fontSize: '10px', color: '#555', marginTop: '2px' }}>ID: {item.userId || item.uid}</div>
                                 </td>
-                                <td style={{ padding: '16px', fontSize: '14px', fontWeight: '700' }}>
+                                <td style={{ padding: '16px', fontSize: '15px', fontWeight: '800', color: 'var(--accent-gold)' }}>
                                     {item.amount} USDT
                                 </td>
                                 <td style={{ padding: '16px' }}>
-                                    <a href={item.screenshot} target="_blank" rel="noopener noreferrer" style={{ display: 'inline-flex', alignItems: 'center', gap: '4px', color: '#00c087', fontSize: '12px', textDecoration: 'none', backgroundColor: 'rgba(0,192,135,0.1)', padding: '4px 8px', borderRadius: '4px' }}>
-                                        View <ExternalLink size={12} />
-                                    </a>
+                                    <div 
+                                        onClick={() => setSelectedVoucher(item.screenshot)}
+                                        style={{ width: '60px', height: '40px', borderRadius: '4px', overflow: 'hidden', cursor: 'pointer', border: '1px solid #333' }}
+                                    >
+                                        <img src={item.screenshot} alt="Voucher" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                                    </div>
                                 </td>
                                 <td style={{ padding: '16px' }}>
                                     <span style={{ 
-                                        padding: '4px 8px', 
-                                        borderRadius: '12px', 
-                                        fontSize: '11px', 
-                                        fontWeight: '700',
+                                        padding: '4px 10px', 
+                                        borderRadius: '20px', 
+                                        fontSize: '10px', 
+                                        fontWeight: '800',
                                         textTransform: 'uppercase',
                                         backgroundColor: item.status === 'pending' ? 'rgba(255,184,0,0.1)' : item.status === 'approved' ? 'rgba(0,192,135,0.1)' : 'rgba(255,77,79,0.1)',
-                                        color: item.status === 'pending' ? '#ffb800' : item.status === 'approved' ? '#00c087' : '#ff4d4f'
+                                        color: item.status === 'pending' ? '#ffb800' : item.status === 'approved' ? '#00c087' : '#ff4d4f',
+                                        border: `1px solid ${item.status === 'pending' ? 'rgba(255,184,0,0.2)' : item.status === 'approved' ? 'rgba(0,192,135,0.2)' : 'rgba(255,77,79,0.2)'}`
                                     }}>
                                         {item.status}
                                     </span>
                                 </td>
-                                <td style={{ padding: '16px', display: 'flex', gap: '8px' }}>
+                                <td style={{ padding: '16px', display: 'flex', gap: '8px', alignItems: 'center' }}>
                                     {item.status === 'pending' && (
                                         <>
                                             <button 
-                                                onClick={() => handleUpdateStatus(item.ref, 'approved')}
-                                                style={{ backgroundColor: '#00c087', color: '#fff', border: 'none', padding: '6px 12px', borderRadius: '6px', fontSize: '12px', fontWeight: '700', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '4px' }}
+                                                onClick={() => handleUpdateStatus(item, 'approved')}
+                                                style={{ backgroundColor: '#00c087', color: '#fff', border: 'none', padding: '8px 12px', borderRadius: '8px', fontSize: '12px', fontWeight: '700', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '6px' }}
                                             >
                                                 <CheckCircle2 size={14} /> Approve
                                             </button>
                                             <button 
-                                                onClick={() => handleUpdateStatus(item.ref, 'rejected')}
-                                                style={{ backgroundColor: '#ff4d4f', color: '#fff', border: 'none', padding: '6px 12px', borderRadius: '6px', fontSize: '12px', fontWeight: '700', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '4px' }}
+                                                onClick={() => handleUpdateStatus(item, 'rejected')}
+                                                style={{ backgroundColor: '#ff4d4f', color: '#fff', border: 'none', padding: '8px 12px', borderRadius: '8px', fontSize: '12px', fontWeight: '700', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '6px' }}
                                             >
                                                 <XCircle size={14} /> Reject
                                             </button>
                                         </>
                                     )}
+                                    <button 
+                                        onClick={() => handleDelete(item.ref)}
+                                        style={{ backgroundColor: 'transparent', color: '#444', border: 'none', padding: '8px', borderRadius: '8px', cursor: 'pointer' }}
+                                    >
+                                        <Trash2 size={16} />
+                                    </button>
                                 </td>
                             </tr>
                         ))}
-                        {deposits.length === 0 && (
-                            <tr>
-                                <td colSpan="6" style={{ padding: '30px', textAlign: 'center', color: '#666' }}>No deposits found</td>
-                            </tr>
-                        )}
                     </tbody>
                 </table>
             </div>
+
+            {/* Voucher Modal */}
+            {selectedVoucher && (
+                <div 
+                    onClick={() => setSelectedVoucher(null)}
+                    style={{ position: 'fixed', inset: 0, zIndex: 3000, backgroundColor: 'rgba(0,0,0,0.95)', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '20px' }}
+                >
+                    <div style={{ position: 'relative', maxWidth: '90%', maxHeight: '90%' }}>
+                        <img 
+                            src={selectedVoucher} 
+                            alt="Full Voucher" 
+                            style={{ maxWidth: '100%', maxHeight: '100%', borderRadius: '12px', boxShadow: '0 0 50px rgba(0,0,0,0.5)' }} 
+                        />
+                        <button 
+                            onClick={() => setSelectedVoucher(null)}
+                            style={{ position: 'absolute', top: '-40px', right: '-40px', backgroundColor: 'transparent', border: 'none', color: '#fff', fontSize: '30px', cursor: 'pointer' }}
+                        >
+                            &times;
+                        </button>
+                    </div>
+                </div>
+            )}
         </div>
     );
 };

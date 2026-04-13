@@ -124,7 +124,11 @@ const Profile = () => {
                             </div>
                             <div>
                                 <div style={{ fontWeight: '800', fontSize: '20px', letterSpacing: '0.5px' }}>{user.name || user.email.split('@')[0]}</div>
-                                <div style={{ fontSize: '11px', color: 'var(--text-secondary)', marginTop: '2px' }}>UID: {user.id.slice(-6).toUpperCase()} | {user.phone}</div>
+                                <div style={{ fontSize: '11px', color: 'var(--text-secondary)', marginTop: '2px', display: 'flex', alignItems: 'center', gap: '8px' }}>
+                                    <span>UID: {user.id.slice(-6).toUpperCase()}</span>
+                                    <span style={{ color: '#444' }}>|</span>
+                                    <span style={{ color: 'var(--accent-gold)', fontWeight: '700' }}>{Number(user.balance || 0).toFixed(2)} USDT</span>
+                                </div>
                             </div>
                         </div>
                         <LogOut
@@ -162,8 +166,10 @@ const Profile = () => {
                         </div>
                     </div>
                     <div style={{ textAlign: 'right' }}>
-                        <div style={{ fontSize: '11px', color: 'var(--text-secondary)', marginBottom: '4px' }}>Total assets</div>
-                        <div style={{ fontWeight: '700', color: 'var(--accent-gold)' }}>{user?.balance || '0.00'} USDT</div>
+                        <div style={{ fontSize: '11px', color: 'var(--text-secondary)', marginBottom: '4px', textTransform: 'uppercase', letterSpacing: '0.5px' }}>Total Assets</div>
+                        <div style={{ fontWeight: '900', color: 'var(--accent-gold)', fontSize: '20px' }}>
+                            {Number(user?.balance || 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })} <span style={{ fontSize: '12px', fontWeight: '600' }}>USDT</span>
+                        </div>
                     </div>
                 </div>
 

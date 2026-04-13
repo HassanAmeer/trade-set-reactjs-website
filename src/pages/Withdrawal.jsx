@@ -24,8 +24,23 @@ const Withdrawal = () => {
         if (!address) return;
         if (!password) return;
 
+        // Verify login password
+        if (password !== user.password) {
+            alert("Incorrect login password!");
+            return;
+        }
+
         setSubmitting(true);
         try {
+            const { updateDoc, doc, increment } = await import('firebase/firestore');
+
+            // 1. Deduct balance from user document
+            const userRef = doc(db, 'users', user.id);
+            await updateDoc(userRef, {
+                balance: increment(-parseFloat(amount))
+            });
+
+            // 2. Create withdrawal record
             const withdrawalData = {
                 amount: parseFloat(amount),
                 address,
@@ -40,13 +55,16 @@ const Withdrawal = () => {
 
             await addDoc(collection(db, 'users', user.id, 'withdrawals'), withdrawalData);
 
-            alert("Withdrawal request submitted! Admin will review it.");
+            alert("Withdrawal request submitted! Amount has been deducted from your balance.");
+            
             // Reset fields
             setAmount('');
             setAddress('');
             setPassword('');
+            navigate('/withdrawal-history');
         } catch (error) {
-            alert(error.message);
+            console.error(error);
+            alert("Failed to submit withdrawal: " + error.message);
         } finally {
             setSubmitting(false);
         }
