@@ -194,6 +194,57 @@ const Profile = () => {
 
             </div>
 
+            {/* KYC Status Notification — only for unverified users */}
+            {user && !user.isVerified && (
+                <div
+                    onClick={() => navigate('/verification')}
+                    style={{
+                        marginBottom: '24px',
+                        padding: '16px 18px',
+                        borderRadius: '16px',
+                        cursor: 'pointer',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'space-between',
+                        gap: '12px',
+                        backgroundColor: user?.kycStatus === 'rejected'
+                            ? 'rgba(255,77,79,0.06)'
+                            : user?.kycStatus === 'pending'
+                            ? 'rgba(255,184,0,0.06)'
+                            : 'rgba(255,184,0,0.06)',
+                        border: user?.kycStatus === 'rejected'
+                            ? '1px solid rgba(255,77,79,0.2)'
+                            : '1px solid rgba(255,184,0,0.2)',
+                    }}
+                >
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                        <div style={{
+                            width: '42px', height: '42px', borderRadius: '50%', flexShrink: 0,
+                            display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '20px',
+                            backgroundColor: user?.kycStatus === 'rejected' ? 'rgba(255,77,79,0.1)' : 'rgba(255,184,0,0.1)',
+                        }}>
+                            {user?.kycStatus === 'rejected' ? '❌' : user?.kycStatus === 'pending' ? '🕐' : '🔔'}
+                        </div>
+                        <div>
+                            <div style={{
+                                fontWeight: '800', fontSize: '13px',
+                                color: user?.kycStatus === 'rejected' ? '#ff4d4f' : '#ffb800'
+                            }}>
+                                {user?.kycStatus === 'rejected'
+                                    ? 'KYC Rejected — Re-submit required'
+                                    : user?.kycStatus === 'pending'
+                                    ? 'KYC Under Review'
+                                    : 'Identity Verification Required'}
+                            </div>
+                            <div style={{ fontSize: '11px', color: '#888', marginTop: '2px', lineHeight: '1.4' }}>
+                                {user?.kycMessage || 'Please verify your identity to unlock all features.'}
+                            </div>
+                        </div>
+                    </div>
+                    <ChevronRight size={18} color="#555" style={{ flexShrink: 0 }} />
+                </div>
+            )}
+
             <div
                 className="action-grid"
                 style={{

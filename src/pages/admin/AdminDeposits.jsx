@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { db } from '../../firebase-setup';
-import { collectionGroup, getDocs, doc, updateDoc, increment, getDoc, deleteDoc } from 'firebase/firestore';
+import { collectionGroup, getDocs, doc, updateDoc, increment, getDoc, deleteDoc, addDoc, collection } from 'firebase/firestore';
 import { CheckCircle2, XCircle, Clock, ExternalLink, Trash2 } from 'lucide-react';
 import { useBranding } from '../../context/BrandingContext';
 
@@ -61,17 +61,39 @@ const AdminDeposits = () => {
                                     balance: increment(commissionAmount),
                                     referralEarnings: increment(commissionAmount)
                                 });
-                                console.log(`Commission of ${commissionAmount} USDT added to referrer: ${userData.referredBy}`);
                             }
                         } catch (e) {
                             console.error("Referral commission credit failed:", e);
                         }
                     }
+
+                    // 3. Send inbox notification
+                    await addDoc(collection(db, 'users', uid, 'messages'), {
+                        title: '✅ Deposit Approved',
+                        description: `Your deposit of ${item.amount} USDT has been approved and added to your balance.`,
+                        type: 'alert',
+                        read: false,
+                        timestamp: new Date().toISOString()
+                    });
                 } else {
                     console.error("User document does not exist in /users/", uid);
                     alert("User record not found in database. Balance NOT added.");
                 }
             }
+
+            if (newStatus === 'rejected') {
+                const uid = item.userId || item.uid;
+                if (uid) {
+                    await addDoc(collection(db, 'users', uid, 'messages'), {
+                        title: '❌ Deposit Rejected',
+                        description: `Your deposit request of ${item.amount} USDT was rejected. Please contact support if you believe this is an error.`,
+                        type: 'alert',
+                        read: false,
+                        timestamp: new Date().toISOString()
+                    });
+                }
+            }
+
             await updateDoc(item.ref, { status: newStatus });
             fetchAllDeposits();
         } catch (error) {

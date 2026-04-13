@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useMarket } from '../context/MarketContext';
 import { db } from '../firebase-setup';
-import { collection, query, orderBy, onSnapshot, doc } from 'firebase/firestore';
+import { collection, query, orderBy, onSnapshot, where, getDocs } from 'firebase/firestore';
 import {
     CreditCard, Wallet, ArrowRightLeft, Headphones, Volume2, Menu, Mail, Zap,
     Newspaper
@@ -21,7 +21,19 @@ const Home = () => {
     const [banners, setBanners] = useState([]);
     const [currentBannerIndex, setCurrentBannerIndex] = useState(0);
     const [showLogoutConfirm, setShowLogoutConfirm] = useState(false);
+    const [unreadCount, setUnreadCount] = useState(0);
     const navigate = useNavigate();
+
+    // Listen for unread messages
+    useEffect(() => {
+        if (!user) { setUnreadCount(0); return; }
+        const q = query(
+            collection(db, 'users', user.id, 'messages'),
+            where('read', '==', false)
+        );
+        const unsub = onSnapshot(q, (snap) => setUnreadCount(snap.size));
+        return () => unsub();
+    }, [user]);
 
     useEffect(() => {
         // Fetch Banners
@@ -83,7 +95,21 @@ const Home = () => {
                     </div>
                 </div>
                 <div style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
-                    <Mail size={22} color="var(--text-primary)" onClick={() => navigate('/inbox')} style={{ cursor: 'pointer' }} />
+                    <div style={{ position: 'relative', cursor: 'pointer' }} onClick={() => navigate('/inbox')}>
+                        <Mail size={22} color="var(--text-primary)" />
+                        {unreadCount > 0 && (
+                            <div style={{
+                                position: 'absolute', top: '-6px', right: '-6px',
+                                backgroundColor: '#ff4d4f', color: '#fff',
+                                fontSize: '9px', fontWeight: '900',
+                                width: '16px', height: '16px', borderRadius: '50%',
+                                display: 'flex', alignItems: 'center', justifyContent: 'center',
+                                border: '2px solid var(--bg-primary)'
+                            }}>
+                                {unreadCount > 9 ? '9+' : unreadCount}
+                            </div>
+                        )}
+                    </div>
                     {user && (
                         <LogOut 
                             size={22} 

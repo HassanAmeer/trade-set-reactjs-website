@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { db } from '../../firebase-setup';
-import { collectionGroup, getDocs, updateDoc, doc, increment, getDoc, deleteDoc } from 'firebase/firestore';
+import { collectionGroup, getDocs, updateDoc, doc, increment, getDoc, deleteDoc, addDoc, collection } from 'firebase/firestore';
 import { CheckCircle2, XCircle, ExternalLink, Trash2, Copy, Check } from 'lucide-react';
 
 const AdminWithdrawals = () => {
@@ -39,15 +39,35 @@ const AdminWithdrawals = () => {
 
     const handleUpdateStatus = async (item, newStatus) => {
         try {
+            const uid = item.userId || item.uid;
+
             if (newStatus === 'rejected') {
                 // Refund balance if rejected (since it was deducted on request)
-                const userRef = doc(db, 'users', item.userId);
+                const userRef = doc(db, 'users', uid);
                 await updateDoc(userRef, {
                     balance: increment(Number(item.amount))
                 });
+                // Send rejection notification
+                await addDoc(collection(db, 'users', uid, 'messages'), {
+                    title: '❌ Withdrawal Rejected',
+                    description: `Your withdrawal of ${item.amount} USDT was rejected. The amount has been refunded to your balance.`,
+                    type: 'alert',
+                    read: false,
+                    timestamp: new Date().toISOString()
+                });
             }
-            // If approved, we just update status (balance was already cut)
-            
+
+            if (newStatus === 'approved') {
+                // Balance already cut at request time — just send notification
+                await addDoc(collection(db, 'users', uid, 'messages'), {
+                    title: '✅ Withdrawal Approved',
+                    description: `Your withdrawal of ${item.amount} USDT has been approved and is being processed.`,
+                    type: 'alert',
+                    read: false,
+                    timestamp: new Date().toISOString()
+                });
+            }
+
             await updateDoc(item.ref, { status: newStatus });
             fetchAllWithdrawals();
         } catch (error) {
