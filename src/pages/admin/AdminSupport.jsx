@@ -120,7 +120,26 @@ const AdminSupport = () => {
         return matchFilter && matchSearch;
     });
 
-    if (loading) return <div style={{ color: '#888', display: 'flex', alignItems: 'center', gap: '10px', padding: '50px' }}><Loader2 className="animate-spin" /> Fetching support data...</div>;
+    if (loading) return (
+        <div className="support-layout" style={{ border: 'none' }}>
+            <div className="support-sidebar">
+                <div style={{ padding: '20px', display: 'flex', flexDirection: 'column', gap: '10px' }}>
+                    <div className="skeleton-loader" style={{ width: '150px', height: '25px' }}></div>
+                    <div className="skeleton-loader" style={{ width: '100%', height: '40px', borderRadius: '8px' }}></div>
+                    {[1,2,3,4,5,6].map(i => (
+                        <div key={i} className="skeleton-loader" style={{ width: '100%', height: '60px', borderRadius: '10px', marginTop: '5px' }}></div>
+                    ))}
+                </div>
+            </div>
+            <div className="support-main">
+                <div style={{ padding: '35px', display: 'flex', flexDirection: 'column', gap: '20px' }}>
+                    <div className="skeleton-loader" style={{ width: '60%', height: '40px' }}></div>
+                    <div className="skeleton-loader" style={{ width: '100%', height: '200px', borderRadius: '16px' }}></div>
+                    <div className="skeleton-loader" style={{ width: '100%', height: '150px', borderRadius: '16px' }}></div>
+                </div>
+            </div>
+        </div>
+    );
 
     return (
         <div className="support-layout">

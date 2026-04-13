@@ -137,7 +137,18 @@ const AdminDeposits = () => {
         }
     };
 
-    if (loading) return <div style={{ color: '#fff' }}>Loading deposits...</div>;
+    if (loading) return (
+        <div style={{ padding: '0px' }}>
+            <div className="skeleton-loader" style={{ width: '220px', height: '30px', marginBottom: '25px' }}></div>
+            <div className="admin-table-container">
+                <div style={{ padding: '20px', display: 'flex', flexDirection: 'column', gap: '15px' }}>
+                    {[1,2,3,4,5].map(i => (
+                        <div key={i} className="skeleton-loader" style={{ width: '100%', height: '60px', borderRadius: '12px' }}></div>
+                    ))}
+                </div>
+            </div>
+        </div>
+    );
 
     return (
         <div style={{ position: 'relative' }}>

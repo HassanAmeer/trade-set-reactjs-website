@@ -166,7 +166,15 @@ button_url: ${window.location.origin}/trade`);
         }
     };
 
-    if (loading) return <div style={{ color: '#fff', padding: '40px' }}>Loading settings...</div>;
+    if (loading) return (
+        <div style={{ padding: '0px' }}>
+            <div className="skeleton-loader" style={{ width: '250px', height: '35px', marginBottom: '25px' }}></div>
+            <div className="email-dashboard-grid">
+                <div className="skeleton-loader" style={{ height: '550px', borderRadius: '16px' }}></div>
+                <div className="skeleton-loader" style={{ height: '550px', borderRadius: '16px' }}></div>
+            </div>
+        </div>
+    );
 
     const isConfigMissing = !config.serviceId || availableTemplates.length === 0 || !config.publicKey;
 

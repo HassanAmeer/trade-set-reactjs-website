@@ -155,7 +155,11 @@ const AdminCarousel = () => {
             {/* List Existing Banners */}
             <h3 style={{ fontSize: '18px', fontWeight: '700', marginBottom: '20px' }}>Active Slides</h3>
             {loading ? (
-                <div style={{ padding: '50px', textAlign: 'center', color: '#555' }}>Loading banners...</div>
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(300px, 1fr))', gap: '20px' }}>
+                    {[1,2,3].map(i => (
+                        <div key={i} className="skeleton-loader" style={{ height: '220px', borderRadius: '16px' }}></div>
+                    ))}
+                </div>
             ) : (
                 <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(300px, 1fr))', gap: '20px' }}>
                     {banners.map(banner => (

@@ -120,7 +120,19 @@ const AdminBlogs = () => {
         }
     };
 
-    if (loading) return <div style={{ color: '#fff' }}>Loading blogs...</div>;
+    if (loading) return (
+        <div style={{ padding: '0px' }}>
+            <div className="skeleton-loader" style={{ width: '300px', height: '35px', marginBottom: '30px' }}></div>
+            <div style={{ display: 'flex', flexWrap: 'wrap', gap: '30px' }}>
+                <div className="skeleton-loader" style={{ flex: '1 1 400px', height: '500px', borderRadius: '16px' }}></div>
+                <div style={{ flex: '1 1 500px', display: 'flex', flexDirection: 'column', gap: '15px' }}>
+                    {[1,2,3,4].map(i => (
+                        <div key={i} className="skeleton-loader" style={{ width: '100%', height: '110px', borderRadius: '16px' }}></div>
+                    ))}
+                </div>
+            </div>
+        </div>
+    );
 
     return (
         <div>

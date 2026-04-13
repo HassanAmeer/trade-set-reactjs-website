@@ -126,7 +126,21 @@ const AdminKYC = () => {
         rejected: { bg: 'rgba(255,77,79,0.1)', color: '#ff4d4f' },
     };
 
-    if (loading) return <div style={{ color: '#fff', padding: '20px' }}>Loading KYC Database...</div>;
+    if (loading) return (
+        <div style={{ padding: '0px' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '30px' }}>
+                <div className="skeleton-loader" style={{ width: '220px', height: '30px' }}></div>
+                <div className="skeleton-loader" style={{ width: '100px', height: '25px', borderRadius: '20px' }}></div>
+            </div>
+            <div className="admin-table-container">
+                <div style={{ padding: '20px', display: 'flex', flexDirection: 'column', gap: '15px' }}>
+                    {[1,2,3,4,5].map(i => (
+                        <div key={i} className="skeleton-loader" style={{ width: '100%', height: '70px', borderRadius: '12px' }}></div>
+                    ))}
+                </div>
+            </div>
+        </div>
+    );
 
     return (
         <div style={{ padding: '0px' }}>

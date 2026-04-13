@@ -34,7 +34,18 @@ const AdminTrades = () => {
         t.userEmail?.toLowerCase().includes(searchTerm.toLowerCase())
     );
 
-    if (loading) return <div style={{ color: '#fff' }}>Loading trades...</div>;
+    if (loading) return (
+        <div style={{ padding: '0px' }}>
+            <div className="skeleton-loader" style={{ width: '280px', height: '35px', marginBottom: '30px' }}></div>
+            <div className="admin-table-container">
+                <div style={{ padding: '20px', display: 'flex', flexDirection: 'column', gap: '15px' }}>
+                    {[1,2,3,4,5,6].map(i => (
+                        <div key={i} className="skeleton-loader" style={{ width: '100%', height: '50px', borderRadius: '10px' }}></div>
+                    ))}
+                </div>
+            </div>
+        </div>
+    );
 
     return (
         <div style={{ color: '#fff' }}>
@@ -54,7 +65,7 @@ const AdminTrades = () => {
                 <button onClick={fetchTrades} style={{ padding: '0 20px', backgroundColor: '#00c087', color: '#fff', border: 'none', borderRadius: '8px', cursor: 'pointer' }}>Refresh</button>
             </div>
 
-            <div style={{ backgroundColor: '#111', borderRadius: '16px', border: '1px solid #222', overflow: 'hidden' }}>
+            <div className="admin-table-container">
                 <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left' }}>
                     <thead>
                         <tr style={{ borderBottom: '1px solid #222', color: '#888', fontSize: '13px' }}>

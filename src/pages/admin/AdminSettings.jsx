@@ -165,7 +165,21 @@ const AdminSettings = () => {
         }
     };
 
-    if (loading) return <div style={{ color: '#fff', padding: '50px' }}>Loading system configurations...</div>;
+    if (loading) return (
+        <div style={{ padding: '0 20px' }}>
+            <div className="skeleton-loader" style={{ width: '250px', height: '35px', marginBottom: '40px' }}></div>
+            <div className="settings-grid">
+                {[1,2,3,4].map(i => (
+                    <div key={i} className="settings-card" style={{ gap: '20px' }}>
+                        <div className="skeleton-loader" style={{ width: '150px', height: '25px', marginBottom: '10px' }}></div>
+                        <div className="skeleton-loader" style={{ width: '100%', height: '45px', borderRadius: '10px' }}></div>
+                        <div className="skeleton-loader" style={{ width: '100%', height: '45px', borderRadius: '10px' }}></div>
+                        <div className="skeleton-loader" style={{ width: '100%', height: '45px', borderRadius: '10px' }}></div>
+                    </div>
+                ))}
+            </div>
+        </div>
+    );
 
     return (
         <motion.div
