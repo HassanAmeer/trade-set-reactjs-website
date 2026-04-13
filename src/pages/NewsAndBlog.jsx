@@ -62,7 +62,13 @@ const NewsAndBlog = () => {
             </div>
 
             <div style={{ padding: '20px 16px' }}>
-                {loading && <div style={{ textAlign: 'center', color: '#888', padding: '50px 0' }}>Loading news...</div>}
+                {loading && (
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '15px' }}>
+                        {[1,2,3,4,5].map(i => (
+                            <div key={i} className="skeleton-loader" style={{ width: '100%', height: '100px', borderRadius: '12px' }}></div>
+                        ))}
+                    </div>
+                )}
 
                 {!loading && newsData.length === 0 && (
                     <div style={{ textAlign: 'center', color: '#666', padding: '100px 0' }}>

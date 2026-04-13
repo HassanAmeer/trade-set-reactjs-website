@@ -90,7 +90,19 @@ const Messages = () => {
 
             {/* Message List */}
             <div style={{ padding: '0' }}>
-                {loading && <div style={{ textAlign: 'center', padding: '40px', color: '#888' }}>Loading...</div>}
+                {loading && (
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '2px' }}>
+                        {[1,2,3,4,5,6].map(i => (
+                            <div key={i} style={{ padding: '16px', display: 'flex', gap: '12px', alignItems: 'center', backgroundColor: 'rgba(255,255,255,0.01)', borderBottom: '1px solid #1a1a1a' }}>
+                                <div className="skeleton-loader" style={{ width: '44px', height: '44px', borderRadius: '50%' }}></div>
+                                <div style={{ flex: 1 }}>
+                                    <div className="skeleton-loader" style={{ width: '40%', height: '14px', marginBottom: '8px' }}></div>
+                                    <div className="skeleton-loader" style={{ width: '80%', height: '10px' }}></div>
+                                </div>
+                            </div>
+                        ))}
+                    </div>
+                )}
 
                 {!loading && messages.map((msg) => {
                     const accent = getAccent(msg.title);

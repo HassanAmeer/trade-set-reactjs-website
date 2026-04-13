@@ -87,7 +87,15 @@ const Verification = () => {
         }
     };
 
-    if (loading) return null;
+    if (loading) return (
+        <div style={{ minHeight: '100vh', backgroundColor: '#0a0a0a', padding: '20px' }}>
+            <div className="skeleton-loader" style={{ width: '100%', height: '60px', borderRadius: '12px', marginBottom: '30px' }}></div>
+            <div className="skeleton-loader" style={{ width: '200px', height: '24px', marginBottom: '10px' }}></div>
+            <div className="skeleton-loader" style={{ width: '100%', height: '16px', marginBottom: '40px' }}></div>
+            <div className="skeleton-loader" style={{ width: '100%', height: '180px', borderRadius: '16px', marginBottom: '25px' }}></div>
+            <div className="skeleton-loader" style={{ width: '100%', height: '180px', borderRadius: '16px' }}></div>
+        </div>
+    );
 
     const isReadyToSubmit = frontFile && backFile;
 

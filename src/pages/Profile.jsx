@@ -44,8 +44,25 @@ const Profile = () => {
     };
 
     if (loading) return (
-        <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '100vh', backgroundColor: '#0a0a0a' }}>
-            <div className="skeleton-loader" style={{ width: '50px', height: '50px', borderRadius: '50%' }}></div>
+        <div style={{ padding: '24px', backgroundColor: '#0a0a0a', minHeight: '100vh' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '15px', marginBottom: '40px' }}>
+                <div className="skeleton-loader" style={{ width: '65px', height: '65px', borderRadius: '50%' }}></div>
+                <div style={{ flex: 1 }}>
+                    <div className="skeleton-loader" style={{ width: '150px', height: '24px', marginBottom: '8px' }}></div>
+                    <div className="skeleton-loader" style={{ width: '100px', height: '14px' }}></div>
+                </div>
+            </div>
+            <div className="skeleton-loader" style={{ width: '100%', height: '160px', borderRadius: '16px', marginBottom: '24px' }}></div>
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '12px', marginBottom: '32px' }}>
+                {[1,2,3].map(i => (
+                    <div key={i} className="skeleton-loader" style={{ width: '100%', height: '100px', borderRadius: '20px' }}></div>
+                ))}
+            </div>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '15px' }}>
+                {[1,2,3,4].map(i => (
+                    <div key={i} className="skeleton-loader" style={{ width: '100%', height: '50px', borderRadius: '8px' }}></div>
+                ))}
+            </div>
         </div>
     );
 

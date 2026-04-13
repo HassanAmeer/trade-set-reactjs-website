@@ -54,8 +54,16 @@ const WithdrawalHistory = () => {
     };
 
     if (loading) return (
-        <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '100vh', backgroundColor: '#050505' }}>
-            <div className="circular-loader-simple"></div>
+        <div style={{ padding: '24px', backgroundColor: '#050505', minHeight: '100vh' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '15px', marginBottom: '32px' }}>
+                <div className="skeleton-loader" style={{ width: '24px', height: '24px', borderRadius: '4px' }}></div>
+                <div className="skeleton-loader" style={{ width: '180px', height: '24px', borderRadius: '4px' }}></div>
+            </div>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+                {[1,2,3,4,5].map(i => (
+                    <div key={i} className="skeleton-loader" style={{ width: '100%', height: '100px', borderRadius: '16px' }}></div>
+                ))}
+            </div>
         </div>
     );
 
