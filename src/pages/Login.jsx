@@ -41,7 +41,7 @@ const Login = () => {
                 style={{ maxWidth: '400px', margin: '0 auto', width: '100%' }}
             >
                 <div style={{ textAlign: 'center', marginBottom: '40px' }}>
-                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '10px', marginBottom: '25px' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '10px', marginBottom: '35px' }}>
                         {logoUrl ? (
                             <img src={logoUrl} alt="Logo" style={{ height: '40px', width: 'auto' }} />
                         ) : (
@@ -77,6 +77,12 @@ const Login = () => {
                             required
                             style={{ width: '100%', padding: '16px 16px 16px 50px', backgroundColor: '#111', border: '1px solid #222', borderRadius: '12px', color: '#fff', outline: 'none' }}
                         />
+                    </div>
+
+                    <div style={{ textAlign: 'right', marginTop: '-10px' }}>
+                        <Link to="/forgot-password" style={{ color: 'var(--accent-gold)', textDecoration: 'none', fontSize: '13px', fontWeight: '600' }}>
+                            Forgot Password?
+                        </Link>
                     </div>
 
                     {error && (

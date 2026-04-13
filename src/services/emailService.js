@@ -12,7 +12,7 @@ export const sendEmail = async (templateType, params) => {
         // 1. Fetch Config from Firestore
         const platformRef = doc(db, 'admin_set', 'platform');
         const platformSnap = await getDoc(platformRef);
-        
+
         if (!platformSnap.exists()) {
             console.error("Email Config missing in Settings!");
             return { success: false, error: "Config Missing" };
@@ -21,10 +21,13 @@ export const sendEmail = async (templateType, params) => {
         const config = platformSnap.data();
         const serviceId = config.emailjsServiceId;
         const publicKey = config.emailjsPublicKey;
-        
+
         // Parse dynamic templates
         const templates = (config.emailjsTemplates || '').split(',').map(id => id.trim()).filter(id => id);
         const templateId = templateType === 'otp' ? templates[0] : templates[1];
+
+        console.log(`[EmailService] Sending "${templateType}" email using TemplateID: ${templateId}`);
+        console.log(`[EmailService] Parameters:`, params);
 
         if (!serviceId || !templateId || !publicKey) {
             console.error("EmailJS Keys missing!");

@@ -9,6 +9,7 @@ import Coin from './pages/Coin';
 import Profile from './pages/Profile';
 import Login from './pages/Login';
 import Signup from './pages/Signup';
+import ForgotPassword from './pages/ForgotPassword';
 import Verification from './pages/Verification';
 import Deposit from './pages/Deposit';
 import DepositHistory from './pages/DepositHistory';
@@ -32,8 +33,8 @@ const BottomNav = () => {
   const location = useLocation();
   const path = location.pathname;
 
-  // Hide bottom nav on login/signup pages and admin routes
-  if (path === '/login' || path === '/signup' || path.startsWith('/set') || path.startsWith('/admin')) return null;
+  // Hide bottom nav on auth pages and admin routes
+  if (path === '/login' || path === '/signup' || path === '/forgot-password' || path.startsWith('/set') || path.startsWith('/admin')) return null;
 
   const navItems = [
     { name: 'Home', path: '/', icon: HomeIcon },
@@ -75,6 +76,7 @@ const AppContent = () => {
         <Route path="/profile" element={<Profile />} />
         <Route path="/login" element={<Login />} />
         <Route path="/signup" element={<Signup />} />
+        <Route path="/forgot-password" element={<ForgotPassword />} />
         <Route path="/verification" element={<Verification />} />
         <Route path="/deposit" element={<Deposit />} />
         <Route path="/deposit-history" element={<DepositHistory />} />

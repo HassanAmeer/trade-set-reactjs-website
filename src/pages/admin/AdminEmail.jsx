@@ -143,7 +143,13 @@ button_url: ${window.location.origin}/trade`);
                     ...processedParams
                 };
 
-                await emailjs.send(config.serviceId, templateId, templateParams, config.publicKey);
+                console.log(`[EmailJS] Step 2: Attempting send to ${email}`);
+                console.log(`[EmailJS] Template ID: ${templateId}`);
+                console.log(`[EmailJS] Payload:`, templateParams);
+                console.log(`[EmailJS] Config: ServiceID: ${config.serviceId}, Key: ${config.publicKey.slice(0, 4)}...`);
+
+                const result = await emailjs.send(config.serviceId, templateId, templateParams, config.publicKey);
+                console.log(`[EmailJS] Step 3: Response received:`, result);
                 successCount++;
             }
             setStatusData({ type: 'success', msg: `Sent to ${successCount} users!` });

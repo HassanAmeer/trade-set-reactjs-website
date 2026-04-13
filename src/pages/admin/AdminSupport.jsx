@@ -4,6 +4,7 @@ import { collection, getDocs, doc, updateDoc, addDoc, deleteDoc, query, orderBy,
 import { MessageSquare, Send, CheckCircle2, Trash2, ExternalLink, Image as ImageIcon, Camera, Loader2, User, Phone, Mail, Clock, Filter, X } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { uploadFileChunks } from '../../services/dbs';
+import { sendEmail } from '../../services/emailService';
 
 const AdminSupport = () => {
     const [tickets, setTickets] = useState([]);
@@ -90,6 +91,18 @@ const AdminSupport = () => {
                     replyImages: uploadedReplyUrls,
                     timestamp: new Date().toISOString(),
                     ticketId: ticket.id
+                });
+
+                // Trigger Email Notification
+                await sendEmail('multi', {
+                    to_email: ticket.userEmail,
+                    user_name: 'Value Member',
+                    headline: 'Support Request Resolved',
+                    description: `Hello, we have officially responded to your support inquiry regarding: "${ticket.content.substring(0, 50)}..."`,
+                    data_title: 'Ticket ID',
+                    data_value: ticket.id,
+                    button_text: 'View My Inbox',
+                    button_url: `${window.location.origin}/inbox`
                 });
             }
             setReplyText({ ...replyText, [ticket.id]: '' });
