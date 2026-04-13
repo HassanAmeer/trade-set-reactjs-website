@@ -1,10 +1,12 @@
 import React from 'react';
-import { User, CreditCard, Wallet, Headphones, Zap, Shield, FileText, ChevronRight, Camera, Loader2, LogOut, Copy, QrCode, Share2, Gift, Check, Users } from 'lucide-react';
+import { User, CreditCard, Wallet, Headphones, Zap, Shield, FileText, ChevronRight, Camera, Loader2, LogOut, Copy, QrCode, Share2, Gift, Check, Users, BellIcon } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { useBranding } from '../context/BrandingContext';
 import { uploadFileChunks } from '../services/dbs';
+import { db } from '../firebase-setup';
+import { collection, getDocs } from 'firebase/firestore';
 import giftBg from '../assets/gift-boxes-background.png';
 import giftBox from '../assets/gift-box.png';
 
@@ -17,6 +19,33 @@ const Profile = () => {
     const [showQrPopup, setShowQrPopup] = React.useState(false);
     const [copied, setCopied] = React.useState(false);
     const fileInputRef = React.useRef(null);
+    const [userLevel, setUserLevel] = React.useState(null);
+
+    React.useEffect(() => {
+        const fetchLevel = async () => {
+            if (!user) return;
+            try {
+                const snap = await getDocs(collection(db, 'users'));
+                const list = snap.docs.map(d => {
+                    const data = d.data();
+                    return data.totalDeposit !== undefined ? Number(data.totalDeposit) : Number(data.balance || 0);
+                });
+
+                const uniqueDeposits = [...new Set(list)].sort((a, b) => b - a);
+                const myDeposit = user.totalDeposit !== undefined ? Number(user.totalDeposit) : Number(user.balance || 0);
+
+                if (myDeposit > 0) {
+                    const rankIndex = uniqueDeposits.indexOf(myDeposit);
+                    if (rankIndex !== -1 && rankIndex < 5) {
+                        setUserLevel(rankIndex + 1);
+                    }
+                }
+            } catch (err) {
+                console.error("Error fetching ranking:", err);
+            }
+        };
+        fetchLevel();
+    }, [user]);
 
     const referralLink = `${window.location.origin}/signup?ref=${user?.id}`;
     const qrCodeUrl = `https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=${encodeURIComponent(referralLink)}`;
@@ -54,12 +83,12 @@ const Profile = () => {
             </div>
             <div className="skeleton-loader" style={{ width: '100%', height: '160px', borderRadius: '16px', marginBottom: '24px' }}></div>
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '12px', marginBottom: '32px' }}>
-                {[1,2,3].map(i => (
+                {[1, 2, 3].map(i => (
                     <div key={i} className="skeleton-loader" style={{ width: '100%', height: '100px', borderRadius: '20px' }}></div>
                 ))}
             </div>
             <div style={{ display: 'flex', flexDirection: 'column', gap: '15px' }}>
-                {[1,2,3,4].map(i => (
+                {[1, 2, 3, 4].map(i => (
                     <div key={i} className="skeleton-loader" style={{ width: '100%', height: '50px', borderRadius: '8px' }}></div>
                 ))}
             </div>
@@ -140,20 +169,33 @@ const Profile = () => {
                                 />
                             </div>
                             <div>
-                                <div style={{ fontWeight: '800', fontSize: '20px', letterSpacing: '0.5px' }}>{user.name || user.email.split('@')[0]}</div>
+                                <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                                    <div style={{ fontWeight: '800', fontSize: '20px', letterSpacing: '0.5px' }}>{user.name || user.email.split('@')[0]}</div>
+                                </div>
                                 <div style={{ fontSize: '11px', color: 'var(--text-secondary)', marginTop: '2px', display: 'flex', alignItems: 'center', gap: '8px' }}>
-                                    <span>UID: {user.id.slice(-6).toUpperCase()}</span>
+                                    {userLevel ? (
+                                        <span className='shimmer'>Level {userLevel}</span>
+                                    ) : (
+                                        <span>UID: {user.id.slice(-6).toUpperCase()}</span>
+                                    )}
                                     <span style={{ color: '#444' }}>|</span>
-                                    <span style={{ color: 'var(--accent-gold)', fontWeight: '700' }}>{Number(user.balance || 0).toFixed(2)} USDT</span>
+                                    <span style={{ color: 'var(--accent-secondary)', fontWeight: '700' }}> Active </span>
+                                    {/* <span style={{ color: 'var(--accent-gold)', fontWeight: '700' }}>{Number(user.balance || 0).toFixed(2)} USDT</span> */}
                                 </div>
                             </div>
                         </div>
-                        <LogOut
-                            size={22}
-                            color="#ff4d4f"
-                            onClick={() => setShowLogoutConfirm(true)}
-                            style={{ cursor: 'pointer' }}
-                        />
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '20px' }}>
+                            <div style={{ cursor: 'pointer' }} onClick={() => navigate('/inbox')}>
+                                <BellIcon size={22} color="var(--text-primary)" />
+                            </div>
+
+                            <LogOut
+                                size={22}
+                                color="#ff4d4f"
+                                onClick={() => setShowLogoutConfirm(true)}
+                                style={{ cursor: 'pointer', marginTop: '-8px' }}
+                            />
+                        </div>
                     </>
                 ) : (
                     <div
@@ -227,8 +269,8 @@ const Profile = () => {
                         backgroundColor: user?.kycStatus === 'rejected'
                             ? 'rgba(255,77,79,0.06)'
                             : user?.kycStatus === 'pending'
-                            ? 'rgba(255,184,0,0.06)'
-                            : 'rgba(255,184,0,0.06)',
+                                ? 'rgba(255,184,0,0.06)'
+                                : 'rgba(255,184,0,0.06)',
                         border: user?.kycStatus === 'rejected'
                             ? '1px solid rgba(255,77,79,0.2)'
                             : '1px solid rgba(255,184,0,0.2)',
@@ -250,8 +292,8 @@ const Profile = () => {
                                 {user?.kycStatus === 'rejected'
                                     ? 'KYC Rejected — Re-submit required'
                                     : user?.kycStatus === 'pending'
-                                    ? 'KYC Under Review'
-                                    : 'Identity Verification Required'}
+                                        ? 'KYC Under Review'
+                                        : 'Identity Verification Required'}
                             </div>
                             <div style={{ fontSize: '11px', color: '#888', marginTop: '2px', lineHeight: '1.4' }}>
                                 {user?.kycMessage || 'Please verify your identity to unlock all features.'}

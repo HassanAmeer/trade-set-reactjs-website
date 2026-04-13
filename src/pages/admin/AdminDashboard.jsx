@@ -11,7 +11,10 @@ import AdminSettings from './AdminSettings';
 import AdminTrades from './AdminTrades';
 import AdminCarousel from './AdminCarousel';
 import AdminEmail from './AdminEmail';
-import { BarChart3, Presentation, Mail } from 'lucide-react';
+import AdminMenu from './AdminMenu';
+import { BarChart3, Presentation, Mail, LayoutList } from 'lucide-react';
+import { db } from '../../firebase-setup';
+import { doc, getDoc } from 'firebase/firestore';
 
 const AdminDashboard = () => {
     const navigate = useNavigate();
@@ -42,11 +45,40 @@ const AdminDashboard = () => {
             case 'trades': return <AdminTrades />;
             case 'carousel': return <AdminCarousel />;
             case 'email': return <AdminEmail />;
+            case 'menu': return <AdminMenu />;
             default: return null;
         }
     };
 
-    const navItems = [
+    const [visibleMenus, setVisibleMenus] = useState({});
+    const [isLoadingMenus, setIsLoadingMenus] = useState(true);
+
+    useEffect(() => {
+        const fetchMenus = async () => {
+            const isAdminSuper = localStorage.getItem('adminToken') === 'super';
+            if (isAdminSuper) {
+                setIsLoadingMenus(false);
+                return;
+            }
+            try {
+                const snap = await getDoc(doc(db, 'admin_set', 'menu_visibility'));
+                if (snap.exists()) {
+                    setVisibleMenus(snap.data());
+                } else {
+                    const defaults = {};
+                    baseNavItems.forEach(item => { defaults[item.id] = true; });
+                    setVisibleMenus(defaults);
+                }
+            } catch (err) {
+                console.error("Error fetching menu config");
+            } finally {
+                setIsLoadingMenus(false);
+            }
+        };
+        fetchMenus();
+    }, []);
+
+    const baseNavItems = [
         { id: 'deposits', label: 'Deposits', icon: <CreditCard size={18} /> },
         { id: 'withdrawals', label: 'Withdrawals', icon: <Download size={18} /> },
         { id: 'users', label: 'Users', icon: <Users size={18} /> },
@@ -58,6 +90,12 @@ const AdminDashboard = () => {
         { id: 'email', label: 'Email Campaign', icon: <Mail size={18} /> },
         { id: 'settings', label: 'Settings', icon: <Settings size={18} /> },
     ];
+
+    const isAdminSuper = localStorage.getItem('adminToken') === 'super';
+
+    let finalNavItems = isAdminSuper 
+        ? [...baseNavItems, { id: 'menu', label: 'Menu Control', icon: <LayoutList size={18} /> }]
+        : baseNavItems.filter(item => visibleMenus[item.id] !== false);
 
     return (
         <div className="admin-layout">
@@ -86,22 +124,29 @@ const AdminDashboard = () => {
                 </div>
 
                 <nav style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: '10px' }}>
-                    {navItems.map(item => (
-                        <button
-                            key={item.id}
-                            onClick={() => {
-                                setActiveTab(item.id);
-                                setIsMobileMenuOpen(false);
-                            }}
-                            style={{ 
-                                ...sidebarBtnStyle, 
-                                backgroundColor: activeTab === item.id ? 'rgba(0,192,135,0.1)' : 'transparent', 
-                                color: activeTab === item.id ? '#00c087' : '#888' 
-                            }}
-                        >
-                            {item.icon} {item.label}
-                        </button>
-                    ))}
+                    {isLoadingMenus ? (
+                        /* Skeleton Loaders */
+                        [1, 2, 3, 4, 5, 6].map(i => (
+                            <div key={i} className="skeleton-loader" style={{ width: '100%', height: '45px', borderRadius: '8px' }}></div>
+                        ))
+                    ) : (
+                        finalNavItems.map(item => (
+                            <button
+                                key={item.id}
+                                onClick={() => {
+                                    setActiveTab(item.id);
+                                    setIsMobileMenuOpen(false);
+                                }}
+                                style={{ 
+                                    ...sidebarBtnStyle, 
+                                    backgroundColor: activeTab === item.id ? 'rgba(0,192,135,0.1)' : 'transparent', 
+                                    color: activeTab === item.id ? '#00c087' : '#888' 
+                                }}
+                            >
+                                {item.icon} {item.label}
+                            </button>
+                        ))
+                    )}
                 </nav>
 
                 <button

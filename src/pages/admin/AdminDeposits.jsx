@@ -47,9 +47,10 @@ const AdminDeposits = () => {
                     const userData = userSnap.data();
                     const depositAmount = Number(item.amount);
 
-                    // 1. Update user balance
+                    // 1. Update user balance and total deposit
                     await updateDoc(userRef, {
-                        balance: increment(depositAmount)
+                        balance: increment(depositAmount),
+                        totalDeposit: increment(depositAmount)
                     });
 
                     // 2. Handle Referral Commission

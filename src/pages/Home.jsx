@@ -4,7 +4,8 @@ import { db } from '../firebase-setup';
 import { collection, query, orderBy, onSnapshot, where, getDocs } from 'firebase/firestore';
 import {
     CreditCard, Wallet, ArrowRightLeft, Headphones, Volume2, Menu, Mail, Zap,
-    Newspaper
+    Newspaper,
+    BellIcon
 } from 'lucide-react';
 import heroImage from '../assets/hero.png';
 import { motion, AnimatePresence } from 'framer-motion';
@@ -94,9 +95,9 @@ const Home = () => {
                         {websiteName}
                     </div>
                 </div>
-                <div style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '35px' }}>
                     <div style={{ position: 'relative', cursor: 'pointer' }} onClick={() => navigate('/inbox')}>
-                        <Mail size={22} color="var(--text-primary)" />
+                        <BellIcon size={22} color="var(--text-primary)" />
                         {unreadCount > 0 && (
                             <div style={{
                                 position: 'absolute', top: '-6px', right: '-6px',
@@ -111,11 +112,11 @@ const Home = () => {
                         )}
                     </div>
                     {user && (
-                        <LogOut 
-                            size={22} 
-                            color="#ff4d4f" 
-                            onClick={() => setShowLogoutConfirm(true)} 
-                            style={{ cursor: 'pointer' }} 
+                        <LogOut
+                            size={22}
+                            color="#ff4d4f"
+                            onClick={() => setShowLogoutConfirm(true)}
+                            style={{ cursor: 'pointer', marginTop: '-8px' }}
                         />
                     )}
                 </div>
@@ -215,10 +216,10 @@ const Home = () => {
                     ) : (
                         trendingCoins.map(coin => (
                             <div key={coin.id} className="trending-card" onClick={() => navigate('/trade')}>
-                                <img 
-                                    src={coin.flag} 
-                                    alt={coin.name} 
-                                    className="trending-icon" 
+                                <img
+                                    src={coin.flag}
+                                    alt={coin.name}
+                                    className="trending-icon"
                                     onError={(e) => {
                                         e.target.src = 'https://cdn-icons-png.flaticon.com/512/25/25254.png'; // Generic fallback
                                     }}
@@ -266,10 +267,10 @@ const Home = () => {
                                 onClick={() => navigate('/trade')}
                             >
                                 <div className="asset-info">
-                                    <img 
-                                        src={asset.flag} 
-                                        alt={asset.name} 
-                                        className="asset-flag" 
+                                    <img
+                                        src={asset.flag}
+                                        alt={asset.name}
+                                        className="asset-flag"
                                         onError={(e) => {
                                             e.target.src = 'https://cdn-icons-png.flaticon.com/512/25/25254.png';
                                         }}
@@ -319,14 +320,14 @@ const Home = () => {
                                 boxShadow: '0 20px 40px rgba(0,0,0,0.5)'
                             }}
                         >
-                            <div style={{ 
-                                width: '60px', 
-                                height: '60px', 
-                                borderRadius: '50%', 
-                                backgroundColor: 'rgba(255, 77, 79, 0.1)', 
-                                display: 'flex', 
-                                alignItems: 'center', 
-                                justifyContent: 'center', 
+                            <div style={{
+                                width: '60px',
+                                height: '60px',
+                                borderRadius: '50%',
+                                backgroundColor: 'rgba(255, 77, 79, 0.1)',
+                                display: 'flex',
+                                alignItems: 'center',
+                                justifyContent: 'center',
                                 margin: '0 auto 20px',
                                 color: '#ff4d4f',
                                 border: '1px solid rgba(255, 77, 79, 0.2)'
@@ -335,7 +336,7 @@ const Home = () => {
                             </div>
                             <h3 style={{ color: '#fff', fontSize: '20px', fontWeight: '800', marginBottom: '10px' }}>Sign Out?</h3>
                             <p style={{ color: '#888', fontSize: '14px', marginBottom: '25px', lineHeight: '1.5' }}>Are you sure you want to log out of your account?</p>
-                            
+
                             <div style={{ display: 'grid', gap: '12px' }}>
                                 <button
                                     onClick={() => {
