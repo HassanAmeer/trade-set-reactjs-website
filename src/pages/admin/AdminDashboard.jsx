@@ -12,7 +12,8 @@ import AdminTrades from './AdminTrades';
 import AdminCarousel from './AdminCarousel';
 import AdminEmail from './AdminEmail';
 import AdminMenu from './AdminMenu';
-import { BarChart3, Presentation, Mail, LayoutList } from 'lucide-react';
+import AdminSignals from './AdminSignals';
+import { BarChart3, Presentation, Mail, LayoutList, Zap } from 'lucide-react';
 import { db } from '../../firebase-setup';
 import { doc, getDoc } from 'firebase/firestore';
 
@@ -46,6 +47,7 @@ const AdminDashboard = () => {
             case 'carousel': return <AdminCarousel />;
             case 'email': return <AdminEmail />;
             case 'menu': return <AdminMenu />;
+            case 'signals': return <AdminSignals />;
             default: return null;
         }
     };
@@ -88,6 +90,7 @@ const AdminDashboard = () => {
         { id: 'kyc', label: 'KYC Approvals', icon: <ShieldCheck size={18} /> },
         { id: 'carousel', label: 'Home Banners', icon: <Presentation size={18} /> },
         { id: 'email', label: 'Email Campaign', icon: <Mail size={18} /> },
+        { id: 'signals', label: 'Market Signals', icon: <Zap size={18} /> },
         { id: 'settings', label: 'Settings', icon: <Settings size={18} /> },
     ];
 

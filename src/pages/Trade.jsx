@@ -5,7 +5,9 @@ import { Menu, Home as HomeIcon, ChevronDown, Search, X, Loader2 } from 'lucide-
 import { Link } from 'react-router-dom';
 import { db } from '../firebase-setup';
 import { useAuth } from '../context/AuthContext';
-import { collection, addDoc, updateDoc, doc, increment } from 'firebase/firestore';
+import { collection, addDoc, updateDoc, doc, increment, onSnapshot, getDoc } from 'firebase/firestore';
+import CustomChart from '../components/CustomChart';
+import { Trophy, CircleAlert, Sparkles } from 'lucide-react';
 
 const Trade = () => {
     const { assets, selectedAsset, setSelectedAsset } = useMarket();
@@ -17,6 +19,9 @@ const Trade = () => {
     const [chartLoading, setChartLoading] = useState(true);
     const [tradeAmount, setTradeAmount] = useState('10');
     const [trading, setTrading] = useState(false);
+    const [activeSignal, setActiveSignal] = useState(null);
+    const [showResult, setShowResult] = useState(null); // { status: 'win' | 'loss', amount: number }
+    const [tradeCountdown, setTradeCountdown] = useState(0);
     const container = useRef();
 
     const timeframes = [
@@ -30,6 +35,21 @@ const Trade = () => {
     ];
 
     useEffect(() => {
+        const unsub = onSnapshot(doc(db, 'admin_set', 'market_signal'), (snap) => {
+            if (snap.exists()) {
+                const data = snap.data();
+                const isExpired = new Date(data.expiresAt) < new Date();
+                if (data.isActive && !isExpired) {
+                    setActiveSignal(data);
+                } else {
+                    setActiveSignal(null);
+                }
+            }
+        });
+        return () => unsub();
+    }, []);
+
+    useEffect(() => {
         if (selectedAsset) {
             const updated = assets.find(a => a.id === selectedAsset.id);
             if (updated) setSelectedAsset(updated);
@@ -37,7 +57,7 @@ const Trade = () => {
     }, [assets]);
 
     useEffect(() => {
-        if (!selectedAsset) return;
+        if (!selectedAsset || activeSignal || !container.current) return;
 
         setChartLoading(true);
         if (container.current) {
@@ -82,7 +102,7 @@ const Trade = () => {
         }, 1500);
 
         return () => clearTimeout(timer);
-    }, [selectedAsset?.id, activeTime]);
+    }, [selectedAsset?.id, activeTime, activeSignal]);
 
     const handlePlaceTrade = async (direction) => {
         if (!user) {
@@ -102,10 +122,13 @@ const Trade = () => {
         }
 
         setTrading(true);
+        setTradeCountdown(10); // 10 second trade for testing, can be 30 or 60
+        
         try {
+            // Deduct balance immediately
             await updateUser({ balance: increment(-amount) });
 
-            await addDoc(collection(db, 'users', user.id, 'trades'), {
+            const tradeRef = await addDoc(collection(db, 'users', user.id, 'trades'), {
                 asset: selectedAsset.name,
                 amount: amount,
                 direction: direction,
@@ -116,10 +139,49 @@ const Trade = () => {
                 userId: user.id
             });
 
-            alert(`Trade placed: ${direction} ${selectedAsset.name} for ${amount} USDT`);
+            // Start countdown timer
+            let timeLeft = 10;
+            const timer = setInterval(async () => {
+                timeLeft -= 1;
+                setTradeCountdown(timeLeft);
+                
+                if (timeLeft <= 0) {
+                    clearInterval(timer);
+                    
+                    // Resolve trade
+                    let isWin = false;
+                    // Check signal (refetch to be sure)
+                    const signalSnap = await getDoc(doc(db, 'admin_set', 'market_signal'));
+                    const signal = signalSnap.data();
+                    const isSignalActiveNow = signal?.isActive && new Date(signal?.expiresAt) > new Date();
+
+                    if (isSignalActiveNow) {
+                        isWin = (direction === 'BUY' && signal.direction === 'UP') || 
+                                (direction === 'SELL' && signal.direction === 'DOWN');
+                    } else {
+                        // random 50/50 if no signal
+                        isWin = Math.random() > 0.5;
+                    }
+
+                    const profitAmount = isWin ? amount * 1.85 : 0; // 85% profit
+                    
+                    if (isWin) {
+                        await updateUser({ balance: increment(profitAmount) });
+                    }
+
+                    await updateDoc(tradeRef, {
+                        status: isWin ? 'profit' : 'loss',
+                        resultAmount: isWin ? profitAmount : -amount,
+                        closedAt: new Date().toISOString()
+                    });
+
+                    setShowResult({ status: isWin ? 'win' : 'loss', amount: isWin ? profitAmount : amount });
+                    setTrading(false);
+                }
+            }, 1000);
+
         } catch (error) {
             alert("Trade failed: " + error.message);
-        } finally {
             setTrading(false);
         }
     };
@@ -223,7 +285,7 @@ const Trade = () => {
             </div>
 
             <div style={{ height: '450px', width: '100%', position: 'relative', backgroundColor: '#000' }}>
-                {chartLoading && (
+                {(chartLoading && !activeSignal) && (
                     <div
                         className="skeleton-loader"
                         style={{
@@ -237,13 +299,41 @@ const Trade = () => {
                         }}
                     />
                 )}
+                
+                <div style={{ 
+                    height: '100%', 
+                    width: '100%', 
+                    position: 'absolute', 
+                    top: 0, 
+                    left: 0, 
+                    opacity: activeSignal ? 1 : 0, 
+                    pointerEvents: activeSignal ? 'auto' : 'none',
+                    transition: 'opacity 0.5s ease',
+                    zIndex: activeSignal ? 5 : 0
+                }}>
+                    {activeSignal && <CustomChart activeSignal={activeSignal} currentRate={selectedAsset?.rate} />}
+                </div>
+
                 <div
                     ref={container}
                     className="tradingview-widget-container"
-                    style={{ height: '100%', width: '100%' }}
+                    style={{ 
+                        height: '100%', 
+                        width: '100%', 
+                        opacity: activeSignal ? 0 : 1,
+                        transition: 'opacity 0.5s ease'
+                    }}
                 >
                     <div className="tradingview-widget-container__widget" style={{ height: '100%', width: '100%' }}></div>
                 </div>
+
+                {/* Trade Countdown Overlay */}
+                {trading && (
+                    <div style={{ position: 'absolute', top: '25%', left: '50%', transform: 'translate(-50%, -50%)', backgroundColor: 'rgba(17, 17, 17, 0.9)', padding: '15px 30px', borderRadius: '15px', border: '1px solid #333', textAlign: 'center', zIndex: 20, backdropFilter: 'blur(5px)' }}>
+                        <div style={{ fontSize: '11px', color: '#f0b90b', fontWeight: '800', marginBottom: '2px', letterSpacing: '1px' }}>MARKET RESOLVING</div>
+                        <div style={{ fontSize: '32px', fontWeight: '900', color: '#fff' }}>{tradeCountdown}s</div>
+                    </div>
+                )}
             </div>
 
             <div style={{
@@ -437,6 +527,54 @@ const Trade = () => {
                                 </div>
                             )}
                         </div>
+                    </motion.div>
+                )}
+            </AnimatePresence>
+
+            {/* Result Popup */}
+            <AnimatePresence>
+                {showResult && (
+                    <motion.div
+                        initial={{ opacity: 0 }}
+                        animate={{ opacity: 1 }}
+                        exit={{ opacity: 0 }}
+                        style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, backgroundColor: 'rgba(0,0,0,0.9)', zIndex: 2000, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '20px' }}
+                    >
+                        <motion.div
+                            initial={{ scale: 0.8, y: 20 }}
+                            animate={{ scale: 1, y: 0 }}
+                            style={{ backgroundColor: '#111', width: '100%', maxWidth: '350px', borderRadius: '24px', padding: '30px', textAlign: 'center', border: '1px solid #222', boxShadow: '0 10px 40px rgba(0,0,0,0.5)' }}
+                        >
+                            {showResult.status === 'win' ? (
+                                <>
+                                    <div style={{ width: '80px', height: '80px', backgroundColor: 'rgba(0,192,135,0.1)', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 20px' }}>
+                                        <Trophy size={40} color="#00c087" />
+                                    </div>
+                                    <h2 style={{ fontSize: '24px', fontWeight: '800', color: '#00c087', margin: '0 0 10px' }}>PROFIT EARNED!</h2>
+                                    <p style={{ color: '#888', fontSize: '14px', marginBottom: '20px' }}>Congratulations! Your trade predictions were correct.</p>
+                                    <div style={{ fontSize: '32px', fontWeight: '900', color: '#fff', marginBottom: '30px' }}>
+                                        +{showResult.amount.toFixed(2)} <span style={{ fontSize: '16px', color: '#f0b90b' }}>USDT</span>
+                                    </div>
+                                </>
+                            ) : (
+                                <>
+                                    <div style={{ width: '80px', height: '80px', backgroundColor: 'rgba(255,77,79,0.1)', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 20px' }}>
+                                        <CircleAlert size={40} color="#ff4d4f" />
+                                    </div>
+                                    <h2 style={{ fontSize: '24px', fontWeight: '800', color: '#ff4d4f', margin: '0 0 10px' }}>TRADE LOSS</h2>
+                                    <p style={{ color: '#888', fontSize: '14px', marginBottom: '20px' }}>Unfortunately, the market moved against your trade.</p>
+                                    <div style={{ fontSize: '32px', fontWeight: '900', color: '#fff', marginBottom: '30px' }}>
+                                        -{showResult.amount.toFixed(2)} <span style={{ fontSize: '16px', color: '#f0b90b' }}>USDT</span>
+                                    </div>
+                                </>
+                            )}
+                            <button 
+                                onClick={() => setShowResult(null)}
+                                style={{ width: '100%', padding: '16px', backgroundColor: '#f0b90b', color: '#000', borderRadius: '12px', border: 'none', fontWeight: '800', cursor: 'pointer' }}
+                            >
+                                CONTINUE
+                            </button>
+                        </motion.div>
                     </motion.div>
                 )}
             </AnimatePresence>

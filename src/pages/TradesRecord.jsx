@@ -65,9 +65,20 @@ const TradesRecord = () => {
                             
                             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px', fontSize: '12px', color: '#888' }}>
                                 <div>Entry: <span style={{ color: '#ccc' }}>{trade.entryRate}</span></div>
-                                <div style={{ textAlign: 'right' }}>Status: <span style={{ color: trade.status === 'open' ? '#00c087' : '#aaa' }}>{trade.status}</span></div>
+                                <div style={{ textAlign: 'right' }}>
+                                    Result: <span style={{ 
+                                        color: trade.status === 'profit' ? '#00c087' : trade.status === 'loss' ? '#ff4d4f' : '#aaa',
+                                        fontWeight: '700'
+                                    }}>
+                                        {trade.status === 'profit' ? `+${trade.resultAmount?.toFixed(2)}` : 
+                                         trade.status === 'loss' ? `-${Math.abs(trade.amount).toFixed(2)}` : 'Pending'}
+                                    </span>
+                                </div>
                                 <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
                                     <Clock size={12} /> {new Date(trade.timestamp).toLocaleString()}
+                                </div>
+                                <div style={{ textAlign: 'right', fontSize: '10px', color: '#555' }}>
+                                    {trade.status.toUpperCase()}
                                 </div>
                             </div>
                         </div>
