@@ -94,7 +94,7 @@ const AdminUsers = () => {
                 </div>
             </div>
             
-            <div className="admin-table-container" style={{ borderRadius: '16px', overflow: 'hidden', border: '1px solid #222' }}>
+            <div className="admin-table-container">
                 <table style={{ width: '100%', minWidth: '1200px', borderCollapse: 'collapse', color: '#fff', textAlign: 'left' }}>
                     <thead style={{ backgroundColor: '#111', borderBottom: '1px solid #333' }}>
                         <tr>
@@ -110,8 +110,12 @@ const AdminUsers = () => {
                             <tr key={user.id} style={{ borderBottom: '1px solid #222', backgroundColor: 'rgba(255,255,255,0.01)' }}>
                                 <td style={{ padding: '16px' }}>
                                     <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-                                        <div style={{ width: '35px', height: '35px', borderRadius: '50%', backgroundColor: 'rgba(0,192,135,0.1)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#00c087' }}>
-                                            <UserIcon size={18} />
+                                        <div style={{ width: '35px', height: '35px', borderRadius: '50%', backgroundColor: 'rgba(0,192,135,0.1)', overflow: 'hidden', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#00c087' }}>
+                                            {user.profile ? (
+                                                <img src={user.profile} alt="Profile" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                                            ) : (
+                                                <UserIcon size={18} />
+                                            )}
                                         </div>
                                         <div>
                                             <div style={{ color: '#fff', fontSize: '14px', fontWeight: '800' }}>{user.name || 'N/A'}</div>

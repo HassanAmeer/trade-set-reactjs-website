@@ -77,7 +77,7 @@ const AdminCarousel = () => {
             <div style={{ backgroundColor: '#111', padding: '25px', borderRadius: '16px', border: '1px solid #222', marginBottom: '40px' }}>
                 <h3 style={{ fontSize: '18px', fontWeight: '700', marginBottom: '20px', borderBottom: '1px solid #222', paddingBottom: '10px' }}>Add New Hero Slide</h3>
                 
-                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '20px' }}>
+                <div className="banner-form-grid">
                     <div style={{ display: 'flex', flexDirection: 'column', gap: '15px' }}>
                         <div>
                             <label style={{ display: 'block', fontSize: '13px', color: '#888', marginBottom: '8px' }}>Slide Title (Optional)</label>

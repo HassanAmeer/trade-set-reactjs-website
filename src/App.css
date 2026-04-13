@@ -437,14 +437,87 @@
   flex: 1;
   padding: 30px;
   overflow-y: auto;
-  width: 100%;
+  width: calc(100% - 250px);
+}
+
+.admin-mobile-header {
+  display: none;
+}
+
+.admin-drawer-overlay {
+  display: none;
 }
 
 .admin-table-container {
   overflow-x: auto;
+  width: 100%;
   border-radius: 16px;
   border: 1px solid #222;
   background-color: #111;
+  -webkit-overflow-scrolling: touch;
+}
+
+/* Support Center Layout */
+.support-layout {
+  display: flex;
+  height: calc(100vh - 120px);
+  gap: 2px;
+  background: #080808;
+  border: 1px solid #111;
+  border-radius: 20px;
+  overflow: hidden;
+}
+
+.support-sidebar {
+  width: 380px;
+  background: #0a0a0a;
+  border-right: 1px solid #111;
+  display: flex;
+  flex-direction: column;
+}
+
+.support-main {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  background: #0a0a0a;
+}
+
+/* Email Marketing Layout */
+.email-dashboard-grid {
+  display: grid;
+  grid-template-columns: 1fr 1.6fr;
+  gap: 24px;
+}
+
+/* Banner Management Layout */
+.banner-form-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 24px;
+}
+
+.banner-form-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 24px;
+}
+
+/* System Settings Layout */
+.settings-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(350px, 1fr));
+  gap: 30px;
+  align-items: flex-start;
+}
+
+.settings-card {
+  background-color: #111;
+  padding: 30px;
+  border-radius: 16px;
+  border: 1px solid #222;
+  display: flex;
+  flex-direction: column;
 }
 
 /* Mobile responsive */
@@ -453,36 +526,123 @@
     flex-direction: column;
   }
 
-  .admin-sidebar {
-    width: 100%;
-    border-right: none;
+  .admin-mobile-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 15px 20px;
+    background-color: #111;
     border-bottom: 1px solid #222;
-    padding: 15px;
+    position: sticky;
+    top: 0;
+    z-index: 1001;
+  }
+
+  .admin-sidebar {
+    position: fixed;
+    top: 0;
+    left: -280px;
+    width: 280px;
+    height: 100vh;
+    z-index: 2000;
+    transition: left 0.3s ease;
+    box-shadow: 10px 0 30px rgba(0,0,0,0.5);
+    background-color: #111;
+    border-bottom: none;
+    padding: 20px;
+  }
+
+  .admin-sidebar.open {
+    left: 0;
+  }
+
+  .admin-drawer-overlay {
+    display: block;
+    position: fixed;
+    inset: 0;
+    background-color: rgba(0,0,0,0.7);
+    backdrop-filter: blur(4px);
+    z-index: 1050;
   }
 
   .admin-sidebar nav {
-    flex-direction: row !important;
-    overflow-x: auto;
-    padding-bottom: 5px;
+    flex-direction: column !important;
+    overflow-x: visible;
+    padding-bottom: 0;
+    gap: 10px !important;
   }
 
   .admin-sidebar nav button {
-    flex: 0 0 auto;
-    white-space: nowrap;
+    flex: 1;
+    white-space: normal;
+    padding: 12px 16px !important;
+    font-size: 15px !important;
+    border-radius: 8px !important;
+    background-color: transparent;
   }
 
   .admin-sidebar-header {
-    margin-bottom: 15px !important;
+    margin-bottom: 30px !important;
   }
 
   .admin-sidebar-exit {
-    border-top: none !important;
-    padding-top: 0 !important;
-    margin-top: 10px;
+    margin-top: 20px !important;
   }
 
   .admin-main {
     padding: 15px;
+    width: 100%;
+    margin-top: 0;
+  }
+
+  /* Adjust headers specifically inside admin main */
+  .admin-main h2 {
+    font-size: 20px !important;
+    margin-bottom: 15px !important;
+  }
+  
+  .admin-main .flex-between {
+    flex-direction: column;
+    align-items: flex-start !important;
+    gap: 15px;
+  }
+  
+  .support-layout {
+    flex-direction: column;
+    height: auto;
+    min-height: 80vh;
+  }
+
+  .support-sidebar {
+    width: 100%;
+    border-right: none;
+    border-bottom: 1px solid #111;
+    max-height: 350px;
+    overflow-y: auto;
+  }
+
+  .support-main {
+    width: 100%;
+    min-height: 400px;
+  }
+  
+  .email-dashboard-grid {
+    grid-template-columns: 1fr;
+    gap: 15px;
+  }
+
+  .banner-form-grid {
+    grid-template-columns: 1fr;
+    gap: 20px;
+  }
+
+  .settings-grid {
+    grid-template-columns: 1fr;
+    gap: 15px;
+  }
+
+  .settings-card {
+    padding: 15px !important;
   }
 }
 

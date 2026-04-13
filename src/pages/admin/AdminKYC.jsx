@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { db } from '../../firebase-setup';
 import { collection, getDocs, updateDoc, addDoc } from 'firebase/firestore';
-import { CheckCircle2, XCircle, ShieldCheck, Clock, Phone } from 'lucide-react';
+import { CheckCircle2, XCircle, ShieldCheck, Clock, Phone, Trash2 } from 'lucide-react';
 import { sendEmail } from '../../services/emailService';
 
 const AdminKYC = () => {
@@ -103,6 +103,23 @@ const AdminKYC = () => {
         }
     };
 
+    const handleDelete = async (user) => {
+        if (!window.confirm("Are you sure you want to permanently delete this KYC record? The user will have to re-upload documents.")) return;
+        
+        try {
+            await updateDoc(user.ref, {
+                isVerified: false,
+                kycStatus: null,
+                kycMessage: null,
+                cnicFront: null,
+                cnicBack: null
+            });
+            fetchKYCRequests();
+        } catch (error) {
+            alert('Delete failed: ' + error.message);
+        }
+    };
+
     const statusColors = {
         pending: { bg: 'rgba(255,184,0,0.1)', color: '#ffb800' },
         approved: { bg: 'rgba(0,192,135,0.1)', color: '#00c087' },
@@ -120,7 +137,7 @@ const AdminKYC = () => {
                 </div>
             </div>
 
-            <div className="admin-table-container" style={{ borderRadius: '16px', border: '1px solid #222', overflow: 'hidden' }}>
+            <div className="admin-table-container">
                 <table style={{ width: '100%', minWidth: '1100px', borderCollapse: 'collapse', color: '#fff', textAlign: 'left' }}>
                     <thead style={{ backgroundColor: '#111', borderBottom: '1px solid #333' }}>
                         <tr>
@@ -244,6 +261,17 @@ const AdminKYC = () => {
                                                 }}
                                             >
                                                 <XCircle size={12} /> Reject
+                                            </button>
+                                            <button
+                                                onClick={() => handleDelete(user)}
+                                                style={{
+                                                    padding: '6px 12px', borderRadius: '7px', fontSize: '11px', fontWeight: '700', cursor: 'pointer',
+                                                    border: '1px solid rgba(136, 136, 136, 0.3)', display: 'flex', alignItems: 'center', gap: '5px',
+                                                    backgroundColor: 'transparent',
+                                                    color: '#888'
+                                                }}
+                                            >
+                                                <Trash2 size={12} /> Delete KYC
                                             </button>
                                         </div>
                                     </td>

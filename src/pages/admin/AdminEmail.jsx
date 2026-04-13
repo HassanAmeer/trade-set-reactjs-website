@@ -210,7 +210,7 @@ button_url: ${window.location.origin}/trade`);
                 </div>
             )}
 
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1.6fr', gap: '24px' }}>
+            <div className="email-dashboard-grid">
                 {/* Left: Audience */}
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
                     <div style={{ backgroundColor: '#0a0a0a', border: '1px solid #222', borderRadius: '16px', display: 'flex', flexDirection: 'column', height: '550px' }}>

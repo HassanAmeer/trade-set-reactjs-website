@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { LayoutDashboard, Users, CreditCard, ShieldCheck, LogOut, Download, Settings, MessageSquare, FileText } from 'lucide-react';
+import { LayoutDashboard, Users, CreditCard, ShieldCheck, LogOut, Download, Settings, MessageSquare, FileText, Menu, X } from 'lucide-react';
 import AdminDeposits from './AdminDeposits';
 import AdminWithdrawals from './AdminWithdrawals';
 import AdminUsers from './AdminUsers';
@@ -16,6 +16,7 @@ import { BarChart3, Presentation, Mail } from 'lucide-react';
 const AdminDashboard = () => {
     const navigate = useNavigate();
     const [activeTab, setActiveTab] = useState('deposits');
+    const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
 
     useEffect(() => {
         const isAdmin = localStorage.getItem('adminToken');
@@ -31,101 +32,76 @@ const AdminDashboard = () => {
 
     const renderContent = () => {
         switch (activeTab) {
-            case 'deposits':
-                return <AdminDeposits />;
-            case 'withdrawals':
-                return <AdminWithdrawals />;
-            case 'users':
-                return <AdminUsers />;
-            case 'support':
-                return <AdminSupport />;
-            case 'kyc':
-                return <AdminKYC />;
-            case 'blogs':
-                return <AdminBlogs />;
-            case 'settings':
-                return <AdminSettings />;
-            case 'trades':
-                return <AdminTrades />;
-            case 'carousel':
-                return <AdminCarousel />;
-            case 'email':
-                return <AdminEmail />;
-            default:
-                return null;
+            case 'deposits': return <AdminDeposits />;
+            case 'withdrawals': return <AdminWithdrawals />;
+            case 'users': return <AdminUsers />;
+            case 'support': return <AdminSupport />;
+            case 'kyc': return <AdminKYC />;
+            case 'blogs': return <AdminBlogs />;
+            case 'settings': return <AdminSettings />;
+            case 'trades': return <AdminTrades />;
+            case 'carousel': return <AdminCarousel />;
+            case 'email': return <AdminEmail />;
+            default: return null;
         }
     };
 
+    const navItems = [
+        { id: 'deposits', label: 'Deposits', icon: <CreditCard size={18} /> },
+        { id: 'withdrawals', label: 'Withdrawals', icon: <Download size={18} /> },
+        { id: 'users', label: 'Users', icon: <Users size={18} /> },
+        { id: 'support', label: 'Support Center', icon: <MessageSquare size={18} /> },
+        { id: 'trades', label: 'Global Trades', icon: <BarChart3 size={18} /> },
+        { id: 'blogs', label: 'News & Blogs', icon: <FileText size={18} /> },
+        { id: 'kyc', label: 'KYC Approvals', icon: <ShieldCheck size={18} /> },
+        { id: 'carousel', label: 'Home Banners', icon: <Presentation size={18} /> },
+        { id: 'email', label: 'Email Campaign', icon: <Mail size={18} /> },
+        { id: 'settings', label: 'Settings', icon: <Settings size={18} /> },
+    ];
+
     return (
         <div className="admin-layout">
+            {/* Mobile Top Header */}
+            <div className="admin-mobile-header">
+                <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                    <LayoutDashboard size={24} color="#00c087" />
+                    <span style={{ fontWeight: '900', color: '#fff' }}>Admin Panel</span>
+                </div>
+                <button 
+                    onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
+                    style={{ background: 'none', border: 'none', color: '#fff', cursor: 'pointer' }}
+                >
+                    {isMobileMenuOpen ? <X size={28} /> : <Menu size={28} />}
+                </button>
+            </div>
+
+            {/* Sidebar / Drawer Overlay */}
+            {isMobileMenuOpen && <div className="admin-drawer-overlay" onClick={() => setIsMobileMenuOpen(false)} />}
+
             {/* Sidebar */}
-            <div className="admin-sidebar">
+            <div className={`admin-sidebar ${isMobileMenuOpen ? 'open' : ''}`}>
                 <div className="admin-sidebar-header" style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '40px', color: '#00c087' }}>
                     <LayoutDashboard size={28} />
                     <h2 style={{ fontSize: '20px', fontWeight: '800', margin: 0 }}>TradeSet Admin</h2>
                 </div>
 
                 <nav style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: '10px' }}>
-                    <button
-                        onClick={() => setActiveTab('deposits')}
-                        style={{ ...sidebarBtnStyle, backgroundColor: activeTab === 'deposits' ? 'rgba(0,192,135,0.1)' : 'transparent', color: activeTab === 'deposits' ? '#00c087' : '#888' }}
-                    >
-                        <CreditCard size={18} /> Deposits
-                    </button>
-                    <button
-                        onClick={() => setActiveTab('withdrawals')}
-                        style={{ ...sidebarBtnStyle, backgroundColor: activeTab === 'withdrawals' ? 'rgba(0,192,135,0.1)' : 'transparent', color: activeTab === 'withdrawals' ? '#00c087' : '#888' }}
-                    >
-                        <Download size={18} /> Withdrawals
-                    </button>
-                    <button
-                        onClick={() => setActiveTab('users')}
-                        style={{ ...sidebarBtnStyle, backgroundColor: activeTab === 'users' ? 'rgba(0,192,135,0.1)' : 'transparent', color: activeTab === 'users' ? '#00c087' : '#888' }}
-                    >
-                        <Users size={18} /> Users
-                    </button>
-                    <button
-                        onClick={() => setActiveTab('support')}
-                        style={{ ...sidebarBtnStyle, backgroundColor: activeTab === 'support' ? 'rgba(0,192,135,0.1)' : 'transparent', color: activeTab === 'support' ? '#00c087' : '#888' }}
-                    >
-                        <MessageSquare size={18} /> Support Center
-                    </button>
-                    <button
-                        onClick={() => setActiveTab('trades')}
-                        style={{ ...sidebarBtnStyle, backgroundColor: activeTab === 'trades' ? 'rgba(0,192,135,0.1)' : 'transparent', color: activeTab === 'trades' ? '#00c087' : '#888' }}
-                    >
-                        <BarChart3 size={18} /> Global Trades
-                    </button>
-                    <button
-                        onClick={() => setActiveTab('blogs')}
-                        style={{ ...sidebarBtnStyle, backgroundColor: activeTab === 'blogs' ? 'rgba(0,192,135,0.1)' : 'transparent', color: activeTab === 'blogs' ? '#00c087' : '#888' }}
-                    >
-                        <FileText size={18} /> News & Blogs
-                    </button>
-                    <button
-                        onClick={() => setActiveTab('kyc')}
-                        style={{ ...sidebarBtnStyle, backgroundColor: activeTab === 'kyc' ? 'rgba(0,192,135,0.1)' : 'transparent', color: activeTab === 'kyc' ? '#00c087' : '#888' }}
-                    >
-                        <ShieldCheck size={18} /> KYC Approvals
-                    </button>
-                    <button
-                        onClick={() => setActiveTab('carousel')}
-                        style={{ ...sidebarBtnStyle, backgroundColor: activeTab === 'carousel' ? 'rgba(0,192,135,0.1)' : 'transparent', color: activeTab === 'carousel' ? '#00c087' : '#888' }}
-                    >
-                        <Presentation size={18} /> Home Banners
-                    </button>
-                    <button
-                        onClick={() => setActiveTab('email')}
-                        style={{ ...sidebarBtnStyle, backgroundColor: activeTab === 'email' ? 'rgba(0,192,135,0.1)' : 'transparent', color: activeTab === 'email' ? '#00c087' : '#888' }}
-                    >
-                        <Mail size={18} /> Email Campaign
-                    </button>
-                    <button
-                        onClick={() => setActiveTab('settings')}
-                        style={{ ...sidebarBtnStyle, backgroundColor: activeTab === 'settings' ? 'rgba(0,192,135,0.1)' : 'transparent', color: activeTab === 'settings' ? '#00c087' : '#888' }}
-                    >
-                        <Settings size={18} /> Settings
-                    </button>
+                    {navItems.map(item => (
+                        <button
+                            key={item.id}
+                            onClick={() => {
+                                setActiveTab(item.id);
+                                setIsMobileMenuOpen(false);
+                            }}
+                            style={{ 
+                                ...sidebarBtnStyle, 
+                                backgroundColor: activeTab === item.id ? 'rgba(0,192,135,0.1)' : 'transparent', 
+                                color: activeTab === item.id ? '#00c087' : '#888' 
+                            }}
+                        >
+                            {item.icon} {item.label}
+                        </button>
+                    ))}
                 </nav>
 
                 <button

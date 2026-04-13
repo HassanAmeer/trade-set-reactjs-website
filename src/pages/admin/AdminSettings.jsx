@@ -175,10 +175,10 @@ const AdminSettings = () => {
         >
             <h2 style={{ color: '#fff', fontSize: '24px', fontWeight: '800', marginBottom: '30px' }}>System Settings</h2>
 
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(350px, 1fr))', gap: '30px', alignItems: 'flex-start' }}>
+            <div className="settings-grid">
                 
                 {/* 1. Admin Account Form */}
-                <form onSubmit={saveAccount} style={sectionStyle}>
+                <form onSubmit={saveAccount} className="settings-card">
                     <h3 style={sectionHeaderStyle}>Admin Account</h3>
                     
                     <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', marginBottom: '30px' }}>
@@ -232,7 +232,7 @@ const AdminSettings = () => {
                 </form>
 
                 {/* 2. Website Branding Form */}
-                <form onSubmit={saveBranding} style={sectionStyle}>
+                <form onSubmit={saveBranding} className="settings-card">
                     <h3 style={sectionHeaderStyle}>Website Branding</h3>
                     
                     <div style={{ display: 'grid', gap: '15px', marginBottom: '25px' }}>
@@ -271,7 +271,7 @@ const AdminSettings = () => {
                 </form>
 
                 {/* 3. Market Configuration Form */}
-                <form onSubmit={saveMarket} style={sectionStyle}>
+                <form onSubmit={saveMarket} className="settings-card">
                     <h3 style={sectionHeaderStyle}>Market Config</h3>
                     
                     <div style={{ display: 'grid', gap: '20px' }}>
@@ -301,7 +301,7 @@ const AdminSettings = () => {
                 </form>
 
                 {/* 4. Email Configuration Form */}
-                <form onSubmit={saveEmailConfig} style={sectionStyle}>
+                <form onSubmit={saveEmailConfig} className="settings-card">
                     <h3 style={{ ...sectionHeaderStyle, color: 'var(--accent-gold)' }}>Email System (EmailJS)</h3>
                     
                     <div style={{ display: 'flex', gap: '12px', backgroundColor: 'rgba(240,185,11,0.05)', padding: '12px', borderRadius: '10px', marginBottom: '20px' }}>
@@ -347,15 +347,6 @@ const AdminSettings = () => {
 };
 
 // Styles
-const sectionStyle = {
-    backgroundColor: '#111',
-    padding: '30px',
-    borderRadius: '16px',
-    border: '1px solid #222',
-    display: 'flex',
-    flexDirection: 'column'
-};
-
 const sectionHeaderStyle = {
     color: '#00c087',
     fontSize: '18px',

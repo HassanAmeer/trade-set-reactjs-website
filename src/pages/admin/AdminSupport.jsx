@@ -123,9 +123,9 @@ const AdminSupport = () => {
     if (loading) return <div style={{ color: '#888', display: 'flex', alignItems: 'center', gap: '10px', padding: '50px' }}><Loader2 className="animate-spin" /> Fetching support data...</div>;
 
     return (
-        <div style={{ display: 'flex', height: 'calc(100vh - 120px)', gap: '2px', background: '#080808', border: '1px solid #111', borderRadius: '20px', overflow: 'hidden' }}>
+        <div className="support-layout">
             {/* Sidebar: Ticket List */}
-            <div style={{ width: '380px', background: '#0a0a0a', borderRight: '1px solid #111', display: 'flex', flexDirection: 'column' }}>
+            <div className="support-sidebar">
                 <div style={{ padding: '20px', borderBottom: '1px solid #111' }}>
                     <h2 style={{ fontSize: '20px', fontWeight: '900', color: '#00c087', marginBottom: '15px' }}>Inquiries</h2>
                     <div style={{ position: 'relative', marginBottom: '15px' }}>
@@ -175,7 +175,7 @@ const AdminSupport = () => {
             </div>
 
             {/* Main Content: Ticket Detail */}
-            <div style={{ flex: 1, display: 'flex', flexDirection: 'column', background: '#0a0a0a' }}>
+            <div className="support-main">
                 {selectedTicket ? (
                     <>
                         <div style={{ padding: '25px 35px', borderBottom: '1px solid #111', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
