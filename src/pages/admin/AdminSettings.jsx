@@ -3,7 +3,7 @@ import { db } from '../../firebase-setup';
 import { doc, getDoc, setDoc, updateDoc } from 'firebase/firestore';
 import { uploadFileChunks } from '../../services/dbs';
 import { motion } from 'framer-motion';
-import { Camera, Save, Loader2, User } from 'lucide-react';
+import { Camera, Save, Loader2, User, Zap, Eye, EyeOff } from 'lucide-react';
 
 const AdminSettings = () => {
     const [adminData, setAdminData] = useState({
@@ -15,12 +15,21 @@ const AdminSettings = () => {
     const [platformConfig, setPlatformConfig] = useState({
         usdtAddress: '',
         minDeposit: 10,
-        minWithdrawal: 20
+        minWithdrawal: 20,
+        websiteName: 'TradeSet',
+        websiteTitle: 'Professional Trading Platform',
+        logoUrl: '',
+        faviconUrl: '',
+        referralCommission: 10 // Default 10%
     });
     const [loading, setLoading] = useState(true);
-    const [saving, setSaving] = useState(false);
+    const [savingSection, setSavingSection] = useState(''); // 'account', 'branding', 'market'
+    const [showPassword, setShowPassword] = useState(false);
     const [uploading, setUploading] = useState(false);
+    const [uploadingBranding, setUploadingBranding] = useState(''); // 'logo' or 'favicon'
     const fileInputRef = useRef(null);
+    const logoInputRef = useRef(null);
+    const faviconInputRef = useRef(null);
 
     const ADMIN_DOC_ID = 'config'; 
 
@@ -34,30 +43,25 @@ const AdminSettings = () => {
             // Admin Data
             const adminDocRef = doc(db, 'admin_set', ADMIN_DOC_ID);
             const adminSnapshot = await getDoc(adminDocRef);
-
             if (adminSnapshot.exists()) {
                 setAdminData(adminSnapshot.data());
-            } else {
-                const defaultConfig = {
-                    email: 'admin@gmail.com',
-                    password: '12345678',
-                    name: 'Super Admin',
-                    profileUrl: ''
-                };
-                await setDoc(adminDocRef, defaultConfig);
-                setAdminData(defaultConfig);
             }
 
             // Platform Config
             const platformRef = doc(db, 'admin_set', 'platform');
             const platformSnapshot = await getDoc(platformRef);
             if (platformSnapshot.exists()) {
-                setPlatformConfig(platformSnapshot.data());
+                setPlatformConfig(prev => ({ ...prev, ...platformSnapshot.data() }));
             } else {
                 const defaultPlatform = {
                     usdtAddress: 'TMR7XE9h7aA9eApXK4jLqR7p3z',
                     minDeposit: 10,
-                    minWithdrawal: 20
+                    minWithdrawal: 20,
+                    websiteName: 'TradeSet',
+                    websiteTitle: 'Professional Trading Platform',
+                    logoUrl: '',
+                    faviconUrl: '',
+                    referralCommission: 10
                 };
                 await setDoc(platformRef, defaultPlatform);
                 setPlatformConfig(defaultPlatform);
@@ -77,183 +81,311 @@ const AdminSettings = () => {
         setPlatformConfig({ ...platformConfig, [e.target.name]: e.target.value });
     };
 
-    const handleSave = async (e) => {
+    const saveAccount = async (e) => {
         e.preventDefault();
-        setSaving(true);
+        setSavingSection('account');
         try {
-            // Update Admin
             const adminDocRef = doc(db, 'admin_set', ADMIN_DOC_ID);
             await updateDoc(adminDocRef, adminData);
-
-            // Update Platform
-            const platformRef = doc(db, 'admin_set', 'platform');
-            await setDoc(platformRef, platformConfig); // Use setDoc to ensure it exists or updates
-
-            alert('All settings updated successfully!');
+            alert('Admin account settings updated!');
         } catch (error) {
-            alert('Failed to save settings: ' + error.message);
+            alert('Failed: ' + error.message);
         } finally {
-            setSaving(false);
+            setSavingSection('');
         }
     };
 
-    const handleImageSelect = async (e) => {
+    const saveBranding = async (e) => {
+        e.preventDefault();
+        setSavingSection('branding');
+        try {
+            const platformRef = doc(db, 'admin_set', 'platform');
+            await setDoc(platformRef, platformConfig);
+            alert('Website branding updated successfully!');
+        } catch (error) {
+            alert('Failed: ' + error.message);
+        } finally {
+            setSavingSection('');
+        }
+    };
+
+    const saveMarket = async (e) => {
+        e.preventDefault();
+        setSavingSection('market');
+        try {
+            const platformRef = doc(db, 'admin_set', 'platform');
+            await setDoc(platformRef, platformConfig);
+            alert('Market configuration saved!');
+        } catch (error) {
+            alert('Failed: ' + error.message);
+        } finally {
+            setSavingSection('');
+        }
+    };
+
+    const handleImageSelect = async (e, type) => {
         const file = e.target.files[0];
         if (!file) return;
 
-        setUploading(true);
+        if (type === 'profile') setUploading(true);
+        else setUploadingBranding(type);
+
         try {
             const result = await uploadFileChunks(file);
             if (result.success && result.url) {
-                setAdminData(prev => ({ ...prev, profileUrl: result.url }));
-            } else {
-                alert("Upload failed");
+                if (type === 'profile') setAdminData(prev => ({ ...prev, profileUrl: result.url }));
+                if (type === 'logo') setPlatformConfig(prev => ({ ...prev, logoUrl: result.url }));
+                if (type === 'favicon') setPlatformConfig(prev => ({ ...prev, faviconUrl: result.url }));
             }
         } catch (error) {
-            alert("Error uploading file: " + error.message);
+            alert("Upload failed");
         } finally {
             setUploading(false);
+            setUploadingBranding('');
         }
     };
 
-    if (loading) return <div style={{ color: '#fff' }}>Loading settings...</div>;
+    if (loading) return <div style={{ color: '#fff', padding: '50px' }}>Loading system configurations...</div>;
 
     return (
         <motion.div
             initial={{ opacity: 0, y: 10 }}
             animate={{ opacity: 1, y: 0 }}
-            style={{ width: '100%', maxWidth: '800px', margin: '0 auto' }}
+            style={{ width: '100%', padding: '0 20px', paddingBottom: '50px' }}
         >
-            <h2 style={{ color: '#fff', fontSize: '24px', fontWeight: '800', marginBottom: '30px' }}>Admin & Platform Settings</h2>
+            <h2 style={{ color: '#fff', fontSize: '24px', fontWeight: '800', marginBottom: '30px' }}>System Settings</h2>
 
-            <form onSubmit={handleSave} style={{ display: 'grid', gridTemplateColumns: 'minmax(300px, 1fr) minmax(300px, 1.2fr)', gap: '30px', alignItems: 'flex-start' }}>
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(350px, 1fr))', gap: '30px', alignItems: 'flex-start' }}>
                 
-                {/* Profile Section */}
-                <div style={{ backgroundColor: '#111', padding: '30px', borderRadius: '16px', border: '1px solid #222' }}>
-                    <h3 style={{ color: '#fff', fontSize: '18px', marginBottom: '20px', display: 'flex', alignItems: 'center', gap: '8px' }}>Admin Profile</h3>
+                {/* 1. Admin Account Form */}
+                <form onSubmit={saveAccount} style={sectionStyle}>
+                    <h3 style={sectionHeaderStyle}>Admin Account</h3>
                     
                     <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', marginBottom: '30px' }}>
-                        <div style={{ position: 'relative', width: '90px', height: '90px', borderRadius: '50%', border: '2px solid #00c087', display: 'flex', alignItems: 'center', justifyContent: 'center', overflow: 'hidden', backgroundColor: '#1a1a1a', marginBottom: '10px' }}>
-                            {adminData.profileUrl ? (
-                                <img src={adminData.profileUrl} alt="Admin" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
-                            ) : (
-                                <User size={40} color="#666" />
-                            )}
-                            {uploading && (
-                                <div style={{ position: 'absolute', inset: 0, backgroundColor: 'rgba(0,0,0,0.6)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                                    <Loader2 className="animate-spin" color="#00c087" />
-                                </div>
-                            )}
+                        <div style={avatarContainerStyle}>
+                            {adminData.profileUrl ? <img src={adminData.profileUrl} style={{ width: '100%', height: '100%', objectFit: 'cover' }} /> : <User size={40} color="#333" />}
+                            {uploading && <div style={uploadOverlayStyle}><Loader2 className="animate-spin" color="#00c087" /></div>}
                         </div>
-                        <button
-                            type="button"
-                            onClick={() => !uploading && fileInputRef.current?.click()}
-                            style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '12px', color: '#00c087', background: 'transparent', border: 'none', cursor: 'pointer', fontWeight: '600' }}
-                        >
-                            <Camera size={14} /> Change Avatar
-                        </button>
-                        <input type="file" ref={fileInputRef} onChange={handleImageSelect} style={{ display: 'none' }} accept="image/*" />
+                        <button type="button" onClick={() => fileInputRef.current.click()} style={changeBtnStyle}>Change Avatar</button>
+                        <input type="file" ref={fileInputRef} onChange={(e) => handleImageSelect(e, 'profile')} style={{ display: 'none' }} />
                     </div>
 
                     <div style={{ display: 'grid', gap: '15px' }}>
-                        <div>
-                            <label style={{ display: 'block', color: '#888', fontSize: '12px', marginBottom: '6px' }}>Name</label>
-                            <input
-                                type="text"
-                                name="name"
-                                value={adminData.name}
-                                onChange={handleAdminChange}
-                                style={{ width: '100%', padding: '12px', backgroundColor: '#1a1a1a', border: '1px solid #333', borderRadius: '8px', color: '#fff' }}
+                        <label style={labelStyle}>Full Name</label>
+                        <input type="text" name="name" value={adminData.name} onChange={handleAdminChange} placeholder="Admin Name" style={inputStyle} />
+                        <label style={labelStyle}>Email Address</label>
+                        <input type="email" name="email" value={adminData.email} onChange={handleAdminChange} placeholder="Login Email" style={inputStyle} />
+                        <label style={labelStyle}>Password</label>
+                        <div style={{ position: 'relative' }}>
+                            <input 
+                                type={showPassword ? "text" : "password"} 
+                                name="password" 
+                                value={adminData.password} 
+                                onChange={handleAdminChange} 
+                                placeholder="New Password" 
+                                style={inputStyle} 
                             />
-                        </div>
-                        <div>
-                            <label style={{ display: 'block', color: '#888', fontSize: '12px', marginBottom: '6px' }}>Login Email</label>
-                            <input
-                                type="email"
-                                name="email"
-                                value={adminData.email}
-                                onChange={handleAdminChange}
-                                style={{ width: '100%', padding: '12px', backgroundColor: '#1a1a1a', border: '1px solid #333', borderRadius: '8px', color: '#fff' }}
-                            />
-                        </div>
-                        <div>
-                            <label style={{ display: 'block', color: '#888', fontSize: '12px', marginBottom: '6px' }}>Password</label>
-                            <input
-                                type="text"
-                                name="password"
-                                value={adminData.password}
-                                onChange={handleAdminChange}
-                                style={{ width: '100%', padding: '12px', backgroundColor: '#1a1a1a', border: '1px solid #333', borderRadius: '8px', color: '#fff' }}
-                            />
+                            <button 
+                                type="button" 
+                                onClick={() => setShowPassword(!showPassword)}
+                                style={{
+                                    position: 'absolute',
+                                    right: '12px',
+                                    top: '50%',
+                                    transform: 'translateY(-50%)',
+                                    background: 'none',
+                                    border: 'none',
+                                    color: '#555',
+                                    cursor: 'pointer',
+                                    display: 'flex',
+                                    alignItems: 'center'
+                                }}
+                            >
+                                {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
+                            </button>
                         </div>
                     </div>
-                </div>
 
-                {/* Platform Config Section */}
-                <div style={{ backgroundColor: '#111', padding: '30px', borderRadius: '16px', border: '1px solid #222' }}>
-                    <h3 style={{ color: '#fff', fontSize: '18px', marginBottom: '20px' }}>Platform Configuration</h3>
+                    <button type="submit" disabled={savingSection === 'account'} style={saveBtnStyle}>
+                        {savingSection === 'account' ? <Loader2 className="animate-spin" /> : <><Save size={18} /> Update Account</>}
+                    </button>
+                </form>
+
+                {/* 2. Website Branding Form */}
+                <form onSubmit={saveBranding} style={sectionStyle}>
+                    <h3 style={sectionHeaderStyle}>Website Branding</h3>
                     
-                    <div style={{ display: 'grid', gap: '15px' }}>
+                    <div style={{ display: 'grid', gap: '15px', marginBottom: '25px' }}>
                         <div>
-                            <label style={{ display: 'block', color: '#888', fontSize: '12px', marginBottom: '6px' }}>USDT (TRC20) Deposit Address</label>
-                            <input
-                                type="text"
-                                name="usdtAddress"
-                                value={platformConfig.usdtAddress}
-                                onChange={handlePlatformChange}
-                                style={{ width: '100%', padding: '12px', backgroundColor: '#1a1a1a', border: '1px solid #333', borderRadius: '8px', color: '#fff', fontFamily: 'monospace' }}
-                            />
+                            <label style={labelStyle}>Website Name</label>
+                            <input type="text" name="websiteName" value={platformConfig.websiteName} onChange={handlePlatformChange} style={inputStyle} />
+                        </div>
+                        <div>
+                            <label style={labelStyle}>Browser Tab Title</label>
+                            <input type="text" name="websiteTitle" value={platformConfig.websiteTitle} onChange={handlePlatformChange} style={inputStyle} />
+                        </div>
+                    </div>
+
+                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '20px' }}>
+                        <div style={{ textAlign: 'center' }}>
+                            <label style={labelStyle}>Logo</label>
+                            <div onClick={() => logoInputRef.current.click()} style={uploadBoxStyle}>
+                                {platformConfig.logoUrl ? <img src={platformConfig.logoUrl} style={{ maxWidth: '100%', maxHeight: '100%' }} /> : <Camera size={24} color="#333" />}
+                                {uploadingBranding === 'logo' && <div style={uploadOverlayStyle}><Loader2 className="animate-spin" /></div>}
+                            </div>
+                            <input type="file" ref={logoInputRef} onChange={(e) => handleImageSelect(e, 'logo')} style={{ display: 'none' }} />
+                        </div>
+                        <div style={{ textAlign: 'center' }}>
+                            <label style={labelStyle}>Favicon</label>
+                            <div onClick={() => faviconInputRef.current.click()} style={uploadBoxStyle}>
+                                {platformConfig.faviconUrl ? <img src={platformConfig.faviconUrl} style={{ width: '30px', height: '30px' }} /> : <Camera size={24} color="#333" />}
+                                {uploadingBranding === 'favicon' && <div style={uploadOverlayStyle}><Loader2 className="animate-spin" /></div>}
+                            </div>
+                            <input type="file" ref={faviconInputRef} onChange={(e) => handleImageSelect(e, 'favicon')} style={{ display: 'none' }} />
+                        </div>
+                    </div>
+
+                    <button type="submit" disabled={savingSection === 'branding'} style={{ ...saveBtnStyle, backgroundColor: '#00c087' }}>
+                        {savingSection === 'branding' ? <Loader2 className="animate-spin" /> : <><Save size={18} /> Deploy Branding</>}
+                    </button>
+                </form>
+
+                {/* 3. Market Configuration Form */}
+                <form onSubmit={saveMarket} style={sectionStyle}>
+                    <h3 style={sectionHeaderStyle}>Market Config</h3>
+                    
+                    <div style={{ display: 'grid', gap: '20px' }}>
+                        <div>
+                            <label style={labelStyle}>USDT (TRC20) Wallet</label>
+                            <input type="text" name="usdtAddress" value={platformConfig.usdtAddress} onChange={handlePlatformChange} style={{ ...inputStyle, fontFamily: 'monospace', fontSize: '13px' }} />
                         </div>
                         <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '15px' }}>
                             <div>
-                                <label style={{ display: 'block', color: '#888', fontSize: '12px', marginBottom: '6px' }}>Min Deposit (USDT)</label>
-                                <input
-                                    type="number"
-                                    name="minDeposit"
-                                    value={platformConfig.minDeposit}
-                                    onChange={handlePlatformChange}
-                                    style={{ width: '100%', padding: '12px', backgroundColor: '#1a1a1a', border: '1px solid #333', borderRadius: '8px', color: '#fff' }}
-                                />
+                                <label style={labelStyle}>Min Deposit</label>
+                                <input type="number" name="minDeposit" value={platformConfig.minDeposit} onChange={handlePlatformChange} style={inputStyle} />
                             </div>
                             <div>
-                                <label style={{ display: 'block', color: '#888', fontSize: '12px', marginBottom: '6px' }}>Min Withdrawal (USDT)</label>
-                                <input
-                                    type="number"
-                                    name="minWithdrawal"
-                                    value={platformConfig.minWithdrawal}
-                                    onChange={handlePlatformChange}
-                                    style={{ width: '100%', padding: '12px', backgroundColor: '#1a1a1a', border: '1px solid #333', borderRadius: '8px', color: '#fff' }}
-                                />
+                                <label style={labelStyle}>Min Withdrawal</label>
+                                <input type="number" name="minWithdrawal" value={platformConfig.minWithdrawal} onChange={handlePlatformChange} style={inputStyle} />
                             </div>
+                        </div>
+                        <div>
+                            <label style={labelStyle}>Referral Commission (%)</label>
+                            <input type="number" name="referralCommission" value={platformConfig.referralCommission} onChange={handlePlatformChange} style={inputStyle} />
                         </div>
                     </div>
 
-                    <button
-                        type="submit"
-                        disabled={saving}
-                        style={{
-                            width: '100%',
-                            padding: '16px',
-                            backgroundColor: '#00c087',
-                            color: '#fff',
-                            border: 'none',
-                            borderRadius: '12px',
-                            fontWeight: '800',
-                            fontSize: '15px',
-                            cursor: saving ? 'not-allowed' : 'pointer',
-                            display: 'flex',
-                            alignItems: 'center',
-                            justifyContent: 'center',
-                            gap: '10px',
-                            marginTop: '30px'
-                        }}
-                    >
-                        {saving ? <Loader2 className="animate-spin" /> : <><Save size={18} /> Save All Changes</>}
+                    <button type="submit" disabled={savingSection === 'market'} style={{ ...saveBtnStyle, backgroundColor: '#f0b90b', color: '#000' }}>
+                        {savingSection === 'market' ? <Loader2 className="animate-spin" /> : <><Save size={18} /> Update Limits</>}
                     </button>
-                </div>
-            </form>
+                </form>
+
+            </div>
         </motion.div>
     );
+};
+
+// Styles
+const sectionStyle = {
+    backgroundColor: '#111',
+    padding: '30px',
+    borderRadius: '16px',
+    border: '1px solid #222',
+    display: 'flex',
+    flexDirection: 'column'
+};
+
+const sectionHeaderStyle = {
+    color: '#00c087',
+    fontSize: '18px',
+    fontWeight: '900',
+    marginBottom: '25px',
+    textTransform: 'uppercase'
+};
+
+const inputStyle = {
+    width: '100%',
+    padding: '12px 14px',
+    backgroundColor: '#1a1a1a',
+    border: '1px solid #222',
+    borderRadius: '10px',
+    color: '#fff',
+    outline: 'none',
+    fontSize: '14px'
+};
+
+const labelStyle = {
+    display: 'block',
+    fontSize: '11px',
+    color: '#666',
+    fontWeight: '800',
+    textTransform: 'uppercase',
+    marginBottom: '6px',
+    marginTop: '10px'
+};
+
+const avatarContainerStyle = {
+    position: 'relative',
+    width: '90px',
+    height: '90px',
+    borderRadius: '50%',
+    border: '2px solid #00c087',
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'center',
+    overflow: 'hidden',
+    backgroundColor: '#1a1a1a',
+    marginBottom: '10px'
+};
+
+const uploadBoxStyle = {
+    height: '80px',
+    background: '#1a1a1a',
+    borderRadius: '12px',
+    border: '2px dashed #333',
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'center',
+    cursor: 'pointer',
+    position: 'relative',
+    overflow: 'hidden'
+};
+
+const uploadOverlayStyle = {
+    position: 'absolute',
+    inset: 0,
+    background: 'rgba(0,0,0,0.8)',
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'center',
+    color: '#00c087'
+};
+
+const changeBtnStyle = {
+    fontSize: '12px',
+    background: 'none',
+    border: 'none',
+    color: '#00c087',
+    cursor: 'pointer',
+    fontWeight: '700'
+};
+
+const saveBtnStyle = {
+    width: '100%',
+    padding: '16px',
+    color: '#fff',
+    border: 'none',
+    borderRadius: '12px',
+    fontWeight: '900',
+    fontSize: '15px',
+    cursor: 'pointer',
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: '10px',
+    marginTop: '30px',
+    backgroundColor: '#222',
+    transition: 'all 0.2s easse'
 };
 
 export default AdminSettings;

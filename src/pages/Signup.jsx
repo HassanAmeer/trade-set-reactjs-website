@@ -1,8 +1,9 @@
 import React, { useState } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
+import { useBranding } from '../context/BrandingContext';
 import { motion } from 'framer-motion';
-import { Mail, Lock, Phone, User, ArrowRight, Loader2 } from 'lucide-react';
+import { Mail, Lock, Phone, User, ArrowRight, Loader2, Zap } from 'lucide-react';
 
 const Signup = () => {
     const [email, setEmail] = useState('');
@@ -11,6 +12,7 @@ const Signup = () => {
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState('');
     const { signup } = useAuth();
+    const { websiteName, logoUrl } = useBranding();
     const navigate = useNavigate();
 
     const handleSubmit = async (e) => {
@@ -39,9 +41,17 @@ const Signup = () => {
                 animate={{ opacity: 1, y: 0 }}
                 style={{ maxWidth: '400px', margin: '0 auto', width: '100%' }}
             >
-                <div style={{ textAlign: 'center', marginBottom: '40px' }}>
-                    <h2 style={{ fontSize: '32px', fontWeight: '800', marginBottom: '10px' }}>Join TradeSet</h2>
-                    <p style={{ color: '#888', fontSize: '14px' }}>Start your trading journey today</p>
+                <div style={{ textAlign: 'center', marginBottom: '30px' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '10px', marginBottom: '20px' }}>
+                        {logoUrl ? (
+                            <img src={logoUrl} alt="Logo" style={{ height: '35px', width: 'auto' }} />
+                        ) : (
+                            <Zap size={30} color="var(--accent-gold)" fill="var(--accent-gold)" />
+                        )}
+                        <span style={{ fontSize: '24px', fontWeight: '900', color: 'var(--accent-gold)' }}>{websiteName}</span>
+                    </div>
+                    <h2 style={{ fontSize: '28px', fontWeight: '800', marginBottom: '8px' }}>Create Account</h2>
+                    <p style={{ color: '#888', fontSize: '13px' }}>Join {websiteName} and start your trading journey</p>
                     <div style={{ height: '4px', width: '60px', backgroundColor: 'var(--accent-gold)', margin: '15px auto', borderRadius: '2px' }}></div>
                 </div>
 

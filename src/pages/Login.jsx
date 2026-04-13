@@ -2,7 +2,8 @@ import React, { useState } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { motion } from 'framer-motion';
-import { Mail, Lock, ArrowRight, Loader2 } from 'lucide-react';
+import { useBranding } from '../context/BrandingContext';
+import { Mail, Lock, ArrowRight, Loader2, Zap } from 'lucide-react';
 
 const Login = () => {
     const [email, setEmail] = useState('');
@@ -10,13 +11,14 @@ const Login = () => {
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState('');
     const { login } = useAuth();
+    const { websiteName, logoUrl } = useBranding();
     const navigate = useNavigate();
 
     const handleSubmit = async (e) => {
         e.preventDefault();
         setLoading(true);
         setError('');
-        
+
         try {
             const result = await login(email, password);
             if (result.success) {
@@ -33,12 +35,21 @@ const Login = () => {
 
     return (
         <div style={{ minHeight: '100vh', backgroundColor: '#0a0a0a', color: '#fff', padding: '20px', display: 'flex', flexDirection: 'column', justifyContent: 'center' }}>
-            <motion.div 
+            <motion.div
                 initial={{ opacity: 0, y: 20 }}
                 animate={{ opacity: 1, y: 0 }}
                 style={{ maxWidth: '400px', margin: '0 auto', width: '100%' }}
             >
                 <div style={{ textAlign: 'center', marginBottom: '40px' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '10px', marginBottom: '25px' }}>
+                        {logoUrl ? (
+                            <img src={logoUrl} alt="Logo" style={{ height: '40px', width: 'auto' }} />
+                        ) : (
+                            <Zap size={35} color="var(--accent-gold)" fill="var(--accent-gold)" />
+                        )}
+                        <span style={{ fontSize: '28px', fontWeight: '900', color: 'var(--accent-gold)' }}>{websiteName}</span>
+                    </div>
+
                     <h2 style={{ fontSize: '32px', fontWeight: '800', marginBottom: '10px' }}>Welcome Back</h2>
                     <p style={{ color: '#888', fontSize: '14px' }}>Log in to your account to continue trading</p>
                 </div>
@@ -74,17 +85,17 @@ const Login = () => {
                         </div>
                     )}
 
-                    <button 
-                        type="submit" 
+                    <button
+                        type="submit"
                         disabled={loading}
-                        style={{ 
-                            width: '100%', 
-                            padding: '16px', 
-                            backgroundColor: 'var(--accent-gold)', 
-                            color: '#000', 
-                            border: 'none', 
-                            borderRadius: '12px', 
-                            fontWeight: '800', 
+                        style={{
+                            width: '100%',
+                            padding: '16px',
+                            backgroundColor: 'var(--accent-gold)',
+                            color: '#000',
+                            border: 'none',
+                            borderRadius: '12px',
+                            fontWeight: '800',
                             fontSize: '16px',
                             cursor: 'pointer',
                             display: 'flex',

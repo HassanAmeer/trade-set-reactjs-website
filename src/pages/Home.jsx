@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useMarket } from '../context/MarketContext';
 import { db } from '../firebase-setup';
-import { collection, query, orderBy, onSnapshot } from 'firebase/firestore';
+import { collection, query, orderBy, onSnapshot, doc } from 'firebase/firestore';
 import {
     CreditCard, Wallet, ArrowRightLeft, Headphones, Volume2, Menu, Mail, Zap,
     Newspaper
@@ -9,21 +9,27 @@ import {
 import heroImage from '../assets/hero.png';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useNavigate } from 'react-router-dom';
+import { useAuth } from '../context/AuthContext';
+import { useBranding } from '../context/BrandingContext';
+import { LogOut } from 'lucide-react';
 
 const Home = () => {
     const { assets, loading: marketLoading } = useMarket();
+    const { websiteName, logoUrl } = useBranding();
+    const { user, logout } = useAuth();
     const [activeTab, setActiveTab] = useState('All');
     const [banners, setBanners] = useState([]);
     const [currentBannerIndex, setCurrentBannerIndex] = useState(0);
+    const [showLogoutConfirm, setShowLogoutConfirm] = useState(false);
     const navigate = useNavigate();
 
     useEffect(() => {
+        // Fetch Banners
         const q = query(collection(db, 'carousel'), orderBy('timestamp', 'desc'));
-        const unsubscribe = onSnapshot(q, (snapshot) => {
-            const list = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
-            setBanners(list);
+        const unsubscribeBanners = onSnapshot(q, (snapshot) => {
+            setBanners(snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() })));
         });
-        return () => unsubscribe();
+        return () => unsubscribeBanners();
     }, []);
 
     // Auto-cycling for banners
@@ -67,12 +73,25 @@ const Home = () => {
         >
             <div className="flex-between" style={{ marginBottom: '16px', padding: '0 4px' }}>
                 <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                    <div style={{ color: 'var(--accent-gold)', fontWeight: '800', fontSize: '18px', display: 'flex', alignItems: 'center', gap: '4px' }}>
-                        <Zap size={20} fill="var(--accent-gold)" /> Bitop
+                    <div style={{ color: 'var(--accent-gold)', fontWeight: '800', fontSize: '18px', display: 'flex', alignItems: 'center', gap: '8px' }}>
+                        {logoUrl ? (
+                            <img src={logoUrl} alt="Logo" style={{ height: '24px', width: 'auto' }} />
+                        ) : (
+                            <Zap size={20} fill="var(--accent-gold)" />
+                        )}
+                        {websiteName}
                     </div>
                 </div>
                 <div style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
                     <Mail size={22} color="var(--text-primary)" onClick={() => navigate('/inbox')} style={{ cursor: 'pointer' }} />
+                    {user && (
+                        <LogOut 
+                            size={22} 
+                            color="#ff4d4f" 
+                            onClick={() => setShowLogoutConfirm(true)} 
+                            style={{ cursor: 'pointer' }} 
+                        />
+                    )}
                 </div>
             </div>
 
@@ -232,6 +251,90 @@ const Home = () => {
                     )}
                 </div>
             )}
+
+            {/* Logout Confirmation Modal */}
+            <AnimatePresence>
+                {showLogoutConfirm && (
+                    <div style={{ position: 'fixed', inset: 0, zIndex: 1000, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '20px' }}>
+                        <motion.div
+                            initial={{ opacity: 0 }}
+                            animate={{ opacity: 1 }}
+                            exit={{ opacity: 0 }}
+                            onClick={() => setShowLogoutConfirm(false)}
+                            style={{ position: 'absolute', inset: 0, background: 'rgba(0,0,0,0.85)', backdropFilter: 'blur(8px)' }}
+                        />
+                        <motion.div
+                            initial={{ scale: 0.9, opacity: 0, y: 20 }}
+                            animate={{ scale: 1, opacity: 1, y: 0 }}
+                            exit={{ scale: 0.9, opacity: 0, y: 20 }}
+                            style={{
+                                width: '100%',
+                                maxWidth: '320px',
+                                background: 'linear-gradient(135deg, #1a1a1a 0%, #0a0a0a 100%)',
+                                borderRadius: '24px',
+                                padding: '30px',
+                                border: '1px solid rgba(255,255,255,0.08)',
+                                position: 'relative',
+                                textAlign: 'center',
+                                boxShadow: '0 20px 40px rgba(0,0,0,0.5)'
+                            }}
+                        >
+                            <div style={{ 
+                                width: '60px', 
+                                height: '60px', 
+                                borderRadius: '50%', 
+                                backgroundColor: 'rgba(255, 77, 79, 0.1)', 
+                                display: 'flex', 
+                                alignItems: 'center', 
+                                justifyContent: 'center', 
+                                margin: '0 auto 20px',
+                                color: '#ff4d4f',
+                                border: '1px solid rgba(255, 77, 79, 0.2)'
+                            }}>
+                                <LogOut size={28} />
+                            </div>
+                            <h3 style={{ color: '#fff', fontSize: '20px', fontWeight: '800', marginBottom: '10px' }}>Sign Out?</h3>
+                            <p style={{ color: '#888', fontSize: '14px', marginBottom: '25px', lineHeight: '1.5' }}>Are you sure you want to log out of your account?</p>
+                            
+                            <div style={{ display: 'grid', gap: '12px' }}>
+                                <button
+                                    onClick={() => {
+                                        logout();
+                                        setShowLogoutConfirm(false);
+                                    }}
+                                    style={{
+                                        padding: '14px',
+                                        backgroundColor: '#ff4d4f',
+                                        color: '#fff',
+                                        border: 'none',
+                                        borderRadius: '14px',
+                                        fontWeight: '700',
+                                        fontSize: '15px',
+                                        cursor: 'pointer'
+                                    }}
+                                >
+                                    Yes, Log Out
+                                </button>
+                                <button
+                                    onClick={() => setShowLogoutConfirm(false)}
+                                    style={{
+                                        padding: '14px',
+                                        backgroundColor: 'transparent',
+                                        color: '#666',
+                                        border: '1px solid #222',
+                                        borderRadius: '14px',
+                                        fontWeight: '600',
+                                        fontSize: '15px',
+                                        cursor: 'pointer'
+                                    }}
+                                >
+                                    Cancel
+                                </button>
+                            </div>
+                        </motion.div>
+                    </div>
+                )}
+            </AnimatePresence>
         </motion.div>
     );
 };

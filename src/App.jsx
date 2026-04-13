@@ -1,5 +1,7 @@
-import React from 'react';
+import React, { useEffect } from 'react';
 import { BrowserRouter as Router, Routes, Route, Link, useLocation } from 'react-router-dom';
+import { db } from './firebase-setup';
+import { doc, onSnapshot } from 'firebase/firestore';
 import Home from './pages/Home';
 import Market from './pages/Market';
 import Trade from './pages/Trade';
@@ -23,6 +25,7 @@ import TradesRecord from './pages/TradesRecord';
 import { Home as HomeIcon, BarChart2, Activity, Zap, User } from 'lucide-react';
 import { MarketProvider } from './context/MarketContext';
 import { AuthProvider } from './context/AuthContext';
+import { BrandingProvider } from './context/BrandingContext';
 import './App.css';
 
 const BottomNav = () => {
@@ -94,13 +97,15 @@ const AppContent = () => {
 
 function App() {
   return (
-    <AuthProvider>
-      <MarketProvider>
-        <Router>
-          <AppContent />
-        </Router>
-      </MarketProvider>
-    </AuthProvider>
+    <BrandingProvider>
+      <AuthProvider>
+        <MarketProvider>
+          <Router>
+            <AppContent />
+          </Router>
+        </MarketProvider>
+      </AuthProvider>
+    </BrandingProvider>
   );
 }
 
