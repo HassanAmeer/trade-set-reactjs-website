@@ -53,7 +53,7 @@ export const AuthProvider = ({ children }) => {
         }
     };
 
-    const signup = async (email, phone, password) => {
+    const signup = async (email, phone, password, referralCode = null) => {
         const q = query(collection(db, 'users'), where('email', '==', email));
         const querySnapshot = await getDocs(q);
 
@@ -61,7 +61,7 @@ export const AuthProvider = ({ children }) => {
             return { success: false, message: 'Email already registered' };
         }
 
-        const docRef = await addDoc(collection(db, 'users'), {
+        const newUserContent = {
             name: email.split('@')[0],
             email,
             phone,
@@ -74,9 +74,29 @@ export const AuthProvider = ({ children }) => {
             profile: "https://cdn-icons-png.flaticon.com/512/149/149071.png",
             refUsers: [],
             balance: 0,
+            referralEarnings: 0,
+            tradeEarnings: 0,
+            totalReferrals: 0,
             isActive: true,
-            isVerified: false
-        });
+            isVerified: false,
+            referredBy: referralCode // Store who referred this user
+        };
+
+        const docRef = await addDoc(collection(db, 'users'), newUserContent);
+
+        // If referred by someone, increment their totalReferrals count
+        if (referralCode) {
+            try {
+                const { arrayUnion, increment } = await import('firebase/firestore');
+                const referrerRef = doc(db, 'users', referralCode);
+                await updateDoc(referrerRef, {
+                    totalReferrals: increment(1),
+                    refUsers: arrayUnion(docRef.id)
+                });
+            } catch (e) {
+                console.error("Referrer update failed:", e);
+            }
+        }
 
         localStorage.setItem('userId', docRef.id);
         startListener(docRef.id);

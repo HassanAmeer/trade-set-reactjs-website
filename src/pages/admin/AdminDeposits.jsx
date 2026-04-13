@@ -2,8 +2,10 @@ import React, { useState, useEffect } from 'react';
 import { db } from '../../firebase-setup';
 import { collectionGroup, getDocs, doc, updateDoc, increment, getDoc, deleteDoc } from 'firebase/firestore';
 import { CheckCircle2, XCircle, Clock, ExternalLink, Trash2 } from 'lucide-react';
+import { useBranding } from '../../context/BrandingContext';
 
 const AdminDeposits = () => {
+    const { referralCommission } = useBranding();
     const [deposits, setDeposits] = useState([]);
     const [loading, setLoading] = useState(true);
     const [selectedVoucher, setSelectedVoucher] = useState(null);
@@ -37,15 +39,34 @@ const AdminDeposits = () => {
                 const uid = item.userId || item.uid;
                 if (!uid) throw new Error("User ID not found in deposit record!");
 
-                console.log("Updating balance for user:", uid, "Amount:", item.amount);
                 const userRef = doc(db, 'users', uid);
                 const userSnap = await getDoc(userRef);
                 
                 if (userSnap.exists()) {
+                    const userData = userSnap.data();
+                    const depositAmount = Number(item.amount);
+                    
+                    // 1. Update user balance
                     await updateDoc(userRef, {
-                        balance: increment(Number(item.amount))
+                        balance: increment(depositAmount)
                     });
-                    console.log("Balance updated successfully");
+
+                    // 2. Handle Referral Commission
+                    if (userData.referredBy) {
+                        try {
+                            const commissionAmount = (depositAmount * (Number(referralCommission) || 0)) / 100;
+                            if (commissionAmount > 0) {
+                                const referrerRef = doc(db, 'users', userData.referredBy);
+                                await updateDoc(referrerRef, {
+                                    balance: increment(commissionAmount),
+                                    referralEarnings: increment(commissionAmount)
+                                });
+                                console.log(`Commission of ${commissionAmount} USDT added to referrer: ${userData.referredBy}`);
+                            }
+                        } catch (e) {
+                            console.error("Referral commission credit failed:", e);
+                        }
+                    }
                 } else {
                     console.error("User document does not exist in /users/", uid);
                     alert("User record not found in database. Balance NOT added.");

@@ -1,5 +1,5 @@
 import React from 'react';
-import { User, CreditCard, Wallet, Headphones, Zap, Shield, FileText, ChevronRight, Camera, Loader2, LogOut, Copy, QrCode, Share2, Gift, Check } from 'lucide-react';
+import { User, CreditCard, Wallet, Headphones, Zap, Shield, FileText, ChevronRight, Camera, Loader2, LogOut, Copy, QrCode, Share2, Gift, Check, Users } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
@@ -173,21 +173,25 @@ const Profile = () => {
                     </div>
                 </div>
 
-                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '10px' }}>
-                    <div style={{ textAlign: 'center' }}>
-                        <div style={{ fontSize: '10px', color: 'var(--text-secondary)', marginBottom: '4px' }}>Referral Users</div>
-                        <div style={{ fontWeight: '600' }}>0</div>
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '12px' }}>
+                    <div style={{ textAlign: 'center', background: 'rgba(255,255,255,0.02)', padding: '10px 5px', borderRadius: '12px' }}>
+                        <div style={{ fontSize: '10px', color: 'var(--text-secondary)', marginBottom: '4px', textTransform: 'uppercase' }}>Ref Earn</div>
+                        <div style={{ fontWeight: '800', fontSize: '15px', color: 'var(--accent-gold)' }}>
+                            {Number(user?.referralEarnings || 0).toFixed(2)}
+                        </div>
                     </div>
-                    <div style={{ textAlign: 'center' }}>
-                        <div style={{ fontSize: '10px', fontWeight: '800', letterSpacing: '1px', color: 'var(--text-secondary)', marginBottom: '4px' }}>Revenue</div>
-                        <div style={{ fontWeight: '600' }}>0.00</div>
+                    <div style={{ textAlign: 'center', background: 'rgba(255,255,255,0.02)', padding: '10px 5px', borderRadius: '12px' }}>
+                        <div style={{ fontSize: '10px', color: 'var(--text-secondary)', marginBottom: '4px', textTransform: 'uppercase' }}>Total Ref</div>
+                        <div style={{ fontWeight: '800', fontSize: '15px', color: '#fff' }}>{user?.totalReferrals || 0}</div>
                     </div>
-                    <div style={{ textAlign: 'center' }}>
-                        <div style={{ fontSize: '10px', color: 'var(--text-secondary)', marginBottom: '4px' }}>Today</div>
-                        <div style={{ fontWeight: '600' }}>0.00</div>
+                    <div style={{ textAlign: 'center', background: 'rgba(255,255,255,0.02)', padding: '10px 5px', borderRadius: '12px' }}>
+                        <div style={{ fontSize: '10px', color: 'var(--text-secondary)', marginBottom: '4px', textTransform: 'uppercase' }}>Trade Earn</div>
+                        <div style={{ fontWeight: '800', fontSize: '15px', color: '#00c087' }}>
+                            {Number(user?.tradeEarnings || 0).toFixed(2)}
+                        </div>
                     </div>
-
                 </div>
+
             </div>
 
             <div
@@ -377,9 +381,38 @@ const Profile = () => {
                         <img src={giftBox} alt="Gift" style={{ width: '100%', height: 'auto', filter: 'drop-shadow(0 20px 40px rgba(0,0,0,0.9))' }} />
                     </motion.div>
                 </div>
+
+                {/* My Team Statistics inside the card at bottom */}
+                <div style={{
+                    marginTop: '20px',
+                    padding: '16px',
+                    backgroundColor: 'rgba(255, 255, 255, 0.02)',
+                    borderRadius: '16px',
+                    border: '1px solid rgba(255,255,255,0.05)'
+                }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '12px' }}>
+                        <Users size={16} color="var(--accent-gold)" />
+                        <span style={{ fontSize: '13px', fontWeight: '800', color: '#fff', textTransform: 'uppercase', letterSpacing: '0.5px' }}>My Team Statistics</span>
+                    </div>
+
+                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '15px' }}>
+                        <div>
+                            <div style={{ fontSize: '10px', color: '#666', marginBottom: '2px' }}>Total Ref</div>
+                            <div style={{ fontSize: '15px', fontWeight: '800', color: '#888' }}>{user?.totalReferrals || 0} Members</div>
+                        </div>
+                        <div>
+                            <div style={{ fontSize: '10px', color: '#666', marginBottom: '2px' }}>Ref By</div>
+                            <div style={{ fontSize: '14px', fontWeight: '800', color: user?.referredBy ? 'var(--accent-gold)' : '#888' }}>
+                                {user?.referredBy ? user.referredBy.slice(-6).toUpperCase() : 'Direct'}
+                            </div>
+                        </div>
+
+                    </div>
+                </div>
             </div>
 
             <div className="menu-list" style={{ marginBottom: '30px' }}>
+                <div style={{ padding: '0 4px 12px 4px', fontSize: '13px', fontWeight: '800', color: 'var(--accent-gold)', textTransform: 'uppercase', letterSpacing: '1px' }}>Records & History</div>
                 {[
                     { icon: FileText, label: 'Trade Record', path: '/trade-history' },
                     { icon: FileText, label: 'Recharge Record', path: '/deposit-history' },
@@ -393,9 +426,9 @@ const Profile = () => {
                     >
                         <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
                             <item.icon size={18} color="var(--text-secondary)" />
-                            <span style={{ fontSize: '14px' }}>{item.label}</span>
+                            <div style={{ fontSize: '14px' }}>{item.label}</div>
                         </div>
-                        <ChevronRight size={18} color="var(--text-secondary)" />
+                        {item.path && <ChevronRight size={18} color="var(--text-secondary)" />}
                     </div>
                 ))}
             </div>

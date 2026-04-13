@@ -63,6 +63,8 @@ const Verification = () => {
             await updateUser({
                 cnicFront: frontResult.url,
                 cnicBack: backResult.url,
+                kycStatus: 'pending',
+                kycMessage: 'Your documents are under review.',
                 updatedAt: new Date().toISOString()
             });
 
@@ -98,6 +100,57 @@ const Verification = () => {
             </div>
 
             <div style={{ padding: '20px' }}>
+
+                {/* KYC Status Banner — shown when docs submitted but not yet approved */}
+                {user?.kycStatus && !user.isVerified && !isReverifying && (
+                    <div style={{
+                        marginBottom: '24px',
+                        padding: '18px',
+                        borderRadius: '16px',
+                        backgroundColor: user.kycStatus === 'pending' ? 'rgba(255,184,0,0.06)' : 'rgba(255,77,79,0.06)',
+                        border: `1px solid ${user.kycStatus === 'pending' ? 'rgba(255,184,0,0.2)' : 'rgba(255,77,79,0.2)'}`,
+                        display: 'flex',
+                        flexDirection: 'column',
+                        gap: '10px'
+                    }}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                            <div style={{
+                                width: '40px', height: '40px', borderRadius: '50%', flexShrink: 0,
+                                display: 'flex', alignItems: 'center', justifyContent: 'center',
+                                backgroundColor: user.kycStatus === 'pending' ? 'rgba(255,184,0,0.12)' : 'rgba(255,77,79,0.12)',
+                            }}>
+                                <span style={{ fontSize: '20px' }}>{user.kycStatus === 'pending' ? '🕐' : '❌'}</span>
+                            </div>
+                            <div>
+                                <div style={{ fontWeight: '800', fontSize: '14px', color: user.kycStatus === 'pending' ? '#ffb800' : '#ff4d4f' }}>
+                                    {user.kycStatus === 'pending' ? 'KYC Under Review' : 'KYC Rejected'}
+                                </div>
+                                <div style={{ fontSize: '12px', color: '#888', marginTop: '3px', lineHeight: '1.5' }}>
+                                    {user.kycMessage || (user.kycStatus === 'pending' ? 'Your documents are being reviewed by our team.' : 'Please re-submit your documents.')}
+                                </div>
+                            </div>
+                        </div>
+                        {user.kycStatus === 'rejected' && (
+                            <button
+                                onClick={() => setIsReverifying(true)}
+                                style={{
+                                    alignSelf: 'flex-start',
+                                    padding: '8px 18px',
+                                    backgroundColor: 'rgba(255,77,79,0.15)',
+                                    color: '#ff4d4f',
+                                    border: '1px solid rgba(255,77,79,0.3)',
+                                    borderRadius: '8px',
+                                    fontWeight: '700',
+                                    fontSize: '12px',
+                                    cursor: 'pointer'
+                                }}
+                            >
+                                Re-submit Documents
+                            </button>
+                        )}
+                    </div>
+                )}
+
                 {user?.isVerified && !isReverifying ? (
                     /* Verified View */
                     <motion.div

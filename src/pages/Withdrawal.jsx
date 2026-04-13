@@ -9,7 +9,15 @@ import { collection, addDoc } from 'firebase/firestore';
 
 const Withdrawal = () => {
     const navigate = useNavigate();
-    const { user } = useAuth();
+    const { user, loading } = useAuth();
+
+    React.useEffect(() => {
+        if (!loading && user && !user.isVerified) {
+            alert("Please verify your identity (KYC) before making a withdrawal.");
+            navigate('/verification');
+        }
+    }, [user, loading, navigate]);
+
     const { minWithdrawal } = useBranding();
     const [activeTab, setActiveTab] = useState('USDT Withdrawal');
     const [amount, setAmount] = useState('');
@@ -56,7 +64,7 @@ const Withdrawal = () => {
             await addDoc(collection(db, 'users', user.id, 'withdrawals'), withdrawalData);
 
             alert("Withdrawal request submitted! Amount has been deducted from your balance.");
-            
+
             // Reset fields
             setAmount('');
             setAddress('');
@@ -83,17 +91,17 @@ const Withdrawal = () => {
                     <ChevronLeft size={24} onClick={() => navigate(-1)} style={{ cursor: 'pointer' }} />
                     <h1 style={{ flex: 1, textAlign: 'center', fontSize: '18px', fontWeight: '700' }}>Withdrawal Channel</h1>
                 </div>
-                <button 
+                <button
                     onClick={() => navigate('/withdrawal-history')}
-                    style={{ 
-                        backgroundColor: 'rgba(255,184,0,0.1)', 
-                        border: '1px solid rgba(255,184,0,0.2)', 
-                        padding: '6px 10px', 
-                        borderRadius: '8px', 
-                        color: 'var(--accent-gold)', 
-                        fontSize: '12px', 
-                        display: 'flex', 
-                        alignItems: 'center', 
+                    style={{
+                        backgroundColor: 'rgba(255,184,0,0.1)',
+                        border: '1px solid rgba(255,184,0,0.2)',
+                        padding: '6px 10px',
+                        borderRadius: '8px',
+                        color: 'var(--accent-gold)',
+                        fontSize: '12px',
+                        display: 'flex',
+                        alignItems: 'center',
                         gap: '4px',
                         cursor: 'pointer',
                         fontWeight: '600',
@@ -152,7 +160,7 @@ const Withdrawal = () => {
                 <div style={{ fontSize: '15px', fontWeight: '500', marginBottom: '10px' }}>
                     {activeTab === 'USDT Withdrawal' ? 'USDT Address' : 'Bank Account Details'}
                 </div>
-                
+
                 {/* Address Input */}
                 <div style={{
                     display: 'flex',
@@ -191,9 +199,9 @@ const Withdrawal = () => {
                         padding: '10px 14px',
                         borderRadius: '8px',
                         border: amount ? (
-                            parseFloat(amount) < minWithdrawal || parseFloat(amount) > (user?.balance || 0) 
-                            ? '1px solid #ff4d4f' 
-                            : '1px solid var(--accent-gold)'
+                            parseFloat(amount) < minWithdrawal || parseFloat(amount) > (user?.balance || 0)
+                                ? '1px solid #ff4d4f'
+                                : '1px solid var(--accent-gold)'
                         ) : '1px solid #333'
                     }}>
                         <input
@@ -240,28 +248,28 @@ const Withdrawal = () => {
                 </div>
 
                 {/* Footer Button */}
-                <button 
+                <button
                     onClick={handleWithdrawal}
                     disabled={submitting}
                     style={{
-                    width: '100%',
-                    background: submitting ? '#333' : 'var(--accent-gold)',
-                    color: submitting ? '#888' : '#000',
-                    padding: '16px',
-                    border: 'none',
-                    borderRadius: '12px',
-                    fontWeight: '800',
-                    fontSize: '16px',
-                    cursor: submitting ? 'not-allowed' : 'pointer',
-                    display: 'flex',
-                    justifyContent: 'center',
-                    alignItems: 'center',
-                    gap: '10px'
-                }}>
+                        width: '100%',
+                        background: submitting ? '#333' : 'var(--accent-gold)',
+                        color: submitting ? '#888' : '#000',
+                        padding: '16px',
+                        border: 'none',
+                        borderRadius: '12px',
+                        fontWeight: '800',
+                        fontSize: '16px',
+                        cursor: submitting ? 'not-allowed' : 'pointer',
+                        display: 'flex',
+                        justifyContent: 'center',
+                        alignItems: 'center',
+                        gap: '10px'
+                    }}>
                     {submitting ? <><Loader2 className="animate-spin" size={20} /> Processing...</> : 'Submit Withdrawal'}
                 </button>
             </div>
-            
+
             <div style={{ marginTop: '24px', padding: '0 16px' }}>
                 <div style={{ padding: '16px', backgroundColor: 'rgba(0, 192, 135, 0.05)', borderRadius: '16px', border: '1px solid rgba(0, 192, 135, 0.1)' }}>
                     <div style={{ display: 'flex', gap: '10px' }}>

@@ -1,11 +1,13 @@
 import React, { useState } from 'react';
-import { useNavigate, Link } from 'react-router-dom';
+import { useNavigate, Link, useSearchParams } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { useBranding } from '../context/BrandingContext';
 import { motion } from 'framer-motion';
 import { Mail, Lock, Phone, User, ArrowRight, Loader2, Zap } from 'lucide-react';
 
 const Signup = () => {
+    const [searchParams] = useSearchParams();
+    const referralCode = searchParams.get('ref');
     const [email, setEmail] = useState('');
     const [phone, setPhone] = useState('');
     const [password, setPassword] = useState('');
@@ -19,9 +21,9 @@ const Signup = () => {
         e.preventDefault();
         setLoading(true);
         setError('');
-        
+
         try {
-            const result = await signup(email, phone, password);
+            const result = await signup(email, phone, password, referralCode);
             if (result.success) {
                 navigate('/profile');
             } else {
@@ -36,7 +38,7 @@ const Signup = () => {
 
     return (
         <div style={{ minHeight: '100vh', backgroundColor: '#0a0a0a', color: '#fff', padding: '20px', display: 'flex', flexDirection: 'column', justifyContent: 'center' }}>
-            <motion.div 
+            <motion.div
                 initial={{ opacity: 0, y: 20 }}
                 animate={{ opacity: 1, y: 0 }}
                 style={{ maxWidth: '400px', margin: '0 auto', width: '100%' }}
@@ -102,17 +104,17 @@ const Signup = () => {
                         By signing up, you agree to our Terms of Service and Privacy Policy.
                     </div>
 
-                    <button 
-                        type="submit" 
+                    <button
+                        type="submit"
                         disabled={loading}
-                        style={{ 
-                            width: '100%', 
-                            padding: '16px', 
-                            backgroundColor: 'var(--accent-gold)', 
-                            color: '#000', 
-                            border: 'none', 
-                            borderRadius: '12px', 
-                            fontWeight: '800', 
+                        style={{
+                            width: '100%',
+                            padding: '16px',
+                            backgroundColor: 'var(--accent-gold)',
+                            color: '#000',
+                            border: 'none',
+                            borderRadius: '12px',
+                            fontWeight: '800',
                             fontSize: '16px',
                             cursor: 'pointer',
                             display: 'flex',
