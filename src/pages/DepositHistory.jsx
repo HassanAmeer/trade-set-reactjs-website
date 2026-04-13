@@ -76,7 +76,7 @@ const DepositHistory = () => {
             style={{ paddingBottom: '100px' }}
         >
             <div style={{ display: 'flex', alignItems: 'center', gap: '15px', marginBottom: '32px' }}>
-                <ChevronLeft size={24} onClick={() => navigate('/deposit')} style={{ cursor: 'pointer' }} />
+                <ChevronLeft size={24} onClick={() => navigate('/profile')} style={{ cursor: 'pointer' }} />
                 <h2 style={{ fontSize: '20px', fontWeight: '800' }}>Deposit History</h2>
             </div>
 
