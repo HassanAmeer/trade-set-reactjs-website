@@ -30,7 +30,7 @@ export const fetchCryptoMarkets = async () => {
                     parseFloat(item.lastPrice).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 }) : 
                     parseFloat(item.lastPrice).toFixed(6),
                 change: (parseFloat(item.priceChangePercent) >= 0 ? '+' : '') + parseFloat(item.priceChangePercent).toFixed(2) + '%',
-                flag: `https://assets.coingecko.com/coins/images/${rawName === 'BTC' ? '1' : rawName === 'ETH' ? '279' : '1'}/small/${rawName.toLowerCase()}.png`,
+                flag: `https://raw.githubusercontent.com/spothq/cryptocurrency-icons/master/128/color/${rawName.toLowerCase()}.png`,
                 category: 'Cryptocurrency',
                 volume24h: (parseFloat(item.quoteVolume) / 1000000).toFixed(1) + 'M',
                 high24h: parseFloat(item.highPrice).toLocaleString(),

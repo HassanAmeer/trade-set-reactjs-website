@@ -3,6 +3,7 @@ import { motion } from 'framer-motion';
 import { ChevronLeft, Upload, Clock, Loader2, Camera, CheckCircle2 } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
+import { useBranding } from '../context/BrandingContext';
 import { uploadFileChunks } from '../services/dbs';
 import { db } from '../firebase-setup';
 import { collection, addDoc, doc, getDoc } from 'firebase/firestore';
@@ -10,31 +11,16 @@ import { collection, addDoc, doc, getDoc } from 'firebase/firestore';
 const Deposit = () => {
     const navigate = useNavigate();
     const { user } = useAuth();
+    const { minDeposit, usdtAddress } = useBranding();
     const [amount, setAmount] = useState('');
     const [submitting, setSubmitting] = useState(false);
     const [copied, setCopied] = useState(false);
     const [screenshot, setScreenshot] = useState(null);
     const [preview, setPreview] = useState(null);
-    const [usdtAddress, setUsdtAddress] = useState('Loading...');
     const fileInputRef = useRef(null);
 
-    useEffect(() => {
-        const fetchAddress = async () => {
-            try {
-                const docRef = doc(db, 'admin_set', 'platform');
-                const snap = await getDoc(docRef);
-                if (snap.exists()) {
-                    setUsdtAddress(snap.data().usdtAddress);
-                }
-            } catch (err) {
-                console.error(err);
-            }
-        };
-        fetchAddress();
-    }, []);
-
     const handleCopy = () => {
-        if (usdtAddress === 'Loading...') return;
+        if (!usdtAddress) return;
         navigator.clipboard.writeText(usdtAddress);
         setCopied(true);
         setTimeout(() => setCopied(false), 2000);
@@ -48,14 +34,8 @@ const Deposit = () => {
     };
 
     const handleDeposit = async () => {
-        if (!amount || parseFloat(amount) <= 0) {
-            alert("Please enter a valid amount");
-            return;
-        }
-        if (!screenshot) {
-            alert("Please upload your payment screenshot");
-            return;
-        }
+        if (!amount || parseFloat(amount) < minDeposit) return;
+        if (!screenshot) return;
 
         setSubmitting(true);
         try {
@@ -182,23 +162,29 @@ const Deposit = () => {
                     <div style={{ position: 'relative' }}>
                         <input
                             type="number"
-                            placeholder="Min 10 USDT"
+                            placeholder={`Min ${minDeposit} USDT`}
                             value={amount}
                             onChange={(e) => setAmount(e.target.value)}
                             style={{
                                 width: '100%',
                                 padding: '16px 50px 16px 16px',
                                 backgroundColor: 'rgba(255,255,255,0.03)',
-                                border: '1px solid rgba(255,255,255,0.1)',
+                                border: amount ? (parseFloat(amount) < minDeposit ? '1px solid #ff4d4f' : '1px solid var(--accent-gold)') : '1px solid rgba(255,255,255,0.1)',
                                 borderRadius: '14px',
                                 color: '#fff',
                                 fontSize: '18px',
                                 fontWeight: '700',
-                                outline: 'none'
+                                outline: 'none',
+                                transition: 'all 0.3s ease'
                             }}
                         />
-                        <span style={{ position: 'absolute', right: '5px', top: '50%', transform: 'translateY(-50%)', fontWeight: '700', color: 'var(--text-secondary)' }}>USDT</span>
+                        <span style={{ position: 'absolute', right: '15px', top: '50%', transform: 'translateY(-50%)', fontWeight: '700', color: amount ? (parseFloat(amount) < minDeposit ? '#ff4d4f' : 'var(--accent-gold)') : 'var(--text-secondary)' }}>USDT</span>
                     </div>
+                    {amount && parseFloat(amount) < minDeposit && (
+                        <div style={{ color: '#ff4d4f', fontSize: '11px', marginTop: '6px', fontWeight: '600', paddingLeft: '4px' }}>
+                            Minimum recharge amount is {minDeposit} USDT
+                        </div>
+                    )}
                 </div>
 
                 <div style={{ marginBottom: '20px', overflow: 'hidden', textAlign: 'left' }}>

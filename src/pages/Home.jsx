@@ -189,7 +189,14 @@ const Home = () => {
                     ) : (
                         trendingCoins.map(coin => (
                             <div key={coin.id} className="trending-card" onClick={() => navigate('/trade')}>
-                                <img src={coin.flag} alt={coin.name} className="trending-icon" />
+                                <img 
+                                    src={coin.flag} 
+                                    alt={coin.name} 
+                                    className="trending-icon" 
+                                    onError={(e) => {
+                                        e.target.src = 'https://cdn-icons-png.flaticon.com/512/25/25254.png'; // Generic fallback
+                                    }}
+                                />
                                 <span className="trending-symbol">{coin.symbol}</span>
                                 <span className="trending-price">${coin.rate}</span>
                                 <span className="trending-change" style={{ color: coin.change.startsWith('+') ? 'var(--accent-green)' : 'var(--accent-red)' }}>
@@ -233,7 +240,14 @@ const Home = () => {
                                 onClick={() => navigate('/trade')}
                             >
                                 <div className="asset-info">
-                                    <img src={asset.flag} alt={asset.name} className="asset-flag" />
+                                    <img 
+                                        src={asset.flag} 
+                                        alt={asset.name} 
+                                        className="asset-flag" 
+                                        onError={(e) => {
+                                            e.target.src = 'https://cdn-icons-png.flaticon.com/512/25/25254.png';
+                                        }}
+                                    />
                                     <span className="asset-name">{asset.name}</span>
                                 </div>
                                 <div className="asset-rate">{asset.rate}</div>

@@ -3,12 +3,14 @@ import { motion } from 'framer-motion';
 import { ChevronLeft, X, Eye, Loader2, CheckCircle2, Clock } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
+import { useBranding } from '../context/BrandingContext';
 import { db } from '../firebase-setup';
 import { collection, addDoc } from 'firebase/firestore';
 
 const Withdrawal = () => {
     const navigate = useNavigate();
     const { user } = useAuth();
+    const { minWithdrawal } = useBranding();
     const [activeTab, setActiveTab] = useState('USDT Withdrawal');
     const [amount, setAmount] = useState('');
     const [address, setAddress] = useState('');
@@ -17,22 +19,10 @@ const Withdrawal = () => {
     const [showPassword, setShowPassword] = useState(false);
 
     const handleWithdrawal = async () => {
-        if (!amount || parseFloat(amount) <= 0) {
-            alert('Enter a valid amount');
-            return;
-        }
-        if (parseFloat(amount) > (user?.balance || 0)) {
-            alert('Insufficient balance');
-            return;
-        }
-        if (!address) {
-            alert('Enter withdrawal address');
-            return;
-        }
-        if (!password) {
-            alert('Enter transaction password');
-            return;
-        }
+        if (!amount || parseFloat(amount) < minWithdrawal) return;
+        if (parseFloat(amount) > (user?.balance || 0)) return;
+        if (!address) return;
+        if (!password) return;
 
         setSubmitting(true);
         try {
@@ -152,8 +142,8 @@ const Withdrawal = () => {
                     background: '#1a1a1a',
                     padding: '10px 14px',
                     borderRadius: '8px',
-                    marginBottom: '30px',
-                    border: '1px solid #333'
+                    marginBottom: '8px',
+                    border: (address === '' && amount !== '') ? '1px solid #ff4d4f' : '1px solid #333'
                 }}>
                     <input
                         type="text"
@@ -168,6 +158,10 @@ const Withdrawal = () => {
                         </div>
                     )}
                 </div>
+                {address === '' && amount !== '' && (
+                    <div style={{ color: '#ff4d4f', fontSize: '11px', marginBottom: '20px', fontWeight: '600' }}>Withdrawal address is required</div>
+                )}
+                <div style={{ marginBottom: '30px' }}></div>
 
                 {/* Amount Input */}
                 <div style={{ marginBottom: '24px' }}>
@@ -178,40 +172,53 @@ const Withdrawal = () => {
                         background: '#1a1a1a',
                         padding: '10px 14px',
                         borderRadius: '8px',
-                        border: '1px solid #333'
+                        border: amount ? (
+                            parseFloat(amount) < minWithdrawal || parseFloat(amount) > (user?.balance || 0) 
+                            ? '1px solid #ff4d4f' 
+                            : '1px solid var(--accent-gold)'
+                        ) : '1px solid #333'
                     }}>
                         <input
                             type="number"
                             value={amount}
                             onChange={(e) => setAmount(e.target.value)}
-                            placeholder="Min. limit is usually 10 USDT"
+                            placeholder={`Min. limit is ${minWithdrawal} USDT`}
                             style={{ flex: 1, border: 'none', background: 'transparent', color: '#fff', fontSize: '14px', outline: 'none' }}
                         />
                     </div>
+                    {amount && parseFloat(amount) < minWithdrawal && (
+                        <div style={{ color: '#ff4d4f', fontSize: '11px', marginTop: '6px', fontWeight: '600' }}>Minimum withdrawal is {minWithdrawal} USDT</div>
+                    )}
+                    {amount && parseFloat(amount) > (user?.balance || 0) && (
+                        <div style={{ color: '#ff4d4f', fontSize: '11px', marginTop: '6px', fontWeight: '600' }}>Insufficient balance</div>
+                    )}
                 </div>
 
                 {/* Password Input */}
                 <div style={{ marginBottom: '32px' }}>
-                    <div style={{ fontSize: '14px', fontWeight: '600', marginBottom: '10px' }}>Transaction password</div>
+                    <div style={{ fontSize: '14px', fontWeight: '600', marginBottom: '10px' }}>Login password</div>
                     <div style={{
                         display: 'flex',
                         alignItems: 'center',
                         background: '#1a1a1a',
                         padding: '10px 14px',
                         borderRadius: '8px',
-                        border: '1px solid #333'
+                        border: (password === '' && amount !== '') ? '1px solid #ff4d4f' : '1px solid #333'
                     }}>
                         <input
                             type={showPassword ? "text" : "password"}
                             value={password}
                             onChange={(e) => setPassword(e.target.value)}
-                            placeholder="Enter password"
+                            placeholder="Enter login password"
                             style={{ flex: 1, border: 'none', background: 'transparent', color: '#fff', fontSize: '14px', outline: 'none' }}
                         />
                         <div onClick={() => setShowPassword(!showPassword)} style={{ cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '0 5px' }}>
                             <Eye size={16} color={showPassword ? "var(--accent-gold)" : "#888"} />
                         </div>
                     </div>
+                    {password === '' && amount !== '' && (
+                        <div style={{ color: '#ff4d4f', fontSize: '11px', marginTop: '6px', fontWeight: '600' }}>Login password is required</div>
+                    )}
                 </div>
 
                 {/* Footer Button */}

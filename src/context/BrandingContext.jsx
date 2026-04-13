@@ -10,7 +10,10 @@ export const BrandingProvider = ({ children }) => {
         websiteTitle: 'Professional Trading Platform',
         logoUrl: '',
         faviconUrl: '',
-        referralCommission: 10
+        referralCommission: 10,
+        minDeposit: 10,
+        minWithdrawal: 20,
+        usdtAddress: ''
     });
     const [loading, setLoading] = useState(true);
 
@@ -28,7 +31,10 @@ export const BrandingProvider = ({ children }) => {
                     websiteTitle: data.websiteTitle || 'Trade Set Platform',
                     logoUrl: data.logoUrl || '',
                     faviconUrl: data.faviconUrl || '',
-                    referralCommission: data.referralCommission || 10
+                    referralCommission: data.referralCommission || 10,
+                    minDeposit: data.minDeposit || 10,
+                    minWithdrawal: data.minWithdrawal || 20,
+                    usdtAddress: data.usdtAddress || ''
                 };
                 
                 setBranding(newBranding);

@@ -592,7 +592,7 @@ const Profile = () => {
                         }}
                     >
                         <Check size={18} />
-                        Referral link copied successfully!
+                        Referral link copied!
                     </motion.div>
                 )}
             </AnimatePresence>
