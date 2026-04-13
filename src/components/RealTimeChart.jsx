@@ -1,9 +1,10 @@
 import React, { useEffect, useState, useRef, useMemo, forwardRef, useImperativeHandle } from 'react';
 
-const CustomChart = forwardRef(({ activeSignal, currentRate, capturedCandles }, ref) => {
+const RealTimeChart = forwardRef(({ symbol, interval, currentRate, initialCandles }, ref) => {
     const [candles, setCandles] = useState([]);
     const containerRef = useRef(null);
-    const signalRef = useRef(activeSignal);
+    const lastPriceRef = useRef(null);
+    const isInitializedRef = useRef(false);
 
     // Expose getCandles method to parent
     useImperativeHandle(ref, () => ({
@@ -17,85 +18,79 @@ const CustomChart = forwardRef(({ activeSignal, currentRate, capturedCandles }, 
     }, [currentRate]);
 
     useEffect(() => {
-        signalRef.current = activeSignal;
-    }, [activeSignal]);
+        lastPriceRef.current = basePrice;
+    }, [basePrice]);
 
     useEffect(() => {
-        // Use captured candles if available, otherwise generate
-        if (capturedCandles && capturedCandles.length > 0) {
-            setCandles(capturedCandles);
-        } else {
-            const now = Date.now();
-            const displayCount = 28;
-
-            const fixedPattern = [
-                -0.0012, 0.0018, -0.0008, 0.0022, -0.0015,
-                0.0028, -0.0010, 0.0015, -0.0020, 0.0012,
-                0.0032, -0.0018, 0.0014, -0.0025, 0.0020,
-                -0.0008, 0.0025, -0.0030, 0.0016, 0.0008,
-                0.0035, -0.0020, 0.0012, 0.0028, -0.0010,
-                0.0018, -0.0005, 0.0000
-            ];
-
-            let historyCandles = [];
-            let trailPrice = basePrice;
-
-            for (let i = displayCount - 1; i >= 0; i--) {
-                const relMove = fixedPattern[i] * basePrice;
-                const close = trailPrice;
-                const open = close - relMove;
-                const bodySize = Math.abs(close - open);
-                const wickMultiplier = 0.3 + Math.random() * 0.5;
-                const high = Math.max(open, close) + (bodySize * wickMultiplier);
-                const low = Math.min(open, close) - (bodySize * wickMultiplier);
-
-                historyCandles.unshift({
-                    id: `h-${i}-${Date.now()}`,
-                    open,
-                    high,
-                    low,
-                    close,
-                    timestamp: now - (displayCount - i) * 2000
-                });
-
-                trailPrice = open;
-            }
-
-            setCandles(historyCandles);
+        // If initialCandles provided (coming from signal end), use them
+        if (initialCandles && initialCandles.length > 0 && !isInitializedRef.current) {
+            setCandles(initialCandles);
+            isInitializedRef.current = true;
+            return;
         }
 
-        // Get candle speed and volatility from signal
-        const candleInterval = (activeSignal?.candleSpeed || 2) * 1000; // Convert to milliseconds
-        const volatilityLevel = activeSignal?.volatility || 'medium';
+        // Only generate new candles if not already initialized
+        if (isInitializedRef.current) return;
 
-        // Volatility multipliers
-        const volatilityMap = {
-            low: 0.0004,      // Small candles
-            medium: 0.0010,   // Medium candles
-            high: 0.0020      // Large candles
-        };
+        // Generate initial 28 candles based on current price
+        const now = Date.now();
+        const displayCount = 28;
 
-        const baseVolatility = volatilityMap[volatilityLevel] || volatilityMap.medium;
+        const patterns = [
+            -0.0008, 0.0015, -0.0012, 0.0020, -0.0010,
+            0.0025, -0.0015, 0.0018, -0.0022, 0.0012,
+            0.0030, -0.0018, 0.0014, -0.0025, 0.0020,
+            -0.0010, 0.0028, -0.0035, 0.0016, 0.0010,
+            0.0032, -0.0020, 0.0012, 0.0025, -0.0008,
+            0.0015, -0.0005, 0.0000
+        ];
 
+        let historyCandles = [];
+        let trailPrice = basePrice;
+
+        for (let i = displayCount - 1; i >= 0; i--) {
+            const relMove = patterns[i] * basePrice;
+            const close = trailPrice;
+            const open = close - relMove;
+            const bodySize = Math.abs(close - open);
+            const wickMultiplier = 0.3 + Math.random() * 0.4;
+
+            historyCandles.unshift({
+                id: `real-${i}-${Date.now()}`,
+                open,
+                high: Math.max(open, close) + (bodySize * wickMultiplier),
+                low: Math.min(open, close) - (bodySize * wickMultiplier),
+                close,
+                timestamp: now - (displayCount - i) * 2000
+            });
+
+            trailPrice = open;
+        }
+
+        setCandles(historyCandles);
+        isInitializedRef.current = true;
+    }, [basePrice, initialCandles]);
+
+    useEffect(() => {
+        if (!isInitializedRef.current) return;
+
+        // Real-time candle updates (simulating market movement)
         const interval = setInterval(() => {
             setCandles(prev => {
                 if (prev.length === 0) return [];
                 const last = prev[prev.length - 1];
-                const curSignal = signalRef.current;
 
-                const bias = curSignal?.direction === 'UP' ? 0.75 :
-                             curSignal?.direction === 'DOWN' ? 0.25 : 0.5;
-
-                const isUp = Math.random() < bias;
+                // Random market movement (50/50 up/down)
+                const isUp = Math.random() > 0.5;
                 const open = last.close;
-                const changePercent = (Math.random() * baseVolatility + baseVolatility * 0.5);
+                const changePercent = (Math.random() * 0.0010 + 0.0005);
                 const change = changePercent * basePrice;
                 const close = isUp ? open + change : open - change;
                 const bodySize = Math.abs(close - open);
                 const wickMultiplier = 0.3 + Math.random() * 0.5;
 
                 const newCandle = {
-                    id: `l-${Date.now()}`,
+                    id: `real-${Date.now()}`,
                     open,
                     close,
                     high: Math.max(open, close) + (bodySize * wickMultiplier),
@@ -103,12 +98,13 @@ const CustomChart = forwardRef(({ activeSignal, currentRate, capturedCandles }, 
                     timestamp: Date.now()
                 };
 
+                lastPriceRef.current = close;
                 return [...prev.slice(1), newCandle];
             });
-        }, candleInterval);
+        }, 2000);
 
         return () => clearInterval(interval);
-    }, [basePrice, capturedCandles, activeSignal?.candleSpeed, activeSignal?.volatility]);
+    }, [basePrice, isInitializedRef.current]);
 
     const scale = useMemo(() => {
         if (candles.length === 0) return { min: 0, max: 100, range: 100 };
@@ -154,6 +150,7 @@ const CustomChart = forwardRef(({ activeSignal, currentRate, capturedCandles }, 
                 fontFamily: '-apple-system, BlinkMacSystemFont, "Trebuchet MS", Arial, sans-serif'
             }}
         >
+            {/* Grid Background */}
             <div style={{
                 position: 'absolute',
                 inset: 0,
@@ -161,40 +158,24 @@ const CustomChart = forwardRef(({ activeSignal, currentRate, capturedCandles }, 
                 backgroundSize: '50px 50px'
             }} />
 
+            {/* Symbol Label */}
             <div style={{
                 position: 'absolute',
                 top: '12px',
                 left: '12px',
                 zIndex: 10,
-                display: 'flex',
-                alignItems: 'center',
-                gap: '8px'
+                padding: '6px 12px',
+                backgroundColor: 'rgba(19,23,34,0.8)',
+                borderRadius: '4px',
+                fontSize: '12px',
+                fontWeight: '600',
+                color: '#787b86',
+                backdropFilter: 'blur(5px)'
             }}>
-                <div
-                    style={{
-                        padding: '6px 14px',
-                        backgroundColor: '#f0b90b',
-                        color: '#000',
-                        borderRadius: '4px',
-                        fontSize: '11px',
-                        fontWeight: '700',
-                        letterSpacing: '0.5px',
-                        boxShadow: '0 2px 8px rgba(240,185,11,0.4)'
-                    }}
-                >
-                    SIGNAL ACTIVE
-                </div>
-                <div
-                    style={{
-                        width: '8px',
-                        height: '8px',
-                        borderRadius: '50%',
-                        backgroundColor: '#00c087',
-                        animation: 'pulse 2s infinite'
-                    }}
-                />
+                {symbol || 'CHART'}
             </div>
 
+            {/* Price Scale (Right Side) */}
             <div style={{
                 position: 'absolute',
                 right: 0,
@@ -218,8 +199,7 @@ const CustomChart = forwardRef(({ activeSignal, currentRate, capturedCandles }, 
                             textAlign: 'right',
                             fontSize: '10px',
                             color: '#787b86',
-                            fontWeight: '400',
-                            fontFamily: '-apple-system, BlinkMacSystemFont, "Trebuchet MS", Arial, sans-serif'
+                            fontWeight: '400'
                         }}>
                             {price.toLocaleString(undefined, {
                                 minimumFractionDigits: price > 1000 ? 0 : 2,
@@ -230,6 +210,7 @@ const CustomChart = forwardRef(({ activeSignal, currentRate, capturedCandles }, 
                 })}
             </div>
 
+            {/* Candles SVG */}
             <svg style={{ width: '100%', height: '100%', position: 'absolute', top: 0, left: 0, zIndex: 2 }}>
                 {candles.map((c, i) => {
                     const isUp = c.close >= c.open;
@@ -261,6 +242,7 @@ const CustomChart = forwardRef(({ activeSignal, currentRate, capturedCandles }, 
                     );
                 })}
 
+                {/* Current Price Line */}
                 {candles.length > 0 && (
                     <g>
                         <line
@@ -286,7 +268,6 @@ const CustomChart = forwardRef(({ activeSignal, currentRate, capturedCandles }, 
                             fontSize="11"
                             fontWeight="600"
                             textAnchor="middle"
-                            fontFamily="-apple-system, BlinkMacSystemFont, 'Trebuchet MS', Arial, sans-serif"
                         >
                             {candles[candles.length-1].close.toLocaleString(undefined, {
                                 minimumFractionDigits: basePrice > 1000 ? 0 : 2,
@@ -296,17 +277,10 @@ const CustomChart = forwardRef(({ activeSignal, currentRate, capturedCandles }, 
                     </g>
                 )}
             </svg>
-
-            <style>{`
-                @keyframes pulse {
-                    0%, 100% { opacity: 0.5; }
-                    50% { opacity: 1; }
-                }
-            `}</style>
         </div>
     );
 });
 
-CustomChart.displayName = 'CustomChart';
+RealTimeChart.displayName = 'RealTimeChart';
 
-export default CustomChart;
+export default RealTimeChart;

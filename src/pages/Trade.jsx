@@ -7,6 +7,7 @@ import { db } from '../firebase-setup';
 import { useAuth } from '../context/AuthContext';
 import { collection, addDoc, updateDoc, doc, increment, onSnapshot, getDoc } from 'firebase/firestore';
 import CustomChart from '../components/CustomChart';
+import RealTimeChart from '../components/RealTimeChart';
 import { Trophy, CircleAlert, Sparkles } from 'lucide-react';
 
 const Trade = () => {
@@ -22,7 +23,13 @@ const Trade = () => {
     const [activeSignal, setActiveSignal] = useState(null);
     const [showResult, setShowResult] = useState(null); // { status: 'win' | 'loss', amount: number }
     const [tradeCountdown, setTradeCountdown] = useState(0);
+    const [capturedCandles, setCapturedCandles] = useState(null);
+    const [useCustomChart, setUseCustomChart] = useState(true); // Toggle between TradingView and Custom
     const container = useRef();
+    const realTimeChartRef = useRef();
+    const customChartRef = useRef();
+    const [signalNotification, setSignalNotification] = useState(null);
+    const lastSignalState = useRef(null);
 
     const timeframes = [
         { label: '1 min', value: '1' },
@@ -35,19 +42,60 @@ const Trade = () => {
     ];
 
     useEffect(() => {
-        const unsub = onSnapshot(doc(db, 'admin_set', 'market_signal'), (snap) => {
-            if (snap.exists()) {
-                const data = snap.data();
-                const isExpired = new Date(data.expiresAt) < new Date();
-                if (data.isActive && !isExpired) {
-                    setActiveSignal(data);
+        console.log('Setting up robust signal listener...');
+
+        const unsub = onSnapshot(
+            doc(db, 'admin_set', 'market_signal'),
+            (snap) => {
+                const timestamp = new Date().toISOString();
+                if (snap.exists()) {
+                    const data = snap.data();
+                    const now = new Date();
+                    const expiresAt = new Date(data.expiresAt);
+                    const isExpired = expiresAt < now;
+                    const isManuallyActive = data.isActive === true;
+                    const isActive = isManuallyActive && !isExpired;
+
+                    console.log(`[${timestamp}] Signal State:`, isActive ? 'ACTIVE' : 'INACTIVE', data.direction);
+
+                    // Detect changes for notification
+                    if (isActive && lastSignalState.current !== 'ACTIVE') {
+                        setSignalNotification({ type: 'start', direction: data.direction });
+                        setTimeout(() => setSignalNotification(null), 5000);
+                        
+                        // Capture candles when signal starts
+                        captureTradingViewState();
+                    } else if (!isActive && lastSignalState.current === 'ACTIVE') {
+                        setSignalNotification({ type: 'stop' });
+                        setTimeout(() => setSignalNotification(null), 5000);
+
+                        // Capture candles when signal stops to pass back to RealTimeChart
+                        if (customChartRef.current?.getCandles) {
+                            const signalCandles = customChartRef.current.getCandles();
+                            if (signalCandles && signalCandles.length > 0) {
+                                setCapturedCandles(signalCandles);
+                            }
+                        }
+                    }
+
+                    lastSignalState.current = isActive ? 'ACTIVE' : 'INACTIVE';
+                    setActiveSignal(isActive ? data : null);
                 } else {
+                    if (lastSignalState.current === 'ACTIVE') {
+                        setSignalNotification({ type: 'stop' });
+                        setTimeout(() => setSignalNotification(null), 5000);
+                    }
+                    lastSignalState.current = 'INACTIVE';
                     setActiveSignal(null);
                 }
+            },
+            (error) => {
+                console.error('❌ Signal listener error:', error);
             }
-        });
+        );
+
         return () => unsub();
-    }, []);
+    }, []); // Empty dependency array for stability
 
     useEffect(() => {
         if (selectedAsset) {
@@ -57,12 +105,23 @@ const Trade = () => {
     }, [assets]);
 
     useEffect(() => {
-        if (!selectedAsset || activeSignal || !container.current) return;
+        if (!selectedAsset || activeSignal || !container.current || useCustomChart) return;
 
         setChartLoading(true);
+
+        // Safely clear container
         if (container.current) {
-            container.current.innerHTML = '';
+            try {
+                while (container.current.firstChild) {
+                    container.current.removeChild(container.current.firstChild);
+                }
+            } catch (e) {
+                // Ignore removal errors
+                container.current.innerHTML = '';
+            }
         }
+
+        if (!container.current) return;
 
         const script = document.createElement("script");
         script.src = "https://s3.tradingview.com/external-embedding/embed-widget-advanced-chart.js";
@@ -92,17 +151,31 @@ const Trade = () => {
             "save_image": false,
             "calendar": false,
             "hide_volume": true,
-            "support_host": "https://www.tradingview.com"
+            "support_host": "https://www.tradingview.com",
+            "backgroundColor": "#131722",
+            "gridColor": "#2a2e39"
         });
 
         container.current.appendChild(script);
 
         const timer = setTimeout(() => {
             setChartLoading(false);
-        }, 1500);
+        }, 2000);
 
-        return () => clearTimeout(timer);
-    }, [selectedAsset?.id, activeTime, activeSignal]);
+        return () => {
+            clearTimeout(timer);
+            // Safe cleanup on unmount
+            if (container.current) {
+                try {
+                    while (container.current.firstChild) {
+                        container.current.removeChild(container.current.firstChild);
+                    }
+                } catch (e) {
+                    // Ignore cleanup errors
+                }
+            }
+        };
+    }, [selectedAsset?.id, activeTime, activeSignal, useCustomChart]);
 
     const handlePlaceTrade = async (direction) => {
         if (!user) {
@@ -184,6 +257,58 @@ const Trade = () => {
             alert("Trade failed: " + error.message);
             setTrading(false);
         }
+    };
+
+    const captureTradingViewState = () => {
+        // This function is now called when signal activates
+        // It will capture the current state from RealTimeChart or generate realistic candles
+
+        // We'll use a ref to get candles from RealTimeChart
+        if (realTimeChartRef.current?.getCandles) {
+            const currentCandles = realTimeChartRef.current.getCandles();
+            if (currentCandles && currentCandles.length > 0) {
+                setCapturedCandles(currentCandles);
+                return;
+            }
+        }
+
+        // Fallback: Generate realistic candles based on current price
+        const now = Date.now();
+        const displayCount = 28;
+
+        const patterns = [
+            -0.0008, 0.0015, -0.0012, 0.0020, -0.0010,
+            0.0025, -0.0015, 0.0018, -0.0022, 0.0012,
+            0.0030, -0.0018, 0.0014, -0.0025, 0.0020,
+            -0.0010, 0.0028, -0.0035, 0.0016, 0.0010,
+            0.0032, -0.0020, 0.0012, 0.0025, -0.0008,
+            0.0015, -0.0005, 0.0000
+        ];
+
+        const basePrice = parseFloat(selectedAsset?.rate?.replace(/,/g, '') || '73000');
+        let historyCandles = [];
+        let trailPrice = basePrice;
+
+        for (let i = displayCount - 1; i >= 0; i--) {
+            const relMove = patterns[i] * basePrice;
+            const close = trailPrice;
+            const open = close - relMove;
+            const bodySize = Math.abs(close - open);
+            const wickMultiplier = 0.3 + Math.random() * 0.4;
+
+            historyCandles.unshift({
+                id: `captured-${i}`,
+                open,
+                high: Math.max(open, close) + (bodySize * wickMultiplier),
+                low: Math.min(open, close) - (bodySize * wickMultiplier),
+                close,
+                timestamp: now - (displayCount - i) * 2000
+            });
+
+            trailPrice = open;
+        }
+
+        setCapturedCandles(historyCandles);
     };
 
     const filteredAssetsBySearchAndCat = assets.filter(a => {
@@ -284,8 +409,65 @@ const Trade = () => {
                 ))}
             </div>
 
-            <div style={{ height: '450px', width: '100%', position: 'relative', backgroundColor: '#000' }}>
-                {(chartLoading && !activeSignal) && (
+            <div style={{ height: '450px', width: '100%', position: 'relative', backgroundColor: '#131722', overflow: 'hidden' }}>
+                {/* Debug Signal Status */}
+                {activeSignal && (
+                    <div style={{
+                        position: 'absolute',
+                        top: '50px',
+                        left: '12px',
+                        zIndex: 100,
+                        padding: '8px 12px',
+                        backgroundColor: 'rgba(240,185,11,0.9)',
+                        borderRadius: '6px',
+                        fontSize: '11px',
+                        fontWeight: '700',
+                        color: '#000',
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: '6px'
+                    }}>
+                        <div style={{ width: '8px', height: '8px', borderRadius: '50%', backgroundColor: '#000', animation: 'pulse 1.5s infinite' }} />
+                        SIGNAL: {activeSignal.direction} | Speed: {activeSignal.candleSpeed}s
+                    </div>
+                )}
+
+                {/* Signal Notification Toast */}
+                <AnimatePresence>
+                    {signalNotification && (
+                        <motion.div
+                            initial={{ x: 100, opacity: 0 }}
+                            animate={{ x: 0, opacity: 1 }}
+                            exit={{ x: 100, opacity: 0 }}
+                            style={{
+                                position: 'absolute',
+                                top: '15px',
+                                right: '15px',
+                                zIndex: 1000,
+                                padding: '12px 20px',
+                                backgroundColor: signalNotification.type === 'start' ? 'rgba(0,192,135,0.95)' : 'rgba(240,185,11,0.95)',
+                                color: signalNotification.type === 'start' ? '#fff' : '#000',
+                                borderRadius: '12px',
+                                fontSize: '13px',
+                                fontWeight: '700',
+                                boxShadow: '0 8px 16px rgba(0,0,0,0.3)',
+                                display: 'flex',
+                                alignItems: 'center',
+                                gap: '10px',
+                                border: '1px solid rgba(255,255,255,0.2)',
+                                backdropFilter: 'blur(8px)'
+                            }}
+                        >
+                            {signalNotification.type === 'start' ? (
+                                <><Sparkles size={16} /> Forced Market Movement: {signalNotification.direction}</>
+                            ) : (
+                                <><CircleAlert size={16} /> Market Signal Ended</>
+                            )}
+                        </motion.div>
+                    )}
+                </AnimatePresence>
+
+                {(chartLoading && !activeSignal && !useCustomChart) && (
                     <div
                         className="skeleton-loader"
                         style={{
@@ -299,39 +481,85 @@ const Trade = () => {
                         }}
                     />
                 )}
-                
-                <div style={{ 
-                    height: '100%', 
-                    width: '100%', 
-                    position: 'absolute', 
-                    top: 0, 
-                    left: 0, 
-                    opacity: activeSignal ? 1 : 0, 
-                    pointerEvents: activeSignal ? 'auto' : 'none',
-                    transition: 'opacity 0.5s ease',
-                    zIndex: activeSignal ? 5 : 0
-                }}>
-                    {activeSignal && <CustomChart activeSignal={activeSignal} currentRate={selectedAsset?.rate} />}
-                </div>
 
-                <div
-                    ref={container}
-                    className="tradingview-widget-container"
-                    style={{ 
-                        height: '100%', 
-                        width: '100%', 
-                        opacity: activeSignal ? 0 : 1,
-                        transition: 'opacity 0.5s ease'
-                    }}
-                >
-                    <div className="tradingview-widget-container__widget" style={{ height: '100%', width: '100%' }}></div>
-                </div>
+                {activeSignal ? (
+                    <div
+                        key="custom-chart"
+                        style={{
+                            height: '100%',
+                            width: '100%',
+                            position: 'absolute',
+                            top: 0,
+                            left: 0,
+                            zIndex: 5
+                        }}
+                    >
+                        <CustomChart
+                            ref={customChartRef}
+                            activeSignal={activeSignal}
+                            currentRate={selectedAsset?.rate}
+                            capturedCandles={capturedCandles}
+                        />
+                    </div>
+                ) : useCustomChart ? (
+                    <div
+                        key="realtime-chart"
+                        style={{
+                            height: '100%',
+                            width: '100%',
+                            position: 'absolute',
+                            top: 0,
+                            left: 0,
+                            zIndex: 5
+                        }}
+                    >
+                        <RealTimeChart
+                            ref={realTimeChartRef}
+                            symbol={selectedAsset?.name}
+                            interval={activeTime}
+                            currentRate={selectedAsset?.rate}
+                            initialCandles={capturedCandles}
+                        />
+                    </div>
+                ) : (
+                    <div
+                        key="tradingview-chart"
+                        ref={container}
+                        className="tradingview-widget-container"
+                        style={{
+                            height: '100%',
+                            width: '100%',
+                            position: 'absolute',
+                            top: 0,
+                            left: 0,
+                            display: activeSignal ? 'none' : 'block'
+                        }}
+                    >
+                        <div className="tradingview-widget-container__widget" style={{ height: '100%', width: '100%' }}></div>
+                    </div>
+                )}
 
-                {/* Trade Countdown Overlay */}
                 {trading && (
-                    <div style={{ position: 'absolute', top: '25%', left: '50%', transform: 'translate(-50%, -50%)', backgroundColor: 'rgba(17, 17, 17, 0.9)', padding: '15px 30px', borderRadius: '15px', border: '1px solid #333', textAlign: 'center', zIndex: 20, backdropFilter: 'blur(5px)' }}>
-                        <div style={{ fontSize: '11px', color: '#f0b90b', fontWeight: '800', marginBottom: '2px', letterSpacing: '1px' }}>MARKET RESOLVING</div>
-                        <div style={{ fontSize: '32px', fontWeight: '900', color: '#fff' }}>{tradeCountdown}s</div>
+                    <div
+                        style={{
+                            position: 'absolute',
+                            top: '25%',
+                            left: '50%',
+                            transform: 'translate(-50%, -50%)',
+                            backgroundColor: 'rgba(17, 17, 17, 0.95)',
+                            padding: '20px 35px',
+                            borderRadius: '16px',
+                            border: '1px solid #333',
+                            textAlign: 'center',
+                            zIndex: 20,
+                            backdropFilter: 'blur(10px)',
+                            boxShadow: '0 8px 32px rgba(0,0,0,0.6)'
+                        }}
+                    >
+                        <div style={{ fontSize: '11px', color: '#f0b90b', fontWeight: '800', marginBottom: '8px', letterSpacing: '1.5px' }}>MARKET RESOLVING</div>
+                        <div style={{ fontSize: '36px', fontWeight: '900', color: '#fff' }}>
+                            {tradeCountdown}s
+                        </div>
                     </div>
                 )}
             </div>
