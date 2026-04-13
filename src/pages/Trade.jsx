@@ -499,6 +499,7 @@ const Trade = () => {
                             activeSignal={activeSignal}
                             currentRate={selectedAsset?.rate}
                             capturedCandles={capturedCandles}
+                            interval={activeTime}
                         />
                     </div>
                 ) : useCustomChart ? (

@@ -1,9 +1,20 @@
 import React, { useEffect, useState, useRef, useMemo, forwardRef, useImperativeHandle } from 'react';
 
-const CustomChart = forwardRef(({ activeSignal, currentRate, capturedCandles }, ref) => {
+const timeFrameVolatility = {
+    '1': 0.0008,
+    '5': 0.0015,
+    '15': 0.0030,
+    '30': 0.0050,
+    '60': 0.0080,
+    'D': 0.0250,
+    'W': 0.0600
+};
+
+const CustomChart = forwardRef(({ activeSignal, currentRate, capturedCandles, interval: timeframe }, ref) => {
     const [candles, setCandles] = useState([]);
     const containerRef = useRef(null);
     const signalRef = useRef(activeSignal);
+    const lastIntervalRef = useRef(timeframe);
 
     // Expose getCandles method to parent
     useImperativeHandle(ref, () => ({
@@ -21,41 +32,53 @@ const CustomChart = forwardRef(({ activeSignal, currentRate, capturedCandles }, 
     }, [activeSignal]);
 
     useEffect(() => {
-        // Use captured candles if available, otherwise generate
-        if (capturedCandles && capturedCandles.length > 0) {
+        // Redraw if interval changed
+        if (lastIntervalRef.current !== timeframe) {
+            setCandles([]);
+            lastIntervalRef.current = timeframe;
+        }
+
+        // Use captured candles if available AND it's not a timeframe change
+        if (capturedCandles && capturedCandles.length > 0 && candles.length === 0 && lastIntervalRef.current === timeframe) {
             setCandles(capturedCandles);
-        } else {
+        } else if (candles.length === 0) {
             const now = Date.now();
             const displayCount = 28;
-
-            const fixedPattern = [
-                -0.0012, 0.0018, -0.0008, 0.0022, -0.0015,
-                0.0028, -0.0010, 0.0015, -0.0020, 0.0012,
-                0.0032, -0.0018, 0.0014, -0.0025, 0.0020,
-                -0.0008, 0.0025, -0.0030, 0.0016, 0.0008,
-                0.0035, -0.0020, 0.0012, 0.0028, -0.0010,
-                0.0018, -0.0005, 0.0000
-            ];
+            
+            const intervalMap = {
+                '1': 60,
+                '5': 300,
+                '15': 900,
+                '30': 1800,
+                '60': 3600,
+                'D': 86400,
+                'W': 604800
+            };
+            const stepSeconds = intervalMap[timeframe] || 60;
+            const baseVol = timeFrameVolatility[timeframe] || 0.0008;
 
             let historyCandles = [];
             let trailPrice = basePrice;
 
+            const timeSeed = stepSeconds;
+
             for (let i = displayCount - 1; i >= 0; i--) {
-                const relMove = fixedPattern[i] * basePrice;
+                const rawMove = Math.sin(i * timeSeed * 0.1) * 0.6 + Math.cos(i * timeSeed * 0.3) * 0.4;
+                const relMove = rawMove * baseVol * basePrice;
                 const close = trailPrice;
                 const open = close - relMove;
                 const bodySize = Math.abs(close - open);
-                const wickMultiplier = 0.3 + Math.random() * 0.5;
+                const wickMultiplier = 0.3 + (Math.abs(Math.sin(i * timeSeed)) * 0.7);
                 const high = Math.max(open, close) + (bodySize * wickMultiplier);
                 const low = Math.min(open, close) - (bodySize * wickMultiplier);
 
                 historyCandles.unshift({
-                    id: `h-${i}-${Date.now()}`,
+                    id: `h-${i}-${stepSeconds}-${Date.now()}`,
                     open,
                     high,
                     low,
                     close,
-                    timestamp: now - (displayCount - i) * 2000
+                    timestamp: now - (displayCount - i) * stepSeconds * 1000
                 });
 
                 trailPrice = open;
@@ -77,7 +100,7 @@ const CustomChart = forwardRef(({ activeSignal, currentRate, capturedCandles }, 
 
         const baseVolatility = volatilityMap[volatilityLevel] || volatilityMap.medium;
 
-        const interval = setInterval(() => {
+        const intervalId = setInterval(() => {
             setCandles(prev => {
                 if (prev.length === 0) return [];
                 const last = prev[prev.length - 1];
@@ -88,7 +111,8 @@ const CustomChart = forwardRef(({ activeSignal, currentRate, capturedCandles }, 
 
                 const isUp = Math.random() < bias;
                 const open = last.close;
-                const changePercent = (Math.random() * baseVolatility + baseVolatility * 0.5);
+                const tfBaseVol = timeFrameVolatility[timeframe] || 0.0008;
+                const changePercent = (Math.random() * tfBaseVol * 1.5 + tfBaseVol * 0.5);
                 const change = changePercent * basePrice;
                 const close = isUp ? open + change : open - change;
                 const bodySize = Math.abs(close - open);
@@ -107,8 +131,8 @@ const CustomChart = forwardRef(({ activeSignal, currentRate, capturedCandles }, 
             });
         }, candleInterval);
 
-        return () => clearInterval(interval);
-    }, [basePrice, capturedCandles, activeSignal?.candleSpeed, activeSignal?.volatility]);
+        return () => clearInterval(intervalId);
+    }, [basePrice, capturedCandles, activeSignal?.candleSpeed, activeSignal?.volatility, timeframe]);
 
     const scale = useMemo(() => {
         if (candles.length === 0) return { min: 0, max: 100, range: 100 };

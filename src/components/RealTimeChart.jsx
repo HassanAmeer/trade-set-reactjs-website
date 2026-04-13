@@ -1,6 +1,16 @@
 import React, { useEffect, useState, useRef, useMemo, forwardRef, useImperativeHandle } from 'react';
 
-const RealTimeChart = forwardRef(({ symbol, interval, currentRate, initialCandles }, ref) => {
+const timeFrameVolatility = {
+    '1': 0.0008,
+    '5': 0.0015,
+    '15': 0.0030,
+    '30': 0.0050,
+    '60': 0.0080,
+    'D': 0.0250,
+    'W': 0.0600
+};
+
+const RealTimeChart = forwardRef(({ symbol, interval: timeframe, currentRate, initialCandles }, ref) => {
     const [candles, setCandles] = useState([]);
     const containerRef = useRef(null);
     const lastPriceRef = useRef(null);
@@ -22,46 +32,60 @@ const RealTimeChart = forwardRef(({ symbol, interval, currentRate, initialCandle
     }, [basePrice]);
 
     useEffect(() => {
+        // Reset initialization if interval changes
+        isInitializedRef.current = false;
+        setCandles([]);
+    }, [timeframe]);
+
+    useEffect(() => {
+        if (isInitializedRef.current) return;
+
         // If initialCandles provided (coming from signal end), use them
-        if (initialCandles && initialCandles.length > 0 && !isInitializedRef.current) {
+        if (initialCandles && initialCandles.length > 0) {
             setCandles(initialCandles);
             isInitializedRef.current = true;
             return;
         }
 
-        // Only generate new candles if not already initialized
-        if (isInitializedRef.current) return;
-
-        // Generate initial 28 candles based on current price
+        // Generate initial 28 candles based on current price and interval
         const now = Date.now();
         const displayCount = 28;
+        
+        // Define timeframe step in seconds
+        const intervalMap = {
+            '1': 60,
+            '5': 300,
+            '15': 900,
+            '30': 1800,
+            '60': 3600,
+            'D': 86400,
+            'W': 604800
+        };
+        const stepSeconds = intervalMap[timeframe] || 60;
 
-        const patterns = [
-            -0.0008, 0.0015, -0.0012, 0.0020, -0.0010,
-            0.0025, -0.0015, 0.0018, -0.0022, 0.0012,
-            0.0030, -0.0018, 0.0014, -0.0025, 0.0020,
-            -0.0010, 0.0028, -0.0035, 0.0016, 0.0010,
-            0.0032, -0.0020, 0.0012, 0.0025, -0.0008,
-            0.0015, -0.0005, 0.0000
-        ];
+        const baseVol = timeFrameVolatility[timeframe] || 0.0008;
 
         let historyCandles = [];
         let trailPrice = basePrice;
 
+        const timeSeed = stepSeconds;
+
         for (let i = displayCount - 1; i >= 0; i--) {
-            const relMove = patterns[i] * basePrice;
+            // Pseudo-random varying pattern based on index and timeframe seed so each tab looks unique
+            const rawMove = Math.sin(i * timeSeed * 0.1) * 0.6 + Math.cos(i * timeSeed * 0.3) * 0.4;
+            const relMove = rawMove * baseVol * basePrice;
             const close = trailPrice;
             const open = close - relMove;
             const bodySize = Math.abs(close - open);
-            const wickMultiplier = 0.3 + Math.random() * 0.4;
+            const wickMultiplier = 0.3 + (Math.abs(Math.sin(i * timeSeed)) * 0.7);
 
             historyCandles.unshift({
-                id: `real-${i}-${Date.now()}`,
+                id: `real-${i}-${stepSeconds}-${Date.now()}`,
                 open,
                 high: Math.max(open, close) + (bodySize * wickMultiplier),
                 low: Math.min(open, close) - (bodySize * wickMultiplier),
                 close,
-                timestamp: now - (displayCount - i) * 2000
+                timestamp: now - (displayCount - i) * stepSeconds * 1000
             });
 
             trailPrice = open;
@@ -69,7 +93,7 @@ const RealTimeChart = forwardRef(({ symbol, interval, currentRate, initialCandle
 
         setCandles(historyCandles);
         isInitializedRef.current = true;
-    }, [basePrice, initialCandles]);
+    }, [basePrice, initialCandles, timeframe]);
 
     useEffect(() => {
         if (!isInitializedRef.current) return;
@@ -83,7 +107,8 @@ const RealTimeChart = forwardRef(({ symbol, interval, currentRate, initialCandle
                 // Random market movement (50/50 up/down)
                 const isUp = Math.random() > 0.5;
                 const open = last.close;
-                const changePercent = (Math.random() * 0.0010 + 0.0005);
+                const tfBaseVol = timeFrameVolatility[timeframe] || 0.0008;
+                const changePercent = (Math.random() * tfBaseVol * 1.5 + tfBaseVol * 0.5);
                 const change = changePercent * basePrice;
                 const close = isUp ? open + change : open - change;
                 const bodySize = Math.abs(close - open);
@@ -104,7 +129,7 @@ const RealTimeChart = forwardRef(({ symbol, interval, currentRate, initialCandle
         }, 2000);
 
         return () => clearInterval(interval);
-    }, [basePrice, isInitializedRef.current]);
+    }, [basePrice, isInitializedRef.current, timeframe]);
 
     const scale = useMemo(() => {
         if (candles.length === 0) return { min: 0, max: 100, range: 100 };
