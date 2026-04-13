@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { db } from '../../firebase-setup';
 import { collection, getDocs, updateDoc, addDoc } from 'firebase/firestore';
 import { CheckCircle2, XCircle, ShieldCheck, Clock, Phone } from 'lucide-react';
+import { sendEmail } from '../../services/emailService';
 
 const AdminKYC = () => {
     const [kycRequests, setKycRequests] = useState([]);
@@ -79,6 +80,22 @@ const AdminKYC = () => {
                 read: false,
                 timestamp: new Date().toISOString()
             });
+
+            // 3. Send automated email notification
+            if (status === 'approved' || status === 'rejected') {
+                sendEmail('multi', {
+                    to_email: user.email,
+                    headline: status === 'approved' ? 'KYC Verified 🛡️' : 'KYC Action Required ⚠️',
+                    user_name: user.name || 'Trader',
+                    description: status === 'approved' 
+                        ? 'Congratulations! Your identity verification has been successfully approved by our compliance team. You now have full access to all features.' 
+                        : `Your identity verification was rejected for the following reason: ${reason}. Please re-submit clear documents to regain full access.`,
+                    data_title: 'Status',
+                    data_value: status.toUpperCase(),
+                    button_text: 'Go to Profile',
+                    button_url: window.location.origin + '/profile'
+                });
+            }
 
             fetchKYCRequests();
         } catch (error) {

@@ -10,7 +10,8 @@ import AdminBlogs from './AdminBlogs';
 import AdminSettings from './AdminSettings';
 import AdminTrades from './AdminTrades';
 import AdminCarousel from './AdminCarousel';
-import { BarChart3, Presentation } from 'lucide-react';
+import AdminEmail from './AdminEmail';
+import { BarChart3, Presentation, Mail } from 'lucide-react';
 
 const AdminDashboard = () => {
     const navigate = useNavigate();
@@ -48,6 +49,8 @@ const AdminDashboard = () => {
                 return <AdminTrades />;
             case 'carousel':
                 return <AdminCarousel />;
+            case 'email':
+                return <AdminEmail />;
             default:
                 return null;
         }
@@ -110,6 +113,12 @@ const AdminDashboard = () => {
                         style={{ ...sidebarBtnStyle, backgroundColor: activeTab === 'carousel' ? 'rgba(0,192,135,0.1)' : 'transparent', color: activeTab === 'carousel' ? '#00c087' : '#888' }}
                     >
                         <Presentation size={18} /> Home Banners
+                    </button>
+                    <button
+                        onClick={() => setActiveTab('email')}
+                        style={{ ...sidebarBtnStyle, backgroundColor: activeTab === 'email' ? 'rgba(0,192,135,0.1)' : 'transparent', color: activeTab === 'email' ? '#00c087' : '#888' }}
+                    >
+                        <Mail size={18} /> Email Campaign
                     </button>
                     <button
                         onClick={() => setActiveTab('settings')}

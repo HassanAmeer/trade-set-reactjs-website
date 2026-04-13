@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { db } from '../../firebase-setup';
 import { collectionGroup, getDocs, updateDoc, doc, increment, getDoc, deleteDoc, addDoc, collection } from 'firebase/firestore';
 import { CheckCircle2, XCircle, ExternalLink, Trash2, Copy, Check } from 'lucide-react';
+import { sendEmail } from '../../services/emailService';
 
 const AdminWithdrawals = () => {
     const [withdrawals, setWithdrawals] = useState([]);
@@ -55,6 +56,18 @@ const AdminWithdrawals = () => {
                     read: false,
                     timestamp: new Date().toISOString()
                 });
+
+                // Send Email
+                sendEmail('multi', {
+                    to_email: item.userEmail,
+                    headline: 'Withdrawal Rejected ❌',
+                    user_name: 'Trader',
+                    description: `Your withdrawal of ${item.amount} USDT has been rejected. The amount has been successfully refunded to your trading balance.`,
+                    data_title: 'Refunded Amount',
+                    data_value: `${item.amount} USDT`,
+                    button_text: 'View Balance',
+                    button_url: window.location.origin + '/profile'
+                });
             }
 
             if (newStatus === 'approved') {
@@ -65,6 +78,18 @@ const AdminWithdrawals = () => {
                     type: 'alert',
                     read: false,
                     timestamp: new Date().toISOString()
+                });
+
+                // Send Email
+                sendEmail('multi', {
+                    to_email: item.userEmail,
+                    headline: 'Withdrawal Approved ✅',
+                    user_name: 'Trader',
+                    description: `Your withdrawal of ${item.amount} USDT has been approved and is being processed by our finance team.`,
+                    data_title: 'Withdrawal Amount',
+                    data_value: `${item.amount} USDT`,
+                    button_text: 'Check History',
+                    button_url: window.location.origin + '/withdrawal-history'
                 });
             }
 

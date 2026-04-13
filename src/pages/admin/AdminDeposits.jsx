@@ -3,6 +3,7 @@ import { db } from '../../firebase-setup';
 import { collectionGroup, getDocs, doc, updateDoc, increment, getDoc, deleteDoc, addDoc, collection } from 'firebase/firestore';
 import { CheckCircle2, XCircle, Clock, ExternalLink, Trash2 } from 'lucide-react';
 import { useBranding } from '../../context/BrandingContext';
+import { sendEmail } from '../../services/emailService';
 
 const AdminDeposits = () => {
     const { referralCommission } = useBranding();
@@ -41,11 +42,11 @@ const AdminDeposits = () => {
 
                 const userRef = doc(db, 'users', uid);
                 const userSnap = await getDoc(userRef);
-                
+
                 if (userSnap.exists()) {
                     const userData = userSnap.data();
                     const depositAmount = Number(item.amount);
-                    
+
                     // 1. Update user balance
                     await updateDoc(userRef, {
                         balance: increment(depositAmount)
@@ -75,6 +76,18 @@ const AdminDeposits = () => {
                         read: false,
                         timestamp: new Date().toISOString()
                     });
+
+                    // 4. Send Email
+                    sendEmail('multi', {
+                        to_email: item.userEmail,
+                        headline: 'Deposit Successful 💰',
+                        user_name: userData.name || 'Trader',
+                        description: `Your deposit of ${item.amount} USDT has been verified and added to your balance. You can start trading now.`,
+                        data_title: 'Amount Added',
+                        data_value: `${item.amount} USDT`,
+                        button_text: 'Trade Now',
+                        button_url: window.location.origin + '/trade'
+                    });
                 } else {
                     console.error("User document does not exist in /users/", uid);
                     alert("User record not found in database. Balance NOT added.");
@@ -90,6 +103,18 @@ const AdminDeposits = () => {
                         type: 'alert',
                         read: false,
                         timestamp: new Date().toISOString()
+                    });
+
+                    // Send Email
+                    sendEmail('multi', {
+                        to_email: item.userEmail,
+                        headline: 'Deposit Rejected ❌',
+                        user_name: 'Trader',
+                        description: `Your deposit request for ${item.amount} USDT was rejected. This may be due to an invalid voucher or transaction error.`,
+                        data_title: 'Ref ID',
+                        data_value: item.id.slice(-8).toUpperCase(),
+                        button_text: 'Contact Support',
+                        button_url: window.location.origin + '/customer-service'
                     });
                 }
             }
@@ -117,7 +142,7 @@ const AdminDeposits = () => {
     return (
         <div style={{ position: 'relative' }}>
             <h2 style={{ color: '#fff', fontSize: '24px', fontWeight: '800', marginBottom: '20px' }}>Deposit Requests</h2>
-            
+
             <div className="admin-table-container">
                 <table style={{ width: '100%', minWidth: '800px', borderCollapse: 'collapse', color: '#fff', textAlign: 'left' }}>
                     <thead style={{ backgroundColor: '#1a1a1a', borderBottom: '1px solid #333' }}>
@@ -144,7 +169,7 @@ const AdminDeposits = () => {
                                     {item.amount} USDT
                                 </td>
                                 <td style={{ padding: '16px' }}>
-                                    <div 
+                                    <div
                                         onClick={() => setSelectedVoucher(item.screenshot)}
                                         style={{ width: '60px', height: '40px', borderRadius: '4px', overflow: 'hidden', cursor: 'pointer', border: '1px solid #333' }}
                                     >
@@ -152,10 +177,10 @@ const AdminDeposits = () => {
                                     </div>
                                 </td>
                                 <td style={{ padding: '16px' }}>
-                                    <span style={{ 
-                                        padding: '4px 10px', 
-                                        borderRadius: '20px', 
-                                        fontSize: '10px', 
+                                    <span style={{
+                                        padding: '4px 10px',
+                                        borderRadius: '20px',
+                                        fontSize: '10px',
                                         fontWeight: '800',
                                         textTransform: 'uppercase',
                                         backgroundColor: item.status === 'pending' ? 'rgba(255,184,0,0.1)' : item.status === 'approved' ? 'rgba(0,192,135,0.1)' : 'rgba(255,77,79,0.1)',
@@ -168,13 +193,13 @@ const AdminDeposits = () => {
                                 <td style={{ padding: '16px', display: 'flex', gap: '8px', alignItems: 'center' }}>
                                     {item.status === 'pending' && (
                                         <>
-                                            <button 
+                                            <button
                                                 onClick={() => handleUpdateStatus(item, 'approved')}
                                                 style={{ backgroundColor: '#00c087', color: '#fff', border: 'none', padding: '8px 12px', borderRadius: '8px', fontSize: '12px', fontWeight: '700', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '6px' }}
                                             >
                                                 <CheckCircle2 size={14} /> Approve
                                             </button>
-                                            <button 
+                                            <button
                                                 onClick={() => handleUpdateStatus(item, 'rejected')}
                                                 style={{ backgroundColor: '#ff4d4f', color: '#fff', border: 'none', padding: '8px 12px', borderRadius: '8px', fontSize: '12px', fontWeight: '700', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '6px' }}
                                             >
@@ -182,7 +207,7 @@ const AdminDeposits = () => {
                                             </button>
                                         </>
                                     )}
-                                    <button 
+                                    <button
                                         onClick={() => handleDelete(item.ref)}
                                         style={{ backgroundColor: 'transparent', color: '#444', border: 'none', padding: '8px', borderRadius: '8px', cursor: 'pointer' }}
                                     >
@@ -197,17 +222,17 @@ const AdminDeposits = () => {
 
             {/* Voucher Modal */}
             {selectedVoucher && (
-                <div 
+                <div
                     onClick={() => setSelectedVoucher(null)}
                     style={{ position: 'fixed', inset: 0, zIndex: 3000, backgroundColor: 'rgba(0,0,0,0.95)', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '20px' }}
                 >
                     <div style={{ position: 'relative', maxWidth: '90%', maxHeight: '90%' }}>
-                        <img 
-                            src={selectedVoucher} 
-                            alt="Full Voucher" 
-                            style={{ maxWidth: '100%', maxHeight: '100%', borderRadius: '12px', boxShadow: '0 0 50px rgba(0,0,0,0.5)' }} 
+                        <img
+                            src={selectedVoucher}
+                            alt="Full Voucher"
+                            style={{ maxWidth: '100%', maxHeight: '100%', borderRadius: '12px', boxShadow: '0 0 50px rgba(0,0,0,0.5)' }}
                         />
-                        <button 
+                        <button
                             onClick={() => setSelectedVoucher(null)}
                             style={{ position: 'absolute', top: '-40px', right: '-40px', backgroundColor: 'transparent', border: 'none', color: '#fff', fontSize: '30px', cursor: 'pointer' }}
                         >

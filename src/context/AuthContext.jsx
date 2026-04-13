@@ -1,6 +1,7 @@
 import React, { createContext, useContext, useState, useEffect, useRef } from 'react';
 import { db } from '../firebase-setup';
-import { collection, query, where, getDocs, addDoc, doc, getDoc, onSnapshot, updateDoc } from 'firebase/firestore';
+import { collection, query, where, getDocs, addDoc, doc, getDoc, onSnapshot, updateDoc, arrayUnion, increment } from 'firebase/firestore';
+import { sendEmail } from '../services/emailService';
 
 const AuthContext = createContext();
 
@@ -47,6 +48,20 @@ export const AuthProvider = ({ children }) => {
             const userData = querySnapshot.docs[0];
             localStorage.setItem('userId', userData.id);
             startListener(userData.id);
+
+            // Send Login Alert Email
+            const userObj = userData.data();
+            sendEmail('multi', {
+                to_email: userObj.email,
+                headline: 'New Login Alert 🔔',
+                user_name: userObj.name || 'Trader',
+                description: `Your account was just logged in. If this wasn't you, please reset your password immediately for security.`,
+                data_title: 'Login Time',
+                data_value: new Date().toLocaleString(),
+                button_text: 'Secure Account',
+                button_url: window.location.origin + '/profile'
+            });
+
             return { success: true };
         } else {
             return { success: false, message: 'Invalid email or password' };
@@ -85,21 +100,50 @@ export const AuthProvider = ({ children }) => {
         const docRef = await addDoc(collection(db, 'users'), newUserContent);
 
         // If referred by someone, increment their totalReferrals count
+        localStorage.setItem('userId', docRef.id);
+        startListener(docRef.id);
+
+        // 1. Send Welcome Email
+        sendEmail('multi', {
+            to_email: email,
+            headline: 'Welcome to TRADE-SET 🚀',
+            user_name: newUserContent.name,
+            description: 'We are excited to have you on board! Your account is now active. Explore our premium trading tools and start your journey today.',
+            data_title: 'Account Status',
+            data_value: 'Active (Verified)',
+            button_text: 'Dashboard',
+            button_url: window.location.origin + '/profile'
+        });
+
+        // 2. If referred, notify the referrer
         if (referralCode) {
             try {
-                const { arrayUnion, increment } = await import('firebase/firestore');
                 const referrerRef = doc(db, 'users', referralCode);
+                const referrerSnap = await getDoc(referrerRef);
+                if (referrerSnap.exists()) {
+                    const rData = referrerSnap.data();
+                    sendEmail('multi', {
+                        to_email: rData.email,
+                        headline: 'New Referral! 👥',
+                        user_name: rData.name || 'Trader',
+                        description: `Congratulations! A new user just joined under your link. Your total referrals have increased.`,
+                        data_title: 'New Member',
+                        data_value: email,
+                        button_text: 'Referral Center',
+                        button_url: window.location.origin + '/profile'
+                    });
+                }
+
+                // const { arrayUnion, increment } = await import('firebase/firestore'); // Already imported at top now
                 await updateDoc(referrerRef, {
                     totalReferrals: increment(1),
                     refUsers: arrayUnion(docRef.id)
                 });
             } catch (e) {
-                console.error("Referrer update failed:", e);
+                console.error("Referrer process failed:", e);
             }
         }
 
-        localStorage.setItem('userId', docRef.id);
-        startListener(docRef.id);
         return { success: true };
     };
 

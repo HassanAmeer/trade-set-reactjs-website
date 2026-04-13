@@ -20,10 +20,13 @@ const AdminSettings = () => {
         websiteTitle: 'Professional Trading Platform',
         logoUrl: '',
         faviconUrl: '',
-        referralCommission: 10 // Default 10%
+        referralCommission: 10,
+        emailjsServiceId: '',
+        emailjsTemplates: '',
+        emailjsPublicKey: ''
     });
     const [loading, setLoading] = useState(true);
-    const [savingSection, setSavingSection] = useState(''); // 'account', 'branding', 'market'
+    const [savingSection, setSavingSection] = useState(''); // 'account', 'branding', 'market', 'email'
     const [showPassword, setShowPassword] = useState(false);
     const [uploading, setUploading] = useState(false);
     const [uploadingBranding, setUploadingBranding] = useState(''); // 'logo' or 'favicon'
@@ -61,7 +64,10 @@ const AdminSettings = () => {
                     websiteTitle: 'Professional Trading Platform',
                     logoUrl: '',
                     faviconUrl: '',
-                    referralCommission: 10
+                    referralCommission: 10,
+                    emailjsServiceId: '',
+                    emailjsTemplates: '',
+                    emailjsPublicKey: ''
                 };
                 await setDoc(platformRef, defaultPlatform);
                 setPlatformConfig(defaultPlatform);
@@ -116,6 +122,20 @@ const AdminSettings = () => {
             const platformRef = doc(db, 'admin_set', 'platform');
             await setDoc(platformRef, platformConfig);
             alert('Market configuration saved!');
+        } catch (error) {
+            alert('Failed: ' + error.message);
+        } finally {
+            setSavingSection('');
+        }
+    };
+
+    const saveEmailConfig = async (e) => {
+        e.preventDefault();
+        setSavingSection('email');
+        try {
+            const platformRef = doc(db, 'admin_set', 'platform');
+            await setDoc(platformRef, platformConfig);
+            alert('Email settings updated successfully!');
         } catch (error) {
             alert('Failed: ' + error.message);
         } finally {
@@ -277,6 +297,47 @@ const AdminSettings = () => {
 
                     <button type="submit" disabled={savingSection === 'market'} style={{ ...saveBtnStyle, backgroundColor: '#f0b90b', color: '#000' }}>
                         {savingSection === 'market' ? <Loader2 className="animate-spin" /> : <><Save size={18} /> Update Limits</>}
+                    </button>
+                </form>
+
+                {/* 4. Email Configuration Form */}
+                <form onSubmit={saveEmailConfig} style={sectionStyle}>
+                    <h3 style={{ ...sectionHeaderStyle, color: 'var(--accent-gold)' }}>Email System (EmailJS)</h3>
+                    
+                    <div style={{ display: 'flex', gap: '12px', backgroundColor: 'rgba(240,185,11,0.05)', padding: '12px', borderRadius: '10px', marginBottom: '20px' }}>
+                        <Zap size={18} color="var(--accent-gold)" style={{ flexShrink: 0 }} />
+                        <p style={{ fontSize: '11px', color: '#888', margin: 0, lineHeight: '1.4' }}>
+                            React is a frontend framework. For security, bypass SMTP by using <strong>EmailJS.com</strong>. Connect your Gmail there, then paste your IDs below.
+                        </p>
+                    </div>
+
+                    <div style={{ display: 'grid', gap: '15px' }}>
+                        <div>
+                            <label style={labelStyle}>EmailJS Service ID</label>
+                            <input type="text" name="emailjsServiceId" value={platformConfig.emailjsServiceId || ''} onChange={handlePlatformChange} placeholder="service_xxxx" style={inputStyle} />
+                        </div>
+                        <div>
+                            <label style={labelStyle}>Email Template IDs (Comma Separated)</label>
+                            <input 
+                                type="text" 
+                                name="emailjsTemplates" 
+                                value={platformConfig.emailjsTemplates || ''} 
+                                onChange={handlePlatformChange} 
+                                placeholder="template_otp, template_multi, template_other..." 
+                                style={inputStyle} 
+                            />
+                            <p style={{ fontSize: '10px', color: '#555', marginTop: '5px' }}>
+                                Format: <b>OTP_ID, MULTI_ID</b> (Separated by comma)
+                            </p>
+                        </div>
+                        <div>
+                            <label style={labelStyle}>EmailJS Public Key</label>
+                            <input type="text" name="emailjsPublicKey" value={platformConfig.emailjsPublicKey || ''} onChange={handlePlatformChange} placeholder="user_xxxx" style={inputStyle} />
+                        </div>
+                    </div>
+
+                    <button type="submit" disabled={savingSection === 'email'} style={{ ...saveBtnStyle, backgroundColor: 'var(--accent-gold)', color: '#000' }}>
+                        {savingSection === 'email' ? <Loader2 className="animate-spin" /> : <><Save size={18} /> Save Email Config</>}
                     </button>
                 </form>
 
