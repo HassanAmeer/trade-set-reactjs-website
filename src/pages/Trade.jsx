@@ -6,8 +6,7 @@ import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { db } from '../firebase-setup';
 import { useAuth } from '../context/AuthContext';
 import { collection, addDoc, updateDoc, doc, increment, onSnapshot, getDoc } from 'firebase/firestore';
-import CustomChart from '../components/CustomChart';
-import RealTimeChart from '../components/RealTimeChart';
+import LightweightChart from '../components/LightweightChart';
 import { Trophy, CircleAlert, Sparkles } from 'lucide-react';
 
 const Trade = () => {
@@ -36,10 +35,11 @@ const Trade = () => {
     const [showResult, setShowResult] = useState(null); // { status: 'win' | 'loss', amount: number }
     const [tradeCountdown, setTradeCountdown] = useState(0);
     const [capturedCandles, setCapturedCandles] = useState(null);
-    const [useCustomChart, setUseCustomChart] = useState(true); // Toggle between TradingView and Custom
+    const [useCustomChart, setUseCustomChart] = useState(false); // Toggle: false = LightweightChart, true = Custom
     const container = useRef();
     const realTimeChartRef = useRef();
     const customChartRef = useRef();
+    const lightweightChartRef = useRef();
     const [signalNotification, setSignalNotification] = useState(null);
     const lastSignalState = useRef(null);
 
@@ -142,78 +142,15 @@ const Trade = () => {
         }
     }, [assets]);
 
+    // Remove TradingView widget loading - now using LightweightChart
     useEffect(() => {
-        if (!selectedAsset || activeSignal || !container.current || useCustomChart) return;
-
-        setChartLoading(true);
-
-        // Safely clear container
-        if (container.current) {
-            try {
-                while (container.current.firstChild) {
-                    container.current.removeChild(container.current.firstChild);
-                }
-            } catch (e) {
-                // Ignore removal errors
-                container.current.innerHTML = '';
-            }
-        }
-
-        if (!container.current) return;
-
-        const script = document.createElement("script");
-        script.src = "https://s3.tradingview.com/external-embedding/embed-widget-advanced-chart.js";
-        script.type = "text/javascript";
-        script.async = true;
-
-        let symbol = selectedAsset.name.replace('/', '');
-        if (selectedAsset.category === 'Cryptocurrency') {
-            symbol = `BINANCE:${symbol}`;
-        } else if (selectedAsset.category === 'Foreign Exchange') {
-            symbol = `FX_IDC:${symbol}`;
-        } else if (selectedAsset.name === 'XAU/USD') {
-            symbol = "OANDA:XAUUSD";
-        }
-
-        script.innerHTML = JSON.stringify({
-            "autosize": true,
-            "symbol": symbol,
-            "interval": activeTime,
-            "timezone": "Etc/UTC",
-            "theme": "dark",
-            "style": "1",
-            "locale": "en",
-            "enable_publishing": false,
-            "hide_top_toolbar": true,
-            "hide_legend": true,
-            "save_image": false,
-            "calendar": false,
-            "hide_volume": true,
-            "support_host": "https://www.tradingview.com",
-            "backgroundColor": "#131722",
-            "gridColor": "#2a2e39"
-        });
-
-        container.current.appendChild(script);
-
+        // Just set chart loading to false after a short delay
         const timer = setTimeout(() => {
             setChartLoading(false);
-        }, 2000);
+        }, 500);
 
-        return () => {
-            clearTimeout(timer);
-            // Safe cleanup on unmount
-            if (container.current) {
-                try {
-                    while (container.current.firstChild) {
-                        container.current.removeChild(container.current.firstChild);
-                    }
-                } catch (e) {
-                    // Ignore cleanup errors
-                }
-            }
-        };
-    }, [selectedAsset?.id, activeTime, activeSignal, useCustomChart]);
+        return () => clearTimeout(timer);
+    }, [selectedAsset?.id, activeTime]);
 
     const handlePlaceTrade = async (direction) => {
         if (!user) {
@@ -299,9 +236,18 @@ const Trade = () => {
 
     const captureTradingViewState = () => {
         // This function is now called when signal activates
-        // It will capture the current state from RealTimeChart or generate realistic candles
+        // It will capture the current state from LightweightChart or RealTimeChart
 
-        // We'll use a ref to get candles from RealTimeChart
+        // Try to get candles from LightweightChart first
+        if (lightweightChartRef.current?.getCandles) {
+            const currentCandles = lightweightChartRef.current.getCandles();
+            if (currentCandles && currentCandles.length > 0) {
+                setCapturedCandles(currentCandles);
+                return;
+            }
+        }
+
+        // Fallback: Try RealTimeChart
         if (realTimeChartRef.current?.getCandles) {
             const currentCandles = realTimeChartRef.current.getCandles();
             if (currentCandles && currentCandles.length > 0) {
@@ -356,8 +302,8 @@ const Trade = () => {
     });
 
     const renderSkeleton = () => (
-        <div style={{ padding: '0 0 100px 0', backgroundColor: '#0a0a0a', minHeight: '100vh' }}>
-            <div style={{ padding: '12px 16px', backgroundColor: '#111', borderBottom: '1px solid #222', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+        <div style={{ padding: '0 0 100px 0', backgroundColor: '#000000', minHeight: '100vh' }}>
+            <div style={{ padding: '12px 16px', backgroundColor: '#050505', borderBottom: '1px solid #1a1a1a', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                 <div style={{ display: 'flex', gap: '12px' }}>
                     <div className="skeleton-loader" style={{ width: '20px', height: '20px', borderRadius: '4px' }}></div>
                     <div className="skeleton-loader" style={{ width: '100px', height: '24px', borderRadius: '4px' }}></div>
@@ -384,7 +330,7 @@ const Trade = () => {
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             style={{
-                backgroundColor: '#0a0a0a',
+                backgroundColor: '#000000',
                 minHeight: '100vh',
                 color: '#fff',
                 paddingBottom: '160px',
@@ -396,8 +342,8 @@ const Trade = () => {
                 alignItems: 'center',
                 justifyContent: 'space-between',
                 padding: '12px 16px',
-                backgroundColor: '#111',
-                borderBottom: '1px solid #222',
+                backgroundColor: '#050505',
+                borderBottom: '1px solid #1a1a1a',
                 position: 'sticky',
                 top: 0,
                 zIndex: 100
@@ -431,8 +377,8 @@ const Trade = () => {
                 padding: '12px 16px',
                 fontSize: '12px',
                 color: '#888',
-                backgroundColor: '#111',
-                borderBottom: '1px solid #222'
+                backgroundColor: '#050505',
+                borderBottom: '1px solid #1a1a1a'
             }}>
                 {timeframes.map(time => (
                     <div
@@ -450,7 +396,7 @@ const Trade = () => {
                 ))}
             </div>
 
-            <div style={{ height: '450px', width: '100%', position: 'relative', backgroundColor: '#131722', overflow: 'hidden' }}>
+            <div style={{ height: '450px', width: '100%', position: 'relative', backgroundColor: '#000000', overflow: 'hidden' }}>
                 {/* Debug Signal Status */}
                 {activeSignal && (
                     <div style={{
@@ -523,63 +469,26 @@ const Trade = () => {
                     />
                 )}
 
-                {activeSignal ? (
-                    <div
-                        key="custom-chart"
-                        style={{
-                            height: '100%',
-                            width: '100%',
-                            position: 'absolute',
-                            top: 0,
-                            left: 0,
-                            zIndex: 5
-                        }}
-                    >
-                        <CustomChart
-                            ref={customChartRef}
-                            activeSignal={activeSignal}
-                            currentRate={selectedAsset?.rate}
-                            capturedCandles={capturedCandles}
-                            interval={activeTime}
-                        />
-                    </div>
-                ) : useCustomChart ? (
-                    <div
-                        key="realtime-chart"
-                        style={{
-                            height: '100%',
-                            width: '100%',
-                            position: 'absolute',
-                            top: 0,
-                            left: 0,
-                            zIndex: 5
-                        }}
-                    >
-                        <RealTimeChart
-                            ref={realTimeChartRef}
-                            symbol={selectedAsset?.name}
-                            interval={activeTime}
-                            currentRate={selectedAsset?.rate}
-                            initialCandles={capturedCandles}
-                        />
-                    </div>
-                ) : (
-                    <div
-                        key="tradingview-chart"
-                        ref={container}
-                        className="tradingview-widget-container"
-                        style={{
-                            height: '100%',
-                            width: '100%',
-                            position: 'absolute',
-                            top: 0,
-                            left: 0,
-                            display: activeSignal ? 'none' : 'block'
-                        }}
-                    >
-                        <div className="tradingview-widget-container__widget" style={{ height: '100%', width: '100%' }}></div>
-                    </div>
-                )}
+                {/* Single LightweightChart — handles both normal & signal mode via activeSignal prop */}
+                <div
+                    key="lightweight-chart"
+                    style={{
+                        height: '100%',
+                        width: '100%',
+                        position: 'absolute',
+                        top: 0,
+                        left: 0,
+                        zIndex: 5
+                    }}
+                >
+                    <LightweightChart
+                        ref={lightweightChartRef}
+                        symbol={selectedAsset?.name}
+                        interval={activeTime}
+                        currentRate={selectedAsset?.rate}
+                        activeSignal={activeSignal}
+                    />
+                </div>
 
                 {trading && (
                     <div
@@ -612,7 +521,7 @@ const Trade = () => {
                 color: '#777',
                 display: 'grid',
                 gridTemplateColumns: '1fr 1fr',
-                backgroundColor: '#0a0a0a',
+                backgroundColor: '#000000',
                 borderBottom: '1px solid #1a1a1a',
                 lineHeight: '1.8'
             }}>

@@ -154,6 +154,11 @@ const AdminUsers = () => {
                                         }}>
                                             {user.isVerified ? 'VERIFIED' : 'UNVERIFIED'}
                                         </span>
+                                        {user.docType && (
+                                            <span style={{ fontSize: '9px', color: '#666', fontWeight: '700' }}>
+                                                {user.docType.toUpperCase()}
+                                            </span>
+                                        )}
                                     </div>
                                 </td>
                                 <td style={{ padding: '16px' }}>

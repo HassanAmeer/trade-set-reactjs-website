@@ -4,6 +4,7 @@
  */
 
 export const uploadFileChunks = async (file, onProgress) => {
+    if (!file) return { success: false, error: "No file provided" };
     const CHUNK_SIZE = 256 * 1024; // 256KB
     const totalChunks = Math.ceil(file.size / CHUNK_SIZE);
     const fileId = Date.now().toString() + Math.random().toString(36).substring(7);

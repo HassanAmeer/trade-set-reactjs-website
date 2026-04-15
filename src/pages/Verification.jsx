@@ -26,6 +26,15 @@ const Verification = () => {
     const [uploadingType, setUploadingType] = useState(null); // 'front' or 'back'
     const [showToast, setShowToast] = useState(false);
     const [isReverifying, setIsReverifying] = useState(false);
+    const [docType, setDocType] = useState('ID Card'); // 'ID Card', 'Passport', 'Driving License'
+
+    // Reset files when docType changes
+    React.useEffect(() => {
+        setFrontFile(null);
+        setBackFile(null);
+        setFrontPreview(null);
+        setBackPreview(null);
+    }, [docType]);
 
     const frontInputRef = useRef(null);
     const backInputRef = useRef(null);
@@ -48,8 +57,8 @@ const Verification = () => {
     };
 
     const handleSubmit = async () => {
-        if (!frontFile || !backFile) {
-            alert("Please select both Front and Back sides of your CNIC.");
+        if (!frontFile || (docType !== 'Passport' && !backFile)) {
+            alert(`Please select ${docType === 'Passport' ? 'your Passport' : 'both Front and Back sides of your ' + docType}.`);
             return;
         }
 
@@ -62,14 +71,19 @@ const Verification = () => {
             if (!frontResult.success) throw new Error("Front side upload failed");
 
             // 2. Upload Back Side
-            setUploadingType('back');
-            const backResult = await uploadFileChunks(backFile);
-            if (!backResult.success) throw new Error("Back side upload failed");
+            let backUrl = null;
+            if (docType !== 'Passport') {
+                setUploadingType('back');
+                const backResult = await uploadFileChunks(backFile);
+                if (!backResult.success) throw new Error("Back side upload failed");
+                backUrl = backResult.url;
+            }
 
             // 3. Update Firestore
             await updateUser({
                 cnicFront: frontResult.url,
-                cnicBack: backResult.url,
+                cnicBack: backUrl,
+                docType: docType,
                 kycStatus: 'pending',
                 kycMessage: 'Your documents are under review.',
                 updatedAt: new Date().toISOString()
@@ -104,7 +118,7 @@ const Verification = () => {
         </div>
     );
 
-    const isReadyToSubmit = frontFile && backFile;
+    const isReadyToSubmit = frontFile && (docType === 'Passport' ? true : backFile);
 
     return (
         <div style={{ minHeight: '100vh', backgroundColor: '#0a0a0a', color: '#fff' }}>
@@ -178,17 +192,19 @@ const Verification = () => {
                         </div>
                         <h3 style={{ fontSize: '24px', fontWeight: '800', marginBottom: '10px', color: '#00c087' }}>Verified Account</h3>
                         <p style={{ color: '#888', fontSize: '14px', marginBottom: '30px', lineHeight: '1.6' }}>
-                            Your identity has been successfully verified. You now have full access to all trading features.
+                            Your identity has been successfully verified via <b>{user.docType || 'ID Card'}</b>. You now have full access to all trading features.
                         </p>
                         <br /><br />
 
                         <div style={{ display: 'flex', gap: '15px', marginBottom: '20px', justifyContent: 'center' }}>
                             <div style={{ width: '100px', height: '60px', borderRadius: '8px', overflow: 'hidden', border: '1px solid #333' }}>
-                                <img src={user.cnicFront} alt="CNIC Front" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                                <img src={user.cnicFront} alt="Document" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
                             </div>
-                            <div style={{ width: '100px', height: '60px', borderRadius: '8px', overflow: 'hidden', border: '1px solid #333' }}>
-                                <img src={user.cnicBack} alt="CNIC Back" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
-                            </div>
+                            {user.docType !== 'Passport' && (
+                                <div style={{ width: '100px', height: '60px', borderRadius: '8px', overflow: 'hidden', border: '1px solid #333' }}>
+                                    <img src={user.cnicBack} alt="Document Back" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                                </div>
+                            )}
                         </div>
 
                         <button
@@ -218,14 +234,46 @@ const Verification = () => {
                         <div style={{ marginBottom: '30px' }}>
                             <h3 style={{ fontSize: '20px', fontWeight: '800', marginBottom: '10px' }}>Verify Your Identity</h3>
                             <p style={{ color: '#666', fontSize: '13px', lineHeight: '1.5' }}>
-                                To ensure the security of your account and comply with regulations, please upload clear photos of your National ID Card.
+                                To ensure the security of your account and comply with regulations, please upload clear photos of your documents.
                             </p>
+                        </div>
+
+                        {/* Document Type Selector */}
+                        <div style={{
+                            display: 'flex',
+                            gap: '10px',
+                            marginBottom: '25px',
+                            backgroundColor: '#111',
+                            padding: '5px',
+                            borderRadius: '12px',
+                            border: '1px solid #222'
+                        }}>
+                            {['ID Card', 'Passport', 'Driving License'].map((type) => (
+                                <button
+                                    key={type}
+                                    onClick={() => setDocType(type)}
+                                    style={{
+                                        flex: 1,
+                                        padding: '10px 5px',
+                                        fontSize: '12px',
+                                        fontWeight: '700',
+                                        borderRadius: '8px',
+                                        border: 'none',
+                                        cursor: 'pointer',
+                                        backgroundColor: docType === type ? 'var(--accent-gold)' : 'transparent',
+                                        color: docType === type ? '#000' : '#888',
+                                        transition: 'all 0.2s ease'
+                                    }}
+                                >
+                                    {type}
+                                </button>
+                            ))}
                         </div>
 
                         {/* Front Side */}
                         <div style={{ marginBottom: '25px' }}>
                             <div style={{ fontSize: '14px', fontWeight: '700', marginBottom: '12px', display: 'flex', justifyContent: 'space-between' }}>
-                                <span>CNIC Front Side</span>
+                                <span>{docType === 'Passport' ? 'Main Page' : 'Front Side'}</span>
                                 {(frontFile || user?.cnicFront) && <Check size={16} color="#00c087" />}
                             </div>
                             <div
@@ -263,11 +311,12 @@ const Verification = () => {
                         </div>
 
                         {/* Back Side */}
-                        <div style={{ marginBottom: '35px' }}>
-                            <div style={{ fontSize: '14px', fontWeight: '700', marginBottom: '12px', display: 'flex', justifyContent: 'space-between' }}>
-                                <span>CNIC Back Side</span>
-                                {(backFile || user?.cnicBack) && <Check size={16} color="#00c087" />}
-                            </div>
+                        {docType !== 'Passport' && (
+                            <div style={{ marginBottom: '35px' }}>
+                                <div style={{ fontSize: '14px', fontWeight: '700', marginBottom: '12px', display: 'flex', justifyContent: 'space-between' }}>
+                                    <span>Back Side</span>
+                                    {(backFile || user?.cnicBack) && <Check size={16} color="#00c087" />}
+                                </div>
                             <div
                                 onClick={() => !isSubmitting && backInputRef.current?.click()}
                                 style={{
@@ -301,6 +350,7 @@ const Verification = () => {
                             </div>
                             <input type="file" ref={backInputRef} onChange={(e) => handleFileSelect(e, 'back')} style={{ display: 'none' }} accept="image/*" />
                         </div>
+                        )}
 
                         <ul style={{ padding: '0 20px', fontSize: '12px', color: '#555', lineHeight: '1.8', marginBottom: '30px' }}>
                             <li>Ensure all text on ID card is clearly readable.</li>

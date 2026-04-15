@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { db } from '../../firebase-setup';
 import { doc, getDoc, setDoc, serverTimestamp } from 'firebase/firestore';
-import { TrendingUp, TrendingDown, Clock, Sparkles, Loader2, AlertCircle, ShieldCheck } from 'lucide-react';
+import { TrendingUp, TrendingDown, Sparkles, Loader2, AlertCircle, ShieldCheck } from 'lucide-react';
 import { motion } from 'framer-motion';
 
 const AdminSignals = () => {
@@ -9,7 +9,6 @@ const AdminSignals = () => {
     const [loading, setLoading] = useState(false);
     const [currentSignal, setCurrentSignal] = useState(null);
     const [fetching, setFetching] = useState(true);
-    const [candleSpeed, setCandleSpeed] = useState('2'); // seconds per candle
     const [volatility, setVolatility] = useState('medium'); // low, medium, high
 
     useEffect(() => {
@@ -44,16 +43,15 @@ const AdminSignals = () => {
                 startTime: new Date().toISOString(),
                 expiresAt: expiresAt.toISOString(),
                 isActive: true,
-                candleSpeed: parseInt(candleSpeed), // seconds per candle
                 volatility: volatility, // low, medium, high
-                updatedAt: new Date().toISOString() // Force update timestamp
+                updatedAt: new Date().toISOString()
             };
 
             console.log('Setting signal:', signalData);
             await setDoc(doc(db, 'admin_set', 'market_signal'), signalData);
             setCurrentSignal(signalData);
             console.log('Signal set successfully');
-            alert(`✅ Signal activated: ${direction} for ${duration} min with ${candleSpeed}s candles`);
+            alert(`✅ Signal activated: ${direction} for ${duration} min`);
         } catch (error) {
             console.error('Failed to set signal:', error);
             alert("❌ Failed to set signal: " + error.message);
@@ -184,36 +182,6 @@ const AdminSignals = () => {
                            </button>
                        ))}
                    </div>
-               </div>
-
-               <div style={{ marginBottom: '20px' }}>
-                   <label style={{ display: 'block', fontSize: '13px', color: '#888', marginBottom: '8px' }}>
-                       <Clock size={14} style={{ display: 'inline', marginRight: '6px' }} />
-                       Candle Speed (Seconds per Candle)
-                   </label>
-                   <div style={{ display: 'flex', gap: '10px', flexWrap: 'wrap' }}>
-                       {['1', '2', '3', '5', '10'].map(s => (
-                           <button
-                                key={s}
-                                onClick={() => setCandleSpeed(s)}
-                                style={{
-                                    padding: '8px 16px',
-                                    borderRadius: '8px',
-                                    border: '1px solid ' + (candleSpeed === s ? '#00c087' : '#222'),
-                                    backgroundColor: candleSpeed === s ? 'rgba(0,192,135,0.1)' : 'transparent',
-                                    color: candleSpeed === s ? '#00c087' : '#666',
-                                    cursor: 'pointer',
-                                    fontWeight: '600',
-                                    fontSize: '13px'
-                                }}
-                           >
-                               {s}s
-                           </button>
-                       ))}
-                   </div>
-                   <p style={{ fontSize: '11px', color: '#666', marginTop: '6px', marginBottom: 0 }}>
-                       Lower = Faster candles (more movement), Higher = Slower candles (less movement)
-                   </p>
                </div>
 
                <div style={{ marginBottom: '20px' }}>

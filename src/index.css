@@ -1,8 +1,8 @@
 @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap');
 
 :root {
-  --bg-primary: #111111;
-  --bg-secondary: #1b1b1b;
+  --bg-primary: #000000;
+  --bg-secondary: #0a0a0a;
   --text-primary: #ffffff;
   --text-secondary: #999999;
   --accent-gold: #f0b90b;
@@ -49,7 +49,7 @@ body {
 .admin-root-wrapper {
   width: 100%;
   min-height: 100vh;
-  background-color: #050505;
+  background-color: #000000;
 }
 
 .glass {

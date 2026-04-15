@@ -182,6 +182,21 @@ const AdminKYC = () => {
                                         <div style={{ fontSize: '10px', color: '#333', marginTop: '2px' }}>
                                             {user.updatedAt ? new Date(user.updatedAt).toLocaleString() : ''}
                                         </div>
+                                        {user.docType && (
+                                            <div style={{
+                                                marginTop: '10px',
+                                                display: 'inline-block',
+                                                padding: '2px 8px',
+                                                backgroundColor: 'rgba(212,175,55,0.1)',
+                                                color: 'var(--accent-gold)',
+                                                borderRadius: '4px',
+                                                fontSize: '10px',
+                                                fontWeight: '800',
+                                                border: '1px solid rgba(212,175,55,0.2)'
+                                            }}>
+                                                {user.docType.toUpperCase()}
+                                            </div>
+                                        )}
                                     </td>
 
                                     {/* Document Thumbnails */}
@@ -197,12 +212,12 @@ const AdminKYC = () => {
                                                         src={user.cnicFront}
                                                         alt="Front"
                                                         style={{ width: '70px', height: '48px', objectFit: 'cover', borderRadius: '6px', border: '1px solid #333', display: 'block' }}
-                                                    />
-                                                    <div style={{ fontSize: '9px', color: '#666', textAlign: 'center', marginTop: '3px' }}>FRONT</div>
+                                                     />
+                                                     <div style={{ fontSize: '9px', color: '#666', textAlign: 'center', marginTop: '3px' }}>{user.docType === 'Passport' ? 'MAIN' : 'FRONT'}</div>
                                                 </div>
                                             ) : <div style={{ width: '70px', height: '48px', background: '#111', borderRadius: '6px', border: '1px dashed #333' }} />}
 
-                                            {user.cnicBack ? (
+                                            {user.docType !== 'Passport' && (user.cnicBack ? (
                                                 <div
                                                     onClick={() => setSelectedImage(user.cnicBack)}
                                                     style={{ cursor: 'pointer' }}
@@ -215,7 +230,7 @@ const AdminKYC = () => {
                                                     />
                                                     <div style={{ fontSize: '9px', color: '#666', textAlign: 'center', marginTop: '3px' }}>BACK</div>
                                                 </div>
-                                            ) : <div style={{ width: '70px', height: '48px', background: '#111', borderRadius: '6px', border: '1px dashed #333' }} />}
+                                            ) : <div style={{ width: '70px', height: '48px', background: '#111', borderRadius: '6px', border: '1px dashed #333' }} />)}
                                         </div>
                                     </td>
 
