@@ -1,28 +1,33 @@
-import React, { useEffect } from 'react';
+import React, { useEffect, lazy, Suspense } from 'react';
 import { BrowserRouter as Router, Routes, Route, Link, useLocation } from 'react-router-dom';
 import { db } from './firebase-setup';
 import { doc, onSnapshot } from 'firebase/firestore';
+
+// Critical pages - load immediately
 import Home from './pages/Home';
 import Market from './pages/Market';
 import Trade from './pages/Trade';
-import Coin from './pages/Coin';
 import Profile from './pages/Profile';
 import Login from './pages/Login';
 import Signup from './pages/Signup';
-import ForgotPassword from './pages/ForgotPassword';
-import Verification from './pages/Verification';
-import Deposit from './pages/Deposit';
-import DepositHistory from './pages/DepositHistory';
-import Withdrawal from './pages/Withdrawal';
-import WithdrawalHistory from './pages/WithdrawalHistory';
-import C2C from './pages/C2C';
-import CustomerService from './pages/CustomerService';
-import Messages from './pages/Messages';
-import NewsAndBlog from './pages/NewsAndBlog';
-import BlogDetail from './pages/BlogDetail';
-import AdminLogin from './pages/admin/AdminLogin';
-import AdminDashboard from './pages/admin/AdminDashboard';
-import TradesRecord from './pages/TradesRecord';
+
+// Non-critical pages - lazy load
+const Coin = lazy(() => import('./pages/Coin'));
+const ForgotPassword = lazy(() => import('./pages/ForgotPassword'));
+const Verification = lazy(() => import('./pages/Verification'));
+const Deposit = lazy(() => import('./pages/Deposit'));
+const DepositHistory = lazy(() => import('./pages/DepositHistory'));
+const Withdrawal = lazy(() => import('./pages/Withdrawal'));
+const WithdrawalHistory = lazy(() => import('./pages/WithdrawalHistory'));
+const C2C = lazy(() => import('./pages/C2C'));
+const CustomerService = lazy(() => import('./pages/CustomerService'));
+const Messages = lazy(() => import('./pages/Messages'));
+const NewsAndBlog = lazy(() => import('./pages/NewsAndBlog'));
+const BlogDetail = lazy(() => import('./pages/BlogDetail'));
+const AdminLogin = lazy(() => import('./pages/admin/AdminLogin'));
+const AdminDashboard = lazy(() => import('./pages/admin/AdminDashboard'));
+const TradesRecord = lazy(() => import('./pages/TradesRecord'));
+
 import { Home as HomeIcon, BarChart2, Activity, Zap, User } from 'lucide-react';
 import { MarketProvider } from './context/MarketContext';
 import { AuthProvider } from './context/AuthContext';
@@ -67,31 +72,43 @@ const AppContent = () => {
 
   return (
     <div className={isAdminRoute ? "admin-root-wrapper" : "mobile-layout-wrapper"}>
-      <Routes>
-        <Route path="/" element={<Home />} />
-        <Route path="/market" element={<Market />} />
-        <Route path="/trade" element={<Trade />} />
-        <Route path="/trade-history" element={<TradesRecord />} />
-        <Route path="/coin" element={<Coin />} />
-        <Route path="/profile" element={<Profile />} />
-        <Route path="/login" element={<Login />} />
-        <Route path="/signup" element={<Signup />} />
-        <Route path="/forgot-password" element={<ForgotPassword />} />
-        <Route path="/verification" element={<Verification />} />
-        <Route path="/deposit" element={<Deposit />} />
-        <Route path="/deposit-history" element={<DepositHistory />} />
-        <Route path="/withdrawal" element={<Withdrawal />} />
-        <Route path="/withdrawal-history" element={<WithdrawalHistory />} />
-        <Route path="/c2c" element={<C2C />} />
-        <Route path="/support" element={<CustomerService />} />
-        <Route path="/inbox" element={<Messages />} />
-        <Route path="/news" element={<NewsAndBlog />} />
-        <Route path="/news/:id" element={<BlogDetail />} />
-        
-        {/* Admin Routes */}
-        <Route path="/set" element={<AdminLogin />} />
-        <Route path="/admin/*" element={<AdminDashboard />} />
-      </Routes>
+      <Suspense fallback={
+        <div style={{
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          minHeight: '100vh',
+          backgroundColor: '#0a0a0a'
+        }}>
+          <div className="circular-loader-simple"></div>
+        </div>
+      }>
+        <Routes>
+          <Route path="/" element={<Home />} />
+          <Route path="/market" element={<Market />} />
+          <Route path="/trade" element={<Trade />} />
+          <Route path="/trade-history" element={<TradesRecord />} />
+          <Route path="/coin" element={<Coin />} />
+          <Route path="/profile" element={<Profile />} />
+          <Route path="/login" element={<Login />} />
+          <Route path="/signup" element={<Signup />} />
+          <Route path="/forgot-password" element={<ForgotPassword />} />
+          <Route path="/verification" element={<Verification />} />
+          <Route path="/deposit" element={<Deposit />} />
+          <Route path="/deposit-history" element={<DepositHistory />} />
+          <Route path="/withdrawal" element={<Withdrawal />} />
+          <Route path="/withdrawal-history" element={<WithdrawalHistory />} />
+          <Route path="/c2c" element={<C2C />} />
+          <Route path="/support" element={<CustomerService />} />
+          <Route path="/inbox" element={<Messages />} />
+          <Route path="/news" element={<NewsAndBlog />} />
+          <Route path="/news/:id" element={<BlogDetail />} />
+
+          {/* Admin Routes */}
+          <Route path="/set" element={<AdminLogin />} />
+          <Route path="/admin/*" element={<AdminDashboard />} />
+        </Routes>
+      </Suspense>
       <BottomNav />
     </div>
   );

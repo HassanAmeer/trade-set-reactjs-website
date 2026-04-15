@@ -15,7 +15,7 @@ import { useBranding } from '../context/BrandingContext';
 import { LogOut } from 'lucide-react';
 
 const Home = () => {
-    const { assets, loading: marketLoading } = useMarket();
+    const { assets, loading: marketLoading, setIsActive } = useMarket();
     const { websiteName, logoUrl } = useBranding();
     const { user, logout } = useAuth();
     const [activeTab, setActiveTab] = useState('All');
@@ -24,6 +24,12 @@ const Home = () => {
     const [showLogoutConfirm, setShowLogoutConfirm] = useState(false);
     const [unreadCount, setUnreadCount] = useState(0);
     const navigate = useNavigate();
+
+    // Activate market data loading for Home page
+    useEffect(() => {
+        setIsActive(true);
+        return () => setIsActive(false);
+    }, [setIsActive]);
 
     // Listen for unread messages
     useEffect(() => {

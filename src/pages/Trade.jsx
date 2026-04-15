@@ -11,13 +11,19 @@ import RealTimeChart from '../components/RealTimeChart';
 import { Trophy, CircleAlert, Sparkles } from 'lucide-react';
 
 const Trade = () => {
-    const { assets, selectedAsset, setSelectedAsset } = useMarket();
+    const { assets, selectedAsset, setSelectedAsset, setIsActive } = useMarket();
     const { user, updateUser } = useAuth();
     const location = useLocation();
     const navigate = useNavigate();
 
     // IMMEDIATELY check for navigation state and set asset BEFORE any other logic
     const navigationAssetId = location.state?.assetId;
+
+    // Activate market data loading for Trade page
+    useEffect(() => {
+        setIsActive(true);
+        return () => setIsActive(false);
+    }, [setIsActive]);
 
     const [activeTime, setActiveTime] = useState('D');
     const [showAssetList, setShowAssetList] = useState(false);

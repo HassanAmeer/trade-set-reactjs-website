@@ -1,12 +1,18 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useMarket } from '../context/MarketContext';
 import { motion } from 'framer-motion';
 import { useNavigate } from 'react-router-dom';
 
 const Market = () => {
-    const { assets, loading } = useMarket();
+    const { assets, loading, setIsActive } = useMarket();
     const navigate = useNavigate();
     const [activeTab, setActiveTab] = useState('All');
+
+    // Activate market data loading for Market page
+    useEffect(() => {
+        setIsActive(true);
+        return () => setIsActive(false);
+    }, [setIsActive]);
 
     const filteredAssets = assets.filter(a => {
         if (activeTab === 'All') return true;

@@ -5,8 +5,6 @@ import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { useBranding } from '../context/BrandingContext';
 import { uploadFileChunks } from '../services/dbs';
-import { db } from '../firebase-setup';
-import { collection, getDocs } from 'firebase/firestore';
 import giftBg from '../assets/gift-boxes-background.png';
 import giftBox from '../assets/gift-box.png';
 
@@ -19,33 +17,7 @@ const Profile = () => {
     const [showQrPopup, setShowQrPopup] = React.useState(false);
     const [copied, setCopied] = React.useState(false);
     const fileInputRef = React.useRef(null);
-    const [userLevel, setUserLevel] = React.useState(null);
-
-    React.useEffect(() => {
-        const fetchLevel = async () => {
-            if (!user) return;
-            try {
-                const snap = await getDocs(collection(db, 'users'));
-                const list = snap.docs.map(d => {
-                    const data = d.data();
-                    return data.totalDeposit !== undefined ? Number(data.totalDeposit) : Number(data.balance || 0);
-                });
-
-                const uniqueDeposits = [...new Set(list)].sort((a, b) => b - a);
-                const myDeposit = user.totalDeposit !== undefined ? Number(user.totalDeposit) : Number(user.balance || 0);
-
-                if (myDeposit > 0) {
-                    const rankIndex = uniqueDeposits.indexOf(myDeposit);
-                    if (rankIndex !== -1 && rankIndex < 5) {
-                        setUserLevel(rankIndex + 1);
-                    }
-                }
-            } catch (err) {
-                console.error("Error fetching ranking:", err);
-            }
-        };
-        fetchLevel();
-    }, [user]);
+    // Removed heavy userLevel fetching - it was loading ALL users data
 
     const referralLink = `${window.location.origin}/signup?ref=${user?.id}`;
     const qrCodeUrl = `https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=${encodeURIComponent(referralLink)}`;
@@ -173,11 +145,7 @@ const Profile = () => {
                                     <div style={{ fontWeight: '800', fontSize: '20px', letterSpacing: '0.5px' }}>{user.name || user.email.split('@')[0]}</div>
                                 </div>
                                 <div style={{ fontSize: '11px', color: 'var(--text-secondary)', marginTop: '2px', display: 'flex', alignItems: 'center', gap: '8px' }}>
-                                    {userLevel ? (
-                                        <span className='shimmer'>Level {userLevel}</span>
-                                    ) : (
-                                        <span>UID: {user.id.slice(-6).toUpperCase()}</span>
-                                    )}
+                                    <span>UID: {user.id.slice(-6).toUpperCase()}</span>
                                     <span style={{ color: '#444' }}>|</span>
                                     <span style={{ color: 'var(--accent-secondary)', fontWeight: '700' }}> Active </span>
                                     {/* <span style={{ color: 'var(--accent-gold)', fontWeight: '700' }}>{Number(user.balance || 0).toFixed(2)} USDT</span> */}

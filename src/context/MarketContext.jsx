@@ -29,6 +29,7 @@ export const MarketProvider = ({ children }) => {
     const [assets, setAssets] = useState([...FALLBACK_FOREX, ...FALLBACK_CRYPTO, ...STATIC_METALS]);
     const [loading, setLoading] = useState(true);
     const [selectedAsset, setSelectedAsset] = useState(null);
+    const [isActive, setIsActive] = useState(false); // Track if market data should be active
 
     // Set initial selected asset once data is loaded (only if no asset is selected)
     useEffect(() => {
@@ -64,6 +65,12 @@ export const MarketProvider = ({ children }) => {
     }, []);
 
     useEffect(() => {
+        // Only load market data if isActive is true
+        if (!isActive) {
+            setLoading(false);
+            return;
+        }
+
         loadMarketData();
         const apiInterval = setInterval(loadMarketData, 60000); // 1 minute real update
 
@@ -101,10 +108,10 @@ export const MarketProvider = ({ children }) => {
             clearInterval(apiInterval);
             clearInterval(simInterval);
         };
-    }, [loadMarketData]);
+    }, [loadMarketData, isActive]);
 
     return (
-        <MarketContext.Provider value={{ assets, loading, refreshData: loadMarketData, selectedAsset, setSelectedAsset }}>
+        <MarketContext.Provider value={{ assets, loading, refreshData: loadMarketData, selectedAsset, setSelectedAsset, setIsActive }}>
             {children}
         </MarketContext.Provider>
     );
