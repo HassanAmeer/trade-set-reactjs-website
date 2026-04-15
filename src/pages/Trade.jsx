@@ -34,6 +34,7 @@ const Trade = () => {
     const [activeSignal, setActiveSignal] = useState(null);
     const [showResult, setShowResult] = useState(null); // { status: 'win' | 'loss', amount: number }
     const [tradeCountdown, setTradeCountdown] = useState(0);
+    const [tradeDirection, setTradeDirection] = useState(null);
     const [capturedCandles, setCapturedCandles] = useState(null);
     const [useCustomChart, setUseCustomChart] = useState(false); // Toggle: false = LightweightChart, true = Custom
     const container = useRef();
@@ -53,6 +54,24 @@ const Trade = () => {
         { label: '1 week', value: 'W' }
     ];
 
+    // Periodic expiration check (ensures UI stays synced even if Firestore doesn't update)
+    useEffect(() => {
+        const interval = setInterval(() => {
+            if (activeSignal) {
+                const now = new Date();
+                const expiresAt = new Date(activeSignal.expiresAt);
+                const isManuallyActive = activeSignal.isActive === true;
+                if (expiresAt < now || !isManuallyActive) {
+                    console.log('--- LOCAL SIGNAL EXPIRATION DETECTED ---');
+                    setActiveSignal(null);
+                    setSignalNotification({ type: 'stop' });
+                    setTimeout(() => setSignalNotification(null), 5000);
+                }
+            }
+        }, 1000);
+        return () => clearInterval(interval);
+    }, [activeSignal]);
+
     useEffect(() => {
         console.log('Setting up robust signal listener...');
 
@@ -66,7 +85,9 @@ const Trade = () => {
                     const expiresAt = new Date(data.expiresAt);
                     const isExpired = expiresAt < now;
                     const isManuallyActive = data.isActive === true;
-                    const isActive = isManuallyActive && !isExpired;
+                    // Fix: Check if current user is affected by this signal
+                    const userAffected = data.affectedUsersMap?.[user?.id];
+                    const isActive = isManuallyActive && !isExpired && !!userAffected;
 
                     console.log(`[${timestamp}] Signal State:`, isActive ? 'ACTIVE' : 'INACTIVE', data.direction);
 
@@ -74,20 +95,9 @@ const Trade = () => {
                     if (isActive && lastSignalState.current !== 'ACTIVE') {
                         setSignalNotification({ type: 'start', direction: data.direction });
                         setTimeout(() => setSignalNotification(null), 5000);
-
-                        // Capture candles when signal starts
-                        captureTradingViewState();
                     } else if (!isActive && lastSignalState.current === 'ACTIVE') {
                         setSignalNotification({ type: 'stop' });
                         setTimeout(() => setSignalNotification(null), 5000);
-
-                        // Capture candles when signal stops to pass back to RealTimeChart
-                        if (customChartRef.current?.getCandles) {
-                            const signalCandles = customChartRef.current.getCandles();
-                            if (signalCandles && signalCandles.length > 0) {
-                                setCapturedCandles(signalCandles);
-                            }
-                        }
                     }
 
                     lastSignalState.current = isActive ? 'ACTIVE' : 'INACTIVE';
@@ -107,7 +117,7 @@ const Trade = () => {
         );
 
         return () => unsub();
-    }, []); // Empty dependency array for stability
+    }, [user?.id]); // Empty dependency array for stability
 
     // Auto-select asset passed via navigation state (from Home / Market page click)
     useEffect(() => {
@@ -170,6 +180,7 @@ const Trade = () => {
         }
 
         setTrading(true);
+        setTradeDirection(direction);
         setTradeCountdown(10); // 10 second trade for testing, can be 30 or 60
 
         try {
@@ -198,20 +209,36 @@ const Trade = () => {
 
                     // Resolve trade
                     let isWin = false;
+                    let profitAmount = 0;
                     // Check signal (refetch to be sure)
                     const signalSnap = await getDoc(doc(db, 'admin_set', 'market_signal'));
                     const signal = signalSnap.data();
                     const isSignalActiveNow = signal?.isActive && new Date(signal?.expiresAt) > new Date();
 
                     if (isSignalActiveNow) {
-                        isWin = (direction === 'BUY' && signal.direction === 'UP') ||
-                            (direction === 'SELL' && signal.direction === 'DOWN');
-                    } else {
-                        // random 50/50 if no signal
-                        isWin = Math.random() > 0.5;
-                    }
+                        const userSignalConfig = signal.affectedUsersMap?.[user?.id];
 
-                    const profitAmount = isWin ? amount * 1.85 : 0; // 85% profit
+                        if (userSignalConfig) {
+                            // Apply individual Win Probability (from admin_set/market_signal/affectedUsersMap)
+                            const winProb = userSignalConfig.winRate ?? 100;
+                            const roll = Math.random() * 100;
+                            const matchesSignalDirection = (direction === 'BUY' && signal.direction === 'UP') || (direction === 'SELL' && signal.direction === 'DOWN');
+
+                            isWin = matchesSignalDirection && (roll <= winProb);
+
+                            // Apply individual Payout Rate
+                            const userPayoutRate = (userSignalConfig.payoutRate || 85) / 100;
+                            profitAmount = isWin ? amount * (1 + userPayoutRate) : 0;
+                        } else {
+                            // User not targeted: Normal 50/50 resolve
+                            isWin = Math.random() > 0.5;
+                            profitAmount = isWin ? amount * 1.85 : 0;
+                        }
+                    } else {
+                        // No active signal: 50/50 chance, default 85% payout
+                        isWin = Math.random() > 0.5;
+                        profitAmount = isWin ? amount * 1.85 : 0;
+                    }
 
                     if (isWin) {
                         await updateUser({ balance: increment(profitAmount) });
@@ -487,6 +514,9 @@ const Trade = () => {
                         interval={activeTime}
                         currentRate={selectedAsset?.rate}
                         activeSignal={activeSignal}
+                        user={user}
+                        isTrading={trading}
+                        tradeDirection={tradeDirection}
                     />
                 </div>
 
