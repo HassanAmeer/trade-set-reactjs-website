@@ -281,7 +281,12 @@ const Home = () => {
                                             e.target.src = 'https://cdn-icons-png.flaticon.com/512/25/25254.png';
                                         }}
                                     />
-                                    <span className="asset-name">{asset.name}</span>
+                                    <div style={{ display: 'flex', flexDirection: 'column' }}>
+                                        <span className="asset-name" style={{ marginBottom: '2px' }}>{asset.name}</span>
+                                        {asset.fullName && (
+                                            <span style={{ fontSize: '10px', color: '#666', fontWeight: '500' }}>{asset.fullName}</span>
+                                        )}
+                                    </div>
                                 </div>
                                 <div className="asset-rate">{asset.rate}</div>
                                 <div style={{ justifySelf: 'end' }}>

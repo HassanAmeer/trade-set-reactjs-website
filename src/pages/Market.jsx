@@ -94,7 +94,12 @@ const Market = () => {
                             >
                                 <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
                                     <img src={asset.flag} alt={asset.name} style={{ width: '28px', height: '18px', borderRadius: '1px', objectFit: 'cover' }} />
-                                    <span style={{ fontWeight: '700', fontSize: '13px', color: '#fff' }}>{asset.name}</span>
+                                    <div style={{ display: 'flex', flexDirection: 'column' }}>
+                                        <span style={{ fontWeight: '700', fontSize: '13px', color: '#fff' }}>{asset.name}</span>
+                                        {asset.fullName && (
+                                            <span style={{ fontSize: '10px', color: '#666', fontWeight: '500', marginTop: '1px' }}>{asset.fullName}</span>
+                                        )}
+                                    </div>
                                 </div>
                                 <div style={{ fontSize: '13px', textAlign: 'center', color: '#fff', fontWeight: '500' }}>{asset.rate}</div>
                                 <div style={{ textAlign: 'right' }}>
