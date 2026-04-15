@@ -19,6 +19,13 @@ const Deposit = () => {
     const [preview, setPreview] = useState(null);
     const fileInputRef = useRef(null);
 
+    // Redirect to login if user is not logged in
+    useEffect(() => {
+        if (!user) {
+            navigate('/login');
+        }
+    }, [user, navigate]);
+
     const handleCopy = () => {
         if (!usdtAddress) return;
         navigator.clipboard.writeText(usdtAddress);

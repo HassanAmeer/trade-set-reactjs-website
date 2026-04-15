@@ -9,6 +9,13 @@ const Verification = () => {
     const { user, updateUser, loading } = useAuth();
     const navigate = useNavigate();
 
+    // Redirect to login if user is not logged in
+    React.useEffect(() => {
+        if (!loading && !user) {
+            navigate('/login');
+        }
+    }, [user, loading, navigate]);
+
     // Local state for files before upload
     const [frontFile, setFrontFile] = useState(null);
     const [backFile, setBackFile] = useState(null);

@@ -182,16 +182,16 @@ const Home = () => {
             </div> */}
 
             <div className="action-grid">
-                <div className="action-item" onClick={() => navigate('/deposit')}>
+                <div className="action-item" onClick={() => user ? navigate('/deposit') : navigate('/login')}>
                     <div className="action-icon"><CreditCard size={20} className='shimmer-icon' /></div>
                     <span className="action-label">Deposit</span>
                 </div>
-                <div className="action-item" onClick={() => navigate('/withdrawal')}>
+                <div className="action-item" onClick={() => user ? navigate('/withdrawal') : navigate('/login')}>
                     <div className="action-icon"><Wallet size={20} /></div>
                     <span className="action-label">Withdrawal</span>
                 </div>
 
-                <div className="action-item" onClick={() => navigate('/support')}>
+                <div className="action-item" onClick={() => user ? navigate('/support') : navigate('/login')}>
                     <div className="action-icon"><Headphones size={20} /></div>
                     <span className="action-label">Customer service</span>
                 </div>

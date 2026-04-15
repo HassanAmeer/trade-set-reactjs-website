@@ -2,7 +2,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import { useMarket } from '../context/MarketContext';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Menu, Home as HomeIcon, ChevronDown, Search, X, Loader2 } from 'lucide-react';
-import { Link, useLocation } from 'react-router-dom';
+import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { db } from '../firebase-setup';
 import { useAuth } from '../context/AuthContext';
 import { collection, addDoc, updateDoc, doc, increment, onSnapshot, getDoc } from 'firebase/firestore';
@@ -14,6 +14,7 @@ const Trade = () => {
     const { assets, selectedAsset, setSelectedAsset } = useMarket();
     const { user, updateUser } = useAuth();
     const location = useLocation();
+    const navigate = useNavigate();
 
     // IMMEDIATELY check for navigation state and set asset BEFORE any other logic
     const navigationAssetId = location.state?.assetId;
@@ -210,7 +211,7 @@ const Trade = () => {
 
     const handlePlaceTrade = async (direction) => {
         if (!user) {
-            alert("Please login to trade");
+            navigate('/login');
             return;
         }
 

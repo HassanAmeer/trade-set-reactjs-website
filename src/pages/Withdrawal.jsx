@@ -11,7 +11,12 @@ const Withdrawal = () => {
     const navigate = useNavigate();
     const { user, loading } = useAuth();
 
+    // Redirect to login if user is not logged in
     React.useEffect(() => {
+        if (!loading && !user) {
+            navigate('/login');
+            return;
+        }
         if (!loading && user && !user.isVerified) {
             alert("Please verify your identity (KYC) before making a withdrawal.");
             navigate('/verification');

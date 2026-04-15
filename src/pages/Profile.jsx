@@ -216,7 +216,7 @@ const Profile = () => {
             <div className="glass" style={{ padding: '20px', borderRadius: '16px', marginBottom: '24px' }}>
                 <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '20px', marginBottom: '20px' }}>
                     <div
-                        onClick={() => navigate('/verification')}
+                        onClick={() => user ? navigate('/verification') : navigate('/login')}
                         style={{ cursor: 'pointer' }}
                     >
                         <div style={{ fontSize: '11px', color: 'var(--text-secondary)', marginBottom: '4px' }}>Account Status</div>
@@ -354,7 +354,8 @@ const Profile = () => {
                 ))}
             </div>
 
-            {/* Referral / Invitation Section */}
+            {/* Referral / Invitation Section - Only show when user is logged in */}
+            {user && (
             <div style={{
                 backgroundImage: `linear-gradient(rgba(26,26,26,0.85), rgba(26,26,26,0.95)), url(${giftBg})`,
                 backgroundSize: 'cover',
@@ -520,6 +521,7 @@ const Profile = () => {
                     </div>
                 </div>
             </div>
+            )}
 
             <div className="menu-list" style={{ marginBottom: '30px' }}>
                 <div style={{ padding: '0 4px 12px 4px', fontSize: '13px', fontWeight: '800', color: 'var(--accent-gold)', textTransform: 'uppercase', letterSpacing: '1px' }}>Records & History</div>
@@ -531,7 +533,15 @@ const Profile = () => {
                     <div
                         key={i}
                         className="flex-between"
-                        onClick={() => item.path && navigate(item.path)}
+                        onClick={() => {
+                            if (item.path) {
+                                if (user) {
+                                    navigate(item.path);
+                                } else {
+                                    navigate('/login');
+                                }
+                            }
+                        }}
                         style={{ padding: '16px 4px', borderBottom: '1px solid rgba(255,255,255,0.05)', cursor: item.path ? 'pointer' : 'default' }}
                     >
                         <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
