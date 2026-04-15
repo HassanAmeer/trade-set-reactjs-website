@@ -2,7 +2,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import { useMarket } from '../context/MarketContext';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Menu, Home as HomeIcon, ChevronDown, Search, X, Loader2 } from 'lucide-react';
-import { Link } from 'react-router-dom';
+import { Link, useLocation } from 'react-router-dom';
 import { db } from '../firebase-setup';
 import { useAuth } from '../context/AuthContext';
 import { collection, addDoc, updateDoc, doc, increment, onSnapshot, getDoc } from 'firebase/firestore';
@@ -13,6 +13,11 @@ import { Trophy, CircleAlert, Sparkles } from 'lucide-react';
 const Trade = () => {
     const { assets, selectedAsset, setSelectedAsset } = useMarket();
     const { user, updateUser } = useAuth();
+    const location = useLocation();
+
+    // IMMEDIATELY check for navigation state and set asset BEFORE any other logic
+    const navigationAssetId = location.state?.assetId;
+
     const [activeTime, setActiveTime] = useState('D');
     const [showAssetList, setShowAssetList] = useState(false);
     const [searchTerm, setSearchTerm] = useState('');
@@ -62,7 +67,7 @@ const Trade = () => {
                     if (isActive && lastSignalState.current !== 'ACTIVE') {
                         setSignalNotification({ type: 'start', direction: data.direction });
                         setTimeout(() => setSignalNotification(null), 5000);
-                        
+
                         // Capture candles when signal starts
                         captureTradingViewState();
                     } else if (!isActive && lastSignalState.current === 'ACTIVE') {
@@ -97,10 +102,36 @@ const Trade = () => {
         return () => unsub();
     }, []); // Empty dependency array for stability
 
+    // Auto-select asset passed via navigation state (from Home / Market page click)
+    useEffect(() => {
+        console.log('🔍 Navigation effect triggered');
+        console.log('   navigationAssetId:', navigationAssetId);
+        console.log('   assets.length:', assets?.length);
+        console.log('   current selectedAsset:', selectedAsset?.name, selectedAsset?.id);
+
+        if (navigationAssetId && assets && assets.length > 0) {
+            const found = assets.find(a => String(a.id) === String(navigationAssetId));
+            console.log('   found asset:', found?.name, found?.id);
+            if (found) {
+                console.log('🔄 Updating selected asset to:', found.name, 'ID:', found.id);
+                setSelectedAsset(found);
+
+                // Verify after setting
+                setTimeout(() => {
+                    console.log('✅ After setState - selectedAsset should be:', found.name);
+                }, 100);
+            }
+        }
+    }, [navigationAssetId, assets, location.key]); // eslint-disable-line react-hooks/exhaustive-deps
+
     useEffect(() => {
         if (selectedAsset) {
+            console.log('📊 Current selectedAsset in state:', selectedAsset.name, selectedAsset.id);
             const updated = assets.find(a => a.id === selectedAsset.id);
-            if (updated) setSelectedAsset(updated);
+            if (updated && updated.rate !== selectedAsset.rate) {
+                console.log('💰 Updating price for:', selectedAsset.name);
+                setSelectedAsset(updated);
+            }
         }
     }, [assets]);
 
@@ -196,7 +227,7 @@ const Trade = () => {
 
         setTrading(true);
         setTradeCountdown(10); // 10 second trade for testing, can be 30 or 60
-        
+
         try {
             // Deduct balance immediately
             await updateUser({ balance: increment(-amount) });
@@ -217,10 +248,10 @@ const Trade = () => {
             const timer = setInterval(async () => {
                 timeLeft -= 1;
                 setTradeCountdown(timeLeft);
-                
+
                 if (timeLeft <= 0) {
                     clearInterval(timer);
-                    
+
                     // Resolve trade
                     let isWin = false;
                     // Check signal (refetch to be sure)
@@ -229,15 +260,15 @@ const Trade = () => {
                     const isSignalActiveNow = signal?.isActive && new Date(signal?.expiresAt) > new Date();
 
                     if (isSignalActiveNow) {
-                        isWin = (direction === 'BUY' && signal.direction === 'UP') || 
-                                (direction === 'SELL' && signal.direction === 'DOWN');
+                        isWin = (direction === 'BUY' && signal.direction === 'UP') ||
+                            (direction === 'SELL' && signal.direction === 'DOWN');
                     } else {
                         // random 50/50 if no signal
                         isWin = Math.random() > 0.5;
                     }
 
                     const profitAmount = isWin ? amount * 1.85 : 0; // 85% profit
-                    
+
                     if (isWin) {
                         await updateUser({ balance: increment(profitAmount) });
                     }
@@ -368,18 +399,21 @@ const Trade = () => {
                     <Menu size={20} color="#fff" onClick={() => setShowAssetList(true)} style={{ cursor: 'pointer' }} />
                     <div
                         onClick={() => setShowAssetList(true)}
-                        style={{ display: 'flex', alignItems: 'center', gap: '6px', cursor: 'pointer' }}
+                        style={{ display: 'flex', flexDirection: 'column', cursor: 'pointer' }}
                     >
-                        <span style={{ fontWeight: '700', fontSize: '18px' }}>{selectedAsset?.name}</span>
-                        <ChevronDown size={16} color="#888" />
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                            <span style={{ fontWeight: '700', fontSize: '16px' }}>{selectedAsset?.name || 'Loading...'}</span>
+                            <ChevronDown size={14} color="#888" />
+                        </div>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginTop: '2px' }}>
+                            <span style={{ fontSize: '14px', color: '#fff', fontWeight: '600' }}>{selectedAsset?.rate || '--'}</span>
+                            <span style={{ fontSize: '11px', fontWeight: '700', color: selectedAsset?.change?.startsWith('+') ? '#00c087' : '#ff4d4f' }}>
+                                {selectedAsset?.change || '--'}
+                            </span>
+                        </div>
                     </div>
                 </div>
-                <div style={{ display: 'flex', flexDirection: 'row', alignItems: 'flex-end' }}>
-                    <span style={{ paddingLeft: '10px', fontSize: '11px', color: selectedAsset?.change?.startsWith('+') ? '#00c087' : '#ff4d4f' }}>
-                        {selectedAsset?.change}
-                    </span>
-                </div>
-                <Link to="/" style={{ marginLeft: '12px' }}>
+                <Link to="/">
                     <HomeIcon size={20} color="#fff" />
                 </Link>
             </div>
@@ -605,11 +639,11 @@ const Trade = () => {
                     <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
                         <span style={{ fontSize: '13px', color: '#888' }}>Amount:</span>
                         <div style={{ display: 'flex', alignItems: 'center', backgroundColor: '#000', borderRadius: '8px', padding: '4px 12px', border: '1px solid #333' }}>
-                            <input 
-                                type="number" 
+                            <input
+                                type="number"
                                 value={tradeAmount}
                                 onChange={(e) => setTradeAmount(e.target.value)}
-                                style={{ width: '60px', background: 'none', border: 'none', color: '#fff', textAlign: 'center', fontSize: '16px', fontWeight: '700', outline: 'none' }} 
+                                style={{ width: '60px', background: 'none', border: 'none', color: '#fff', textAlign: 'center', fontSize: '16px', fontWeight: '700', outline: 'none' }}
                             />
                             <span style={{ fontSize: '12px', color: 'var(--accent-gold)', marginLeft: '4px' }}>USDT</span>
                         </div>
@@ -620,7 +654,7 @@ const Trade = () => {
                 </div>
 
                 <div style={{ display: 'flex', gap: '12px' }}>
-                    <button 
+                    <button
                         onClick={() => handlePlaceTrade('BUY')}
                         disabled={trading}
                         style={{
@@ -639,7 +673,7 @@ const Trade = () => {
                     >
                         {trading ? <Loader2 className="animate-spin" style={{ margin: '0 auto' }} /> : 'BUY / LONG'}
                     </button>
-                    <button 
+                    <button
                         onClick={() => handlePlaceTrade('SELL')}
                         disabled={trading}
                         style={{
@@ -797,7 +831,7 @@ const Trade = () => {
                                     </div>
                                 </>
                             )}
-                            <button 
+                            <button
                                 onClick={() => setShowResult(null)}
                                 style={{ width: '100%', padding: '16px', backgroundColor: '#f0b90b', color: '#000', borderRadius: '12px', border: 'none', fontWeight: '800', cursor: 'pointer' }}
                             >

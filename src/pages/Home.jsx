@@ -215,7 +215,7 @@ const Home = () => {
                         ))
                     ) : (
                         trendingCoins.map(coin => (
-                            <div key={coin.id} className="trending-card" onClick={() => navigate('/trade')}>
+                            <div key={coin.id} className="trending-card" onClick={() => navigate('/trade', { state: { assetId: coin.id } })}>
                                 <img
                                     src={coin.flag}
                                     alt={coin.name}
@@ -264,7 +264,7 @@ const Home = () => {
                                 key={asset.id}
                                 className="asset-row"
                                 style={{ '--index': index }}
-                                onClick={() => navigate('/trade')}
+                                onClick={() => navigate('/trade', { state: { assetId: asset.id } })}
                             >
                                 <div className="asset-info">
                                     <img

@@ -30,7 +30,7 @@ export const MarketProvider = ({ children }) => {
     const [loading, setLoading] = useState(true);
     const [selectedAsset, setSelectedAsset] = useState(null);
 
-    // Set initial selected asset once data is loaded
+    // Set initial selected asset once data is loaded (only if no asset is selected)
     useEffect(() => {
         if (assets.length > 0 && !selectedAsset) {
             setSelectedAsset(assets.find(a => a.symbol === 'BTC') || assets[0]);

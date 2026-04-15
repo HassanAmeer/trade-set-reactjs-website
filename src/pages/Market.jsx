@@ -1,9 +1,11 @@
 import React, { useState } from 'react';
 import { useMarket } from '../context/MarketContext';
 import { motion } from 'framer-motion';
+import { useNavigate } from 'react-router-dom';
 
 const Market = () => {
     const { assets, loading } = useMarket();
+    const navigate = useNavigate();
     const [activeTab, setActiveTab] = useState('All');
 
     const filteredAssets = assets.filter(a => {
@@ -74,12 +76,14 @@ const Market = () => {
                             <motion.div
                                 layout
                                 key={asset.id}
+                                onClick={() => navigate('/trade', { state: { assetId: asset.id } })}
                                 style={{
                                     display: 'grid',
                                     gridTemplateColumns: '1.5fr 1fr 1fr',
                                     alignItems: 'center',
                                     padding: '14px 2px',
-                                    borderBottom: '1px solid rgba(255,255,255,0.03)'
+                                    borderBottom: '1px solid rgba(255,255,255,0.03)',
+                                    cursor: 'pointer'
                                 }}
                             >
                                 <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
