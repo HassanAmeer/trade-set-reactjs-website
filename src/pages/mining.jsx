@@ -25,7 +25,7 @@ import minerBot from '../assets/btc-mining.webp';
 import { db } from '../firebase-setup';
 import { collection, addDoc, increment } from 'firebase/firestore';
 
-const Trading = () => {
+const Mining = () => {
     const { user, updateUser } = useAuth();
     const { assets, setIsActive } = useMarket();
 
@@ -290,16 +290,16 @@ const Trading = () => {
                         </motion.div>
 
                         <motion.button
-                            whileTap={{ scale: 0.9 }}
+                            whileTap={{ scale: 1.1 }}
                             onClick={() => setShowHistory(true)}
                             className='shimmer-icon'
                             style={{
                                 background: 'rgba(255,255,255,0.03)',
-                                border: '1px solid rgba(255,255,255,0.08)',
+                                border: '1px solid rgba(208, 149, 0, 0.76)',
                                 color: '#fff',
                                 width: '110px',
                                 height: '35px',
-                                borderRadius: '15px',
+                                borderRadius: '25px',
                                 display: 'flex',
                                 alignItems: 'center',
                                 justifyContent: 'start',
@@ -380,22 +380,24 @@ const Trading = () => {
                         <span style={{ fontSize: '11px', color: '#444' }}>Max: {user?.balance?.toFixed(2)} USDT</span>
                     </div>
                     <div style={{ display: 'flex', alignItems: 'center', gap: '15px' }}>
-                        <input
-                            type="number"
-                            placeholder="0.00"
-                            value={exchangeAmount}
-                            onChange={(e) => setExchangeAmount(e.target.value)}
-                            style={{
-                                flex: 1,
-                                background: 'transparent',
-                                border: 'none',
-                                color: '#fff',
-                                fontSize: '24px',
-                                fontWeight: '900',
-                                outline: 'none',
-                                paddingRight: 0,
-                            }}
-                        />
+                        <div style={{ width: '70%' }}>
+                            <input
+                                type="number"
+                                placeholder="0.00"
+                                value={exchangeAmount}
+                                onChange={(e) => setExchangeAmount(e.target.value)}
+                                style={{
+                                    flex: 1,
+                                    background: 'transparent',
+                                    border: 'none',
+                                    color: '#fff',
+                                    fontSize: '24px',
+                                    fontWeight: '900',
+                                    outline: 'none',
+                                    paddingRight: 0,
+                                }}
+                            />
+                        </div>
                         <div style={{ display: 'flex', alignItems: 'center', gap: '0px', background: 'rgba(255,255,255,0.05)', padding: '6px 12px', borderRadius: '12px', border: '1px solid rgba(255,255,255,0.05)', marginLeft: '-30px' }}>
                             <div style={{ width: '20px', height: '20px', borderRadius: '50%', background: '#00c087', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '10px', fontWeight: '900' }}>$</div>
                             <span style={{ paddingLeft: '10px', fontSize: '14px', fontWeight: '800' }}>USDT</span>
@@ -975,7 +977,7 @@ const Trading = () => {
                     0% { transform: rotate(-30deg); transform-translate: -100px;}
                     50% { transform: rotate(70deg); }
                     70% { transform: rotate(50deg); }
-                    80% { transform: rotate(70deg); }
+                    80% { transform: rotate(65deg); }
                     100% { transform: rotate(-30deg); }
                 }
                 .pickaxe-swing {
@@ -997,4 +999,4 @@ const Trading = () => {
     );
 };
 
-export default Coin;
+export default Mining;
