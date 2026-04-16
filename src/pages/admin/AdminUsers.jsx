@@ -27,7 +27,7 @@ const AdminUsers = () => {
             console.error("Error fetching users:", error);
             // Fallback if index not ready
             const querySnapshot = await getDocs(collection(db, 'users'));
-             const list = querySnapshot.docs.map(doc => ({
+            const list = querySnapshot.docs.map(doc => ({
                 id: doc.id,
                 ...doc.data()
             }));
@@ -49,19 +49,22 @@ const AdminUsers = () => {
             totalReferrals: user.totalReferrals || 0,
             isActive: user.isActive !== false,
             isVerified: user.isVerified || false,
-            password: user.password || ''
+            password: user.password || '',
+            originalHoldings: user.holdings || {}
         });
     };
 
     const handleSaveUser = async () => {
         try {
             const userRef = doc(db, 'users', selectedUser.id);
+            const { originalHoldings, ...dataToSave } = editForm;
             const updatedData = {
-                ...editForm,
+                ...dataToSave,
                 balance: Number(editForm.balance),
                 referralEarnings: Number(editForm.referralEarnings),
                 tradeEarnings: Number(editForm.tradeEarnings),
                 totalReferrals: Number(editForm.totalReferrals),
+                holdings: editForm.holdings || selectedUser.holdings || {},
                 updatedAt: new Date().toISOString()
             };
             await updateDoc(userRef, updatedData);
@@ -91,7 +94,7 @@ const AdminUsers = () => {
             </div>
             <div className="admin-table-container">
                 <div style={{ padding: '20px', display: 'flex', flexDirection: 'column', gap: '15px' }}>
-                    {[1,2,3,4,5,6].map(i => (
+                    {[1, 2, 3, 4, 5, 6].map(i => (
                         <div key={i} className="skeleton-loader" style={{ width: '100%', height: '60px', borderRadius: '12px' }}></div>
                     ))}
                 </div>
@@ -107,7 +110,7 @@ const AdminUsers = () => {
                     Total Users: <span style={{ color: 'var(--accent-gold)', fontWeight: '700' }}>{users.length}</span>
                 </div>
             </div>
-            
+
             <div className="admin-table-container">
                 <table style={{ width: '100%', minWidth: '1200px', borderCollapse: 'collapse', color: '#fff', textAlign: 'left' }}>
                     <thead style={{ backgroundColor: '#111', borderBottom: '1px solid #333' }}>
@@ -140,14 +143,14 @@ const AdminUsers = () => {
                                 </td>
                                 <td style={{ padding: '16px' }}>
                                     <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
-                                        <span style={{ 
+                                        <span style={{
                                             display: 'inline-flex', padding: '3px 8px', borderRadius: '4px', fontSize: '10px', fontWeight: '800', width: 'fit-content',
                                             backgroundColor: user.isActive !== false ? 'rgba(0,192,135,0.1)' : 'rgba(255,77,79,0.1)',
                                             color: user.isActive !== false ? '#00c087' : '#ff4d4f'
                                         }}>
                                             {user.isActive !== false ? 'ACTIVE' : 'BLOCKED'}
                                         </span>
-                                        <span style={{ 
+                                        <span style={{
                                             display: 'inline-flex', padding: '3px 8px', borderRadius: '4px', fontSize: '10px', fontWeight: '800', width: 'fit-content',
                                             backgroundColor: user.isVerified ? 'rgba(0,192,135,0.1)' : 'rgba(255,184,0,0.1)',
                                             color: user.isVerified ? '#00c087' : '#ffb800'
@@ -174,7 +177,7 @@ const AdminUsers = () => {
                                         <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: '6px', borderTop: '1px solid #222', paddingTop: '4px' }}>
                                             <span style={{ color: '#666' }}>Ref By:</span>
                                             <span style={{ color: 'var(--accent-gold)', fontWeight: '700' }}>
-                                                {user.referredBy 
+                                                {user.referredBy
                                                     ? (users.find(u => u.id === user.referredBy)?.name || user.referredBy.slice(-6).toUpperCase())
                                                     : 'Direct'
                                                 }
@@ -196,13 +199,13 @@ const AdminUsers = () => {
                                 </td>
                                 <td style={{ padding: '16px' }}>
                                     <div style={{ display: 'flex', gap: '10px' }}>
-                                        <button 
+                                        <button
                                             onClick={() => handleOpenEdit(user)}
                                             style={{ background: '#1a1a1a', color: '#fff', border: '1px solid #333', borderRadius: '8px', padding: '8px', cursor: 'pointer' }}
                                         >
                                             <Settings2 size={16} />
                                         </button>
-                                        <button 
+                                        <button
                                             onClick={() => handleDeleteUser(user.id)}
                                             style={{ background: 'rgba(255,77,79,0.05)', color: '#ff4d4f', border: '1px solid rgba(255,77,79,0.1)', borderRadius: '8px', padding: '8px', cursor: 'pointer' }}
                                         >
@@ -223,7 +226,7 @@ const AdminUsers = () => {
                         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '25px' }}>
                             <div>
                                 <h3 style={{ margin: 0, color: '#fff', fontSize: '20px', fontWeight: '800' }}>Edit User Information</h3>
-                                <p style={{ margin: '5px 0 0', color: '#666', fontSize: '12px' }}>Updating UID: <span style={{color: 'var(--accent-gold)'}}>{selectedUser.id}</span></p>
+                                <p style={{ margin: '5px 0 0', color: '#666', fontSize: '12px' }}>Updating UID: <span style={{ color: 'var(--accent-gold)' }}>{selectedUser.id}</span></p>
                             </div>
                             <button onClick={() => setSelectedUser(null)} style={{ background: 'none', border: 'none', color: '#888', cursor: 'pointer' }}><X size={24} /></button>
                         </div>
@@ -232,30 +235,88 @@ const AdminUsers = () => {
                             {/* Basic Info */}
                             <div className="form-group">
                                 <label style={{ display: 'block', fontSize: '11px', color: '#888', marginBottom: '8px', textTransform: 'uppercase' }}>Full Name</label>
-                                <input 
-                                    type="text" 
-                                    value={editForm.name} 
-                                    onChange={(e) => setEditForm({...editForm, name: e.target.value})}
-                                    style={{ width: '100%', padding: '12px', background: '#0a0a0a', border: '1px solid #333', borderRadius: '8px', color: '#fff' }} 
+                                <input
+                                    type="text"
+                                    value={editForm.name}
+                                    onChange={(e) => setEditForm({ ...editForm, name: e.target.value })}
+                                    style={{ width: '100%', padding: '12px', background: '#0a0a0a', border: '1px solid #333', borderRadius: '8px', color: '#fff' }}
                                 />
                             </div>
                             <div className="form-group">
                                 <label style={{ display: 'block', fontSize: '11px', color: '#888', marginBottom: '8px', textTransform: 'uppercase' }}>Phone</label>
-                                <input 
-                                    type="text" 
-                                    value={editForm.phone} 
-                                    onChange={(e) => setEditForm({...editForm, phone: e.target.value})}
-                                    style={{ width: '100%', padding: '12px', background: '#0a0a0a', border: '1px solid #333', borderRadius: '8px', color: '#fff' }} 
+                                <input
+                                    type="text"
+                                    value={editForm.phone}
+                                    onChange={(e) => setEditForm({ ...editForm, phone: e.target.value })}
+                                    style={{ width: '100%', padding: '12px', background: '#0a0a0a', border: '1px solid #333', borderRadius: '8px', color: '#fff' }}
                                 />
                             </div>
                             <div className="form-group" style={{ gridColumn: 'span 2' }}>
                                 <label style={{ display: 'block', fontSize: '11px', color: '#888', marginBottom: '8px', textTransform: 'uppercase' }}>Password (Login Password)</label>
-                                <input 
-                                    type="text" 
-                                    value={editForm.password} 
-                                    onChange={(e) => setEditForm({...editForm, password: e.target.value})}
-                                    style={{ width: '100%', padding: '12px', background: '#0a0a0a', border: '1px solid #333', borderRadius: '8px', color: '#fff' }} 
+                                <input
+                                    type="text"
+                                    value={editForm.password}
+                                    onChange={(e) => setEditForm({ ...editForm, password: e.target.value })}
+                                    style={{ width: '100%', padding: '12px', background: '#0a0a0a', border: '1px solid #333', borderRadius: '8px', color: '#fff' }}
                                 />
+                            </div>
+
+                            <hr style={{ gridColumn: 'span 2', border: 'none', borderTop: '1px solid #222', margin: '10px 0' }} />
+
+                            {/* User Holdings Management */}
+                            <div style={{ gridColumn: 'span 2' }}>
+                                <label style={{ display: 'block', fontSize: '11px', color: '#888', marginBottom: '12px', textTransform: 'uppercase' }}>Asset Holdings & Freeze Management</label>
+                                {(selectedUser?.holdings && Object.keys(selectedUser.holdings).length > 0) ? (
+                                    <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+                                        {Object.entries(selectedUser.holdings).map(([assetId, data]) => {
+                                            const isFrozen = editForm.holdings?.[assetId]?.isFrozen ?? data.isFrozen;
+                                            return (
+                                                <div key={assetId} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '12px', background: '#0a0a0a', border: '1px solid #222', borderRadius: '8px' }}>
+                                                    <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                                                        <img src={data.icon} alt="" style={{ width: '24px', height: '24px', borderRadius: '50%' }} />
+                                                        <div>
+                                                            <div style={{ fontWeight: '700', fontSize: '14px', color: '#fff' }}>{data.symbol}</div>
+                                                            <div style={{ fontSize: '11px', color: '#666' }}>Amount: {data.amount.toFixed(6)}</div>
+                                                        </div>
+                                                    </div>
+                                                    <button
+                                                        onClick={() => {
+                                                            setEditForm(prev => ({
+                                                                ...prev,
+                                                                holdings: {
+                                                                    ...(prev.holdings || prev.originalHoldings),
+                                                                    [assetId]: {
+                                                                        ...data,
+                                                                        isFrozen: !isFrozen
+                                                                    }
+                                                                }
+                                                            }));
+                                                        }}
+                                                        style={{
+                                                            padding: '6px 12px',
+                                                            borderRadius: '6px',
+                                                            fontSize: '11px',
+                                                            fontWeight: '800',
+                                                            border: 'none',
+                                                            cursor: 'pointer',
+                                                            backgroundColor: isFrozen ? 'rgba(255,77,79,0.1)' : 'rgba(0,192,135,0.1)',
+                                                            color: isFrozen ? '#ff4d4f' : '#00c087',
+                                                            display: 'flex',
+                                                            alignItems: 'center',
+                                                            gap: '6px'
+                                                        }}
+                                                    >
+                                                        {isFrozen ? 'UNFREEZE ASSET' : 'FREEZE ASSET'}
+                                                    </button>
+                                                </div>
+                                            );
+                                        })}
+                                    </div>
+                                ) : (
+                                    <div style={{ padding: '15px', textAlign: 'center', background: '#0a0a0a', border: '1px dashed #333', borderRadius: '8px', color: '#555', fontSize: '12px' }}>
+                                        User has no active holdings.
+                                    </div>
+                                )}
                             </div>
 
                             <hr style={{ gridColumn: 'span 2', border: 'none', borderTop: '1px solid #222', margin: '10px 0' }} />
@@ -263,38 +324,38 @@ const AdminUsers = () => {
                             {/* Financial Info */}
                             <div className="form-group">
                                 <label style={{ display: 'block', fontSize: '11px', color: '#888', marginBottom: '8px', textTransform: 'uppercase' }}>Wallet Balance (USDT)</label>
-                                <input 
-                                    type="number" 
-                                    value={editForm.balance} 
-                                    onChange={(e) => setEditForm({...editForm, balance: e.target.value})}
-                                    style={{ width: '100%', padding: '12px', background: '#0a0a0a', border: '1px solid #00c087', borderRadius: '8px', color: '#00c087', fontWeight: '800' }} 
+                                <input
+                                    type="number"
+                                    value={editForm.balance}
+                                    onChange={(e) => setEditForm({ ...editForm, balance: e.target.value })}
+                                    style={{ width: '100%', padding: '12px', background: '#0a0a0a', border: '1px solid #00c087', borderRadius: '8px', color: '#00c087', fontWeight: '800' }}
                                 />
                             </div>
                             <div className="form-group">
                                 <label style={{ display: 'block', fontSize: '11px', color: '#888', marginBottom: '8px', textTransform: 'uppercase' }}>Trade Earnings</label>
-                                <input 
-                                    type="number" 
-                                    value={editForm.tradeEarnings} 
-                                    onChange={(e) => setEditForm({...editForm, tradeEarnings: e.target.value})}
-                                    style={{ width: '100%', padding: '12px', background: '#0a0a0a', border: '1px solid #333', borderRadius: '8px', color: '#fff' }} 
+                                <input
+                                    type="number"
+                                    value={editForm.tradeEarnings}
+                                    onChange={(e) => setEditForm({ ...editForm, tradeEarnings: e.target.value })}
+                                    style={{ width: '100%', padding: '12px', background: '#0a0a0a', border: '1px solid #333', borderRadius: '8px', color: '#fff' }}
                                 />
                             </div>
                             <div className="form-group">
                                 <label style={{ display: 'block', fontSize: '11px', color: '#888', marginBottom: '8px', textTransform: 'uppercase' }}>Ref. Earnings</label>
-                                <input 
-                                    type="number" 
-                                    value={editForm.referralEarnings} 
-                                    onChange={(e) => setEditForm({...editForm, referralEarnings: e.target.value})}
-                                    style={{ width: '100%', padding: '12px', background: '#0a0a0a', border: '1px solid #333', borderRadius: '8px', color: '#fff' }} 
+                                <input
+                                    type="number"
+                                    value={editForm.referralEarnings}
+                                    onChange={(e) => setEditForm({ ...editForm, referralEarnings: e.target.value })}
+                                    style={{ width: '100%', padding: '12px', background: '#0a0a0a', border: '1px solid #333', borderRadius: '8px', color: '#fff' }}
                                 />
                             </div>
                             <div className="form-group">
                                 <label style={{ display: 'block', fontSize: '11px', color: '#888', marginBottom: '8px', textTransform: 'uppercase' }}>Total Ref Count</label>
-                                <input 
-                                    type="number" 
-                                    value={editForm.totalReferrals} 
-                                    onChange={(e) => setEditForm({...editForm, totalReferrals: e.target.value})}
-                                    style={{ width: '100%', padding: '12px', background: '#0a0a0a', border: '1px solid #333', borderRadius: '8px', color: '#fff' }} 
+                                <input
+                                    type="number"
+                                    value={editForm.totalReferrals}
+                                    onChange={(e) => setEditForm({ ...editForm, totalReferrals: e.target.value })}
+                                    style={{ width: '100%', padding: '12px', background: '#0a0a0a', border: '1px solid #333', borderRadius: '8px', color: '#fff' }}
                                 />
                             </div>
 
@@ -303,28 +364,28 @@ const AdminUsers = () => {
                             {/* Switches */}
                             <div style={{ display: 'flex', alignItems: 'center', gap: '15px' }}>
                                 <label style={{ color: '#fff', fontSize: '13px' }}>Account Active</label>
-                                <input 
-                                    type="checkbox" 
-                                    checked={editForm.isActive} 
-                                    onChange={(e) => setEditForm({...editForm, isActive: e.target.checked})}
+                                <input
+                                    type="checkbox"
+                                    checked={editForm.isActive}
+                                    onChange={(e) => setEditForm({ ...editForm, isActive: e.target.checked })}
                                     style={{ width: '20px', height: '20px' }}
                                 />
                             </div>
                             <div style={{ display: 'flex', alignItems: 'center', gap: '15px' }}>
                                 <label style={{ color: '#fff', fontSize: '13px' }}>KYC Verified</label>
-                                <input 
-                                    type="checkbox" 
-                                    checked={editForm.isVerified} 
-                                    onChange={(e) => setEditForm({...editForm, isVerified: e.target.checked})}
+                                <input
+                                    type="checkbox"
+                                    checked={editForm.isVerified}
+                                    onChange={(e) => setEditForm({ ...editForm, isVerified: e.target.checked })}
                                     style={{ width: '20px', height: '20px' }}
                                 />
                             </div>
                         </div>
 
-                        <button 
+                        <button
                             onClick={handleSaveUser}
-                            style={{ 
-                                width: '100%', padding: '15px', background: 'var(--accent-gold)', color: '#000', 
+                            style={{
+                                width: '100%', padding: '15px', background: 'var(--accent-gold)', color: '#000',
                                 border: 'none', borderRadius: '12px', fontWeight: '800', marginTop: '30px', cursor: 'pointer',
                                 display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '10px'
                             }}

@@ -28,7 +28,7 @@ const AdminLogin = lazy(() => import('./pages/admin/AdminLogin'));
 const AdminDashboard = lazy(() => import('./pages/admin/AdminDashboard'));
 const TradesRecord = lazy(() => import('./pages/TradesRecord'));
 
-import { Home as HomeIcon, BarChart2, Activity, Zap, User } from 'lucide-react';
+import { Home as HomeIcon, BarChart2, Activity, Pickaxe, User } from 'lucide-react';
 import { MarketProvider } from './context/MarketContext';
 import { AuthProvider } from './context/AuthContext';
 import { BrandingProvider } from './context/BrandingContext';
@@ -45,7 +45,7 @@ const BottomNav = () => {
     { name: 'Home', path: '/', icon: HomeIcon },
     { name: 'Market', path: '/market', icon: BarChart2 },
     { name: 'Trade', path: '/trade', icon: Activity },
-    { name: 'Coin', path: '/coin', icon: Zap },
+    { name: 'Mining', path: '/coin', icon: Pickaxe },
     { name: 'User', path: '/profile', icon: User }
   ];
 

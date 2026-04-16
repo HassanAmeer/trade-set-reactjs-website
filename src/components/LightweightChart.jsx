@@ -189,9 +189,17 @@ const LightweightChart = forwardRef(({ symbol, interval, currentRate, activeSign
                 const jitter = (Math.random() - 0.5) * (lastPrice * 0.00015);
                 newClose = lastPrice + (targetNow - lastPrice) * moveSpeed + jitter;
             } else {
-                // Natural random walk
-                const volatility = lastPrice * (0.0006 + Math.random() * 0.0004);
-                newClose = lastPrice + (Math.random() - 0.5) * volatility;
+                // Natural market behavior: Follow the real-world currentRate smoothly
+                const realPrice = currentRate ? parseFloat(String(currentRate).replace(/,/g, '')) : lastPrice;
+                
+                // If we are far from real price, move towards it (followSpeed)
+                // If we are close, just do natural jitter
+                const followSpeed = 0.15; 
+                const diff = realPrice - lastPrice;
+                const drift = isNaN(diff) ? 0 : diff * followSpeed;
+                
+                const volatility = lastPrice * (0.0003 + Math.random() * 0.0002);
+                newClose = lastPrice + drift + (Math.random() - 0.5) * volatility;
             }
 
             const moveSize = Math.abs(newClose - lastPrice);
