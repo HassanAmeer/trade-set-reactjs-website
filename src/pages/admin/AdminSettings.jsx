@@ -69,8 +69,9 @@ const AdminSettings = () => {
                     emailjsTemplates: '',
                     emailjsPublicKey: ''
                 };
-                await setDoc(platformRef, defaultPlatform);
                 setPlatformConfig(defaultPlatform);
+            }
+
             }
         } catch (error) {
             console.error("Error fetching configs:", error);
@@ -354,7 +355,6 @@ const AdminSettings = () => {
                         {savingSection === 'email' ? <Loader2 className="animate-spin" /> : <><Save size={18} /> Save Email Config</>}
                     </button>
                 </form>
-
             </div>
         </motion.div>
     );

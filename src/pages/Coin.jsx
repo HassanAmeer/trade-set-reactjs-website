@@ -12,7 +12,10 @@ import {
     AlertCircle,
     CheckCircle2,
     RefreshCw,
-    Sparkles
+    Sparkles,
+    ArrowBigDown,
+    History,
+    LucidePickaxe
 } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import { useMarket } from '../context/MarketContext';
@@ -30,6 +33,7 @@ const Coin = () => {
     const [searchQuery, setSearchQuery] = useState('');
     const [processing, setProcessing] = useState(false);
     const [notification, setNotification] = useState(null);
+    const [showHistory, setShowHistory] = useState(false);
 
     // Activate market data when on this page
     useEffect(() => {
@@ -76,9 +80,21 @@ const Coin = () => {
                 }
             };
 
+            const newHistoryItem = {
+                id: Date.now().toString(),
+                type: 'buy',
+                status: 'Holding',
+                usdtAmount: amount,
+                assetAmount: assetAmount,
+                symbol: selectedAssetForExchange.symbol || selectedAssetForExchange.name.split('/')[0],
+                rate: assetRate,
+                timestamp: new Date().toISOString()
+            };
+
             await updateUser({
                 balance: user.balance - amount,
-                holdings: newHoldings
+                holdings: newHoldings,
+                miningHistory: [newHistoryItem, ...(user.miningHistory || [])]
             });
 
             showNotify(`Successfully exchanged ${amount} USDT to ${assetAmount.toFixed(6)} ${selectedAssetForExchange.symbol || selectedAssetForExchange.name.split('/')[0]}`);
@@ -114,9 +130,21 @@ const Coin = () => {
             const newHoldings = { ...user.holdings };
             delete newHoldings[assetId];
 
+            const newHistoryItem = {
+                id: Date.now().toString(),
+                type: 'sell',
+                status: 'Closed',
+                usdtAmount: refundAmount,
+                assetAmount: holding.amount,
+                symbol: holding.symbol,
+                rate: assetRate,
+                timestamp: new Date().toISOString()
+            };
+
             await updateUser({
                 balance: user.balance + refundAmount,
-                holdings: newHoldings
+                holdings: newHoldings,
+                miningHistory: [newHistoryItem, ...(user.miningHistory || [])]
             });
 
             showNotify(`Exchanged back to ${refundAmount.toFixed(2)} USDT`);
@@ -191,13 +219,43 @@ const Coin = () => {
                         <p style={{ fontSize: '12px', color: '#666', marginTop: '4px', maxWidth: '200px' }}>Swap your assets with live rates and freeze for increasing future Assets. </p>
                     </div>
 
-                    <motion.div
-                        initial={{ scale: 0.8, opacity: 0, rotate: 10 }}
-                        animate={{ scale: 1, opacity: 1, rotate: 0 }}
-                        style={{ position: 'absolute', right: '-10px', top: '-10px', zIndex: 1 }}
-                    >
-                        <img className="shimmer-icon" src={minerBot} alt="Miner" style={{ width: '150px', height: 'auto', filter: 'drop-shadow(0 10px 20px rgba(0,0,0,0.5))', opacity: 0.8 }} />
-                    </motion.div>
+                    <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: '15px' }}>
+
+
+                        <motion.div
+                            initial={{ scale: 0.8, opacity: 0, rotate: 10 }}
+                            animate={{ scale: 1, opacity: 1, rotate: 0 }}
+                            style={{ position: 'relative', zIndex: 1, marginRight: '-10px' }}
+                        >
+                            <img className="shimmer-icon" src={minerBot} alt="Miner" style={{ width: '130px', height: 'auto', filter: 'drop-shadow(0 10px 20px rgba(0,0,0,0.5))', opacity: 0.8 }} />
+                        </motion.div>
+
+                        <motion.button
+                            whileTap={{ scale: 0.9 }}
+                            onClick={() => setShowHistory(true)}
+                            className='shimmer-icon'
+                            style={{
+                                background: 'rgba(255,255,255,0.03)',
+                                border: '1px solid rgba(255,255,255,0.08)',
+                                color: '#fff',
+                                width: '110px',
+                                height: '35px',
+                                borderRadius: '15px',
+                                display: 'flex',
+                                alignItems: 'center',
+                                justifyContent: 'start',
+                                cursor: 'pointer',
+                                backdropFilter: 'blur(10px)'
+                                , paddingLeft: '10px'
+                                , paddingRight: '10px'
+                                , paddingTop: '10px'
+                                , paddingBottom: '10px'
+                            }}
+                        >
+                            <LucidePickaxe size={18} className='pickaxe-swing' style={{ marginRight: '10px', marginTop: '-5px', }} />
+                            <span style={{ fontSize: '13px', fontWeight: '800', letterSpacing: '0.5px' }}>HISTORY</span>
+                        </motion.button>
+                    </div>
                 </div>
             </div>
 
@@ -292,7 +350,7 @@ const Coin = () => {
                         width: '36px', height: '36px', background: '#0a0a0a', border: '2px solid #1a1a1a',
                         borderRadius: '10px', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#f0b90b'
                     }}>
-                        <TrendingUp size={16} />
+                        <ArrowBigDown size={16} />
                     </div>
                 </div>
 
@@ -653,6 +711,129 @@ const Coin = () => {
                 )}
             </AnimatePresence>
 
+            {/* History Modal */}
+            <AnimatePresence>
+                {showHistory && (
+                    <motion.div
+                        initial={{ opacity: 0 }}
+                        animate={{ opacity: 1 }}
+                        exit={{ opacity: 0 }}
+                        style={{
+                            position: 'fixed',
+                            inset: 0,
+                            background: 'rgba(0,0,0,0.95)',
+                            backdropFilter: 'blur(20px)',
+                            zIndex: 7000,
+                            display: 'flex',
+                            flexDirection: 'column'
+                        }}
+                    >
+                        <div style={{ padding: '30px 20px', borderBottom: '1px solid #111', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                                <div style={{ padding: '8px', background: 'rgba(240,185,11,0.1)', borderRadius: '10px' }}>
+                                    <History size={20} color="#f0b90b" />
+                                </div>
+                                <h3 style={{ fontSize: '22px', fontWeight: '900', margin: 0 }}>Mining History</h3>
+                            </div>
+                            <motion.div
+                                whileTap={{ scale: 0.9 }}
+                                onClick={() => setShowHistory(false)}
+                                style={{ width: '40px', height: '40px', borderRadius: '50%', background: '#111', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer' }}
+                            >
+                                <X size={20} />
+                            </motion.div>
+                        </div>
+
+                        <div style={{ flex: 1, overflowY: 'auto', padding: '20px' }}>
+                            {(!user?.miningHistory || user.miningHistory.length === 0) ? (
+                                <div style={{ padding: '100px 40px', textAlign: 'center' }}>
+                                    <div style={{ width: '80px', height: '80px', borderRadius: '50%', background: 'rgba(255,255,255,0.02)', margin: '0 auto 20px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                                        <History size={40} color="#222" />
+                                    </div>
+                                    <p style={{ color: '#444', fontWeight: '600' }}>No transaction history found.</p>
+                                </div>
+                            ) : (
+                                <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+                                    {user.miningHistory.map((item, idx) => {
+                                        const currentAsset = assets.find(a => a.symbol === item.symbol || a.name.startsWith(item.symbol));
+                                        const currentRate = currentAsset ? parseFloat(String(currentAsset.rate).replace(/,/g, '')) : item.rate;
+                                        const profit = item.type === 'buy' ? (currentRate - item.rate) * item.assetAmount : 0;
+                                        const profitPercentage = ((currentRate - item.rate) / item.rate) * 100;
+
+                                        return (
+                                            <motion.div
+                                                key={item.id}
+                                                initial={{ opacity: 0, y: 15 }}
+                                                animate={{ opacity: 1, y: 0 }}
+                                                transition={{ delay: idx * 0.05 }}
+                                                style={{
+                                                    background: 'rgba(255,255,255,0.02)',
+                                                    border: '1px solid rgba(255,255,255,0.03)',
+                                                    borderRadius: '20px',
+                                                    padding: '20px'
+                                                }}
+                                            >
+                                                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '15px' }}>
+                                                    <div style={{ display: 'flex', gap: '12px' }}>
+                                                        <div style={{
+                                                            padding: '10px',
+                                                            borderRadius: '12px',
+                                                            background: item.type === 'buy' ? 'rgba(0,192,135,0.1)' : 'rgba(240,185,11,0.1)',
+                                                            color: item.type === 'buy' ? '#00c087' : '#f0b90b'
+                                                        }}>
+                                                            {item.type === 'buy' ? <ArrowBigDown size={18} /> : <TrendingUp size={18} />}
+                                                        </div>
+                                                        <div>
+                                                            <div style={{ fontWeight: '800', fontSize: '15px' }}>{item.type === 'buy' ? 'Liquidity Injection' : 'Asset Liquidation'}</div>
+                                                            <div style={{ fontSize: '11px', color: '#555' }}>{new Date(item.timestamp).toLocaleString()}</div>
+                                                        </div>
+                                                    </div>
+                                                    <div style={{
+                                                        padding: '4px 10px',
+                                                        borderRadius: '8px',
+                                                        fontSize: '10px',
+                                                        fontWeight: '900',
+                                                        background: item.status === 'Closed' ? 'rgba(255,255,255,0.05)' : 'rgba(0,192,135,0.1)',
+                                                        color: item.status === 'Closed' ? '#666' : '#00c087'
+                                                    }}>
+                                                        {item.status.toUpperCase()}
+                                                    </div>
+                                                </div>
+
+                                                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '15px', borderTop: '1px solid rgba(255,255,255,0.02)', paddingTop: '15px' }}>
+                                                    <div>
+                                                        <div style={{ fontSize: '10px', color: '#444', fontWeight: '800', marginBottom: '4px' }}>TRANSACTION DETAIL</div>
+                                                        <div style={{ fontSize: '14px', fontWeight: '900' }}>
+                                                            {item.type === 'buy' ? `-${item.usdtAmount.toFixed(2)} USDT` : `+${item.usdtAmount.toFixed(2)} USDT`}
+                                                        </div>
+                                                        <div style={{ fontSize: '11px', color: '#666' }}>
+                                                            {item.type === 'buy' ? `Received ${item.assetAmount.toFixed(6)} ${item.symbol}` : `Sold ${item.assetAmount.toFixed(6)} ${item.symbol}`}
+                                                        </div>
+                                                    </div>
+                                                    <div style={{ textAlign: 'right' }}>
+                                                        <div style={{ fontSize: '10px', color: '#444', fontWeight: '800', marginBottom: '4px' }}>PROFIT / LOSS</div>
+                                                        <div style={{
+                                                            fontSize: '14px',
+                                                            fontWeight: '900',
+                                                            color: profit >= 0 ? '#00c087' : '#ff4d4f'
+                                                        }}>
+                                                            {profit >= 0 ? '+' : ''}{profit.toFixed(2)} USDT
+                                                        </div>
+                                                        <div style={{ fontSize: '11px', color: profit >= 0 ? '#00c087' : '#ff4d4f', opacity: 0.8 }}>
+                                                            {profit >= 0 ? '+' : ''}{profitPercentage.toFixed(2)}%
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                            </motion.div>
+                                        );
+                                    })}
+                                </div>
+                            )}
+                        </div>
+                    </motion.div>
+                )}
+            </AnimatePresence>
+
             {/* Custom Animations for pulsing elements */}
             <style>{`
                 @keyframes pulse-glow {
@@ -667,8 +848,26 @@ const Coin = () => {
                     from { transform: rotate(0deg); }
                     to { transform: rotate(360deg); }
                 }
+                @keyframes pickaxe-swing {
+                    0% { transform: rotate(-30deg); transform-translate: -100px;}
+                    50% { transform: rotate(70deg); }
+                    70% { transform: rotate(50deg); }
+                    80% { transform: rotate(70deg); }
+                    100% { transform: rotate(-30deg); }
+                }
+                .pickaxe-swing {
+                    animation: pickaxe-swing 1.2s cubic-bezier(0.4, 0, 0.2, 1) infinite;
+                    transform-origin: 20% 80%;
+                }
                 *::-webkit-scrollbar {
-                    width: 0px;
+                    width: 3px;
+                }
+                *::-webkit-scrollbar-track {
+                    background: transparent;
+                }
+                *::-webkit-scrollbar-thumb {
+                    background: rgba(255,255,255,0.05);
+                    border-radius: 10px;
                 }
             `}</style>
         </motion.div>

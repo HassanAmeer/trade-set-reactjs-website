@@ -15,6 +15,7 @@ const ALL_MENU_ITEMS = [
     { id: 'kyc', label: 'KYC Approvals' },
     { id: 'carousel', label: 'Home Banners' },
     { id: 'email', label: 'Email Campaign' },
+    { id: 'announcements', label: 'Announcements' },
     { id: 'signals', label: 'Market Signals' },
     { id: 'settings', label: 'Settings' },
 ];

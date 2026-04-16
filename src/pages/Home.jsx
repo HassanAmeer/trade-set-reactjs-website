@@ -12,7 +12,8 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { useBranding } from '../context/BrandingContext';
-import { LogOut } from 'lucide-react';
+import { LogOut, X, Info, Megaphone } from 'lucide-react';
+import { doc } from 'firebase/firestore';
 
 const Home = () => {
     const { assets, loading: marketLoading, setIsActive } = useMarket();
@@ -23,6 +24,9 @@ const Home = () => {
     const [currentBannerIndex, setCurrentBannerIndex] = useState(0);
     const [showLogoutConfirm, setShowLogoutConfirm] = useState(false);
     const [unreadCount, setUnreadCount] = useState(0);
+    const [announcement, setAnnouncement] = useState(null);
+    const [showPopup, setShowPopup] = useState(false);
+    const [showBottom, setShowBottom] = useState(false);
     const navigate = useNavigate();
 
     // Activate market data loading for Home page
@@ -49,6 +53,20 @@ const Home = () => {
             setBanners(snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() })));
         });
         return () => unsubscribeBanners();
+    }, []);
+
+    // Fetch Announcement Settings
+    useEffect(() => {
+        const announceRef = doc(db, 'admin_set', 'announcement');
+        const unsub = onSnapshot(announceRef, (doc) => {
+            if (doc.exists()) {
+                const data = doc.data();
+                setAnnouncement(data);
+                if (data.bottomActive) setShowBottom(true);
+                if (data.popupActive) setShowPopup(true);
+            }
+        });
+        return () => unsub();
     }, []);
 
     // Auto-cycling for banners
@@ -385,6 +403,100 @@ const Home = () => {
                             </div>
                         </motion.div>
                     </div>
+                )}
+            </AnimatePresence>
+
+            {/* Announcement System: Popup Type */}
+            <AnimatePresence>
+                {showPopup && announcement?.popupActive && (
+                    <div style={{ position: 'fixed', inset: 0, zIndex: 9000, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '20px' }}>
+                        <motion.div
+                            initial={{ opacity: 0 }}
+                            animate={{ opacity: 1 }}
+                            exit={{ opacity: 0 }}
+                            onClick={() => setShowPopup(false)}
+                            style={{ position: 'absolute', inset: 0, background: 'rgba(0,0,0,0.4)', backdropFilter: 'blur(4px)' }}
+                        />
+                        <motion.div
+                            initial={{ scale: 0.9, opacity: 0, y: 30 }}
+                            animate={{ scale: 1, opacity: 1, y: 0 }}
+                            exit={{ scale: 0.9, opacity: 0, y: 30 }}
+                            style={{
+                                width: '100%',
+                                maxWidth: '360px',
+                                background: '#111',
+                                borderRadius: '25px',
+                                overflow: 'hidden',
+                                position: 'relative',
+                                border: '1px solid rgba(255,255,255,0.05)',
+                                boxShadow: '0 25px 50px rgba(0,0,0,0.5)'
+                            }}
+                        >
+                            <button
+                                onClick={() => setShowPopup(false)}
+                                style={{ position: 'absolute', top: '15px', right: '15px', zIndex: 10, background: 'rgba(0,0,0,0.5)', border: 'none', color: '#fff', width: '30px', height: '30px', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
+                            >
+                                <X size={18} />
+                            </button>
+
+                            {announcement.popupImage && (
+                                <img src={announcement.popupImage} alt="Announcement" style={{ width: '100%', height: '180px', objectFit: 'cover' }} />
+                            )}
+
+                            <div style={{ padding: '25px', textAlign: 'center' }}>
+                                {announcement.popupTitle && (
+                                    <h2 style={{ fontSize: '22px', fontWeight: '900', color: '#fff', marginBottom: '10px' }}>{announcement.popupTitle}</h2>
+                                )}
+                                {announcement.popupDescription && (
+                                    <p style={{ fontSize: '13px', color: '#888', lineHeight: '1.6', margin: 0 }}>{announcement.popupDescription}</p>
+                                )}
+
+
+                            </div>
+                        </motion.div>
+                    </div>
+                )}
+            </AnimatePresence>
+
+            {/* Announcement System: Bottom Bar Type */}
+            <AnimatePresence>
+                {showBottom && announcement?.bottomActive && (
+                    <motion.div
+                        initial={{ y: 100, x: '-50%', opacity: 0 }}
+                        animate={{ y: 0, x: '-50%', opacity: 1 }}
+                        exit={{ y: 100, x: '-50%', opacity: 0 }}
+                        style={{
+                            position: 'fixed',
+                            bottom: '65px', // Exactly touching the bottom nav height
+                            left: '50%',
+                            transform: 'translateX(-50%)',
+                            width: '100%',
+                            maxWidth: '480px',
+                            zIndex: 8000,
+                            background: 'rgba(15,15,15,0.95)',
+                            backdropFilter: 'blur(20px)',
+                            padding: '12px 15px',
+                            borderTop: '1px solid rgba(240,185,11,0.2)',
+                            boxShadow: '0 -5px 20px rgba(0,0,0,0.5)',
+                            display: 'flex',
+                            alignItems: 'center',
+                            gap: '12px'
+                        }}
+                    >
+                        <div style={{ width: '40px', height: '40px', borderRadius: '12px', background: 'rgba(240,185,11,0.1)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+                            <Megaphone size={20} color="#f0b90b" />
+                        </div>
+                        <div style={{ flex: 1, overflow: 'hidden' }}>
+                            <h4 style={{ color: '#fff', fontSize: '14px', fontWeight: '900', margin: '0 0 2px 0' }}>{announcement.barTitle}</h4>
+                            <p style={{ color: '#888', fontSize: '11px', margin: 0, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{announcement.barSubtitle}</p>
+                        </div>
+                        <button
+                            onClick={() => setShowBottom(false)}
+                            style={{ background: 'rgba(255,255,255,0.05)', border: 'none', color: '#555', padding: '8px', borderRadius: '10px', cursor: 'pointer' }}
+                        >
+                            <X size={16} />
+                        </button>
+                    </motion.div>
                 )}
             </AnimatePresence>
         </motion.div>
