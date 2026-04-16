@@ -214,7 +214,7 @@ const Trade = () => {
             if (userSignalConfig) {
                 const signalDir = signal.direction; // 'UP' or 'DOWN'
                 const isMatchingAction = (signalDir === 'UP' && direction === 'BUY') ||
-                                        (signalDir === 'DOWN' && direction === 'SELL');
+                    (signalDir === 'DOWN' && direction === 'SELL');
                 const winRate = parseInt(userSignalConfig.winRate ?? 100, 10);
                 const roll = Math.floor(Math.random() * 100) + 1; // 1–100
                 console.log('[Trade] winRate:', winRate, 'roll:', roll, 'matching direction:', isMatchingAction);
@@ -633,7 +633,7 @@ const Trade = () => {
                             boxShadow: '0 4px 15px rgba(0, 192, 135, 0.3)'
                         }}
                     >
-                        {trading ? <Loader2 className="animate-spin" style={{ margin: '0 auto' }} /> : 'BUY / LONG'}
+                        {trading && tradeDirection === 'BUY' ? <Loader2 className="animate-spin" style={{ margin: '0 auto' }} /> : 'BUY / LONG'}
                     </button>
                     <button
                         onClick={() => handlePlaceTrade('SELL')}
@@ -652,7 +652,7 @@ const Trade = () => {
                             boxShadow: '0 4px 15px rgba(255, 77, 79, 0.3)'
                         }}
                     >
-                        {trading ? <Loader2 className="animate-spin" style={{ margin: '0 auto' }} /> : 'SELL / SHORT'}
+                        {trading && tradeDirection === 'SELL' ? <Loader2 className="animate-spin" style={{ margin: '0 auto' }} /> : 'SELL / SHORT'}
                     </button>
                 </div>
             </div>
