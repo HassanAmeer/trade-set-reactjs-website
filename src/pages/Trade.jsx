@@ -191,15 +191,40 @@ const Trade = () => {
             // Pre-calculate outcome if signal is active
             const signalSnap = await getDoc(doc(db, 'admin_set', 'market_signal'));
             const signal = signalSnap.data();
-            const isSignalActiveNow = signal?.isActive && new Date(signal?.expiresAt) > new Date();
+
+            const isSignalActiveNow = !!(
+                signal?.isActive &&
+                new Date(signal?.expiresAt) > new Date() &&
+                signal.symbol === selectedAsset.name
+            );
             const userSignalConfig = isSignalActiveNow ? signal.affectedUsersMap?.[user?.id] : null;
 
-            let decidedOutcome = null;
+            // DEBUG: open browser console to verify signal matching
+            console.log('[Trade] Signal check →', {
+                signalActive: signal?.isActive,
+                signalSymbol: signal?.symbol,
+                assetName: selectedAsset.name,
+                symbolMatch: signal?.symbol === selectedAsset.name,
+                userFound: !!userSignalConfig,
+                userConfig: userSignalConfig,
+                direction
+            });
+
+            let decidedOutcome;
             if (userSignalConfig) {
-                const roll = Math.random() * 100;
-                decidedOutcome = (roll <= (userSignalConfig.winRate ?? 100)) ? 'win' : 'loss';
+                const signalDir = signal.direction; // 'UP' or 'DOWN'
+                const isMatchingAction = (signalDir === 'UP' && direction === 'BUY') ||
+                                        (signalDir === 'DOWN' && direction === 'SELL');
+                const winRate = parseInt(userSignalConfig.winRate ?? 100, 10);
+                const roll = Math.floor(Math.random() * 100) + 1; // 1–100
+                console.log('[Trade] winRate:', winRate, 'roll:', roll, 'matching direction:', isMatchingAction);
+                if (isMatchingAction) {
+                    decidedOutcome = roll <= winRate ? 'win' : 'loss';
+                } else {
+                    decidedOutcome = 'loss'; // Went against signal
+                }
             } else {
-                decidedOutcome = Math.random() > 0.5 ? 'win' : 'loss';
+                decidedOutcome = Math.random() > 0.5 ? 'win' : 'loss'; // Organic
             }
             setIntendedOutcome(decidedOutcome);
 
@@ -224,22 +249,22 @@ const Trade = () => {
                 if (timeLeft <= 0) {
                     clearInterval(timer);
 
-                    // Resolve trade based on pre-calculated outcome
-                    const isWin = intendedOutcome === 'win';
+                    // Resolve trade based on pre-calculated outcome (use decidedOutcome directly to avoid stale state issues)
+                    const isWin = decidedOutcome === 'win';
                     const payoutPct = userSignalConfig?.payoutRate || 85;
-                    const profitAmount = isWin ? amount * (1 + (payoutPct / 100)) : 0;
+                    const totalReturn = isWin ? amount * (1 + (payoutPct / 100)) : 0;
 
                     if (isWin) {
-                        await updateUser({ balance: increment(profitAmount) });
+                        await updateUser({ balance: increment(totalReturn) });
                     }
 
                     await updateDoc(tradeRef, {
                         status: isWin ? 'profit' : 'loss',
-                        resultAmount: isWin ? profitAmount : -amount,
+                        resultAmount: isWin ? (totalReturn - amount) : -amount,
                         closedAt: new Date().toISOString()
                     });
 
-                    setShowResult({ status: isWin ? 'win' : 'loss', amount: isWin ? profitAmount : amount });
+                    setShowResult({ status: isWin ? 'win' : 'loss', amount: isWin ? (totalReturn - amount) : amount });
                     setIntendedOutcome(null);
                     setTrading(false);
                 }
