@@ -1,12 +1,15 @@
 import React from 'react';
-import { User, CreditCard, Wallet, Headphones, Zap, Shield, FileText, ChevronRight, Camera, Loader2, LogOut, Copy, QrCode, Share2, Gift, Check, Users, BellIcon } from 'lucide-react';
+import { User, CreditCard, Wallet, Headphones, Zap, Shield, FileText, ChevronRight, Camera, Loader2, LogOut, Copy, QrCode, Share2, Gift, Check, Users, BellIcon, Trophy, X } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { useBranding } from '../context/BrandingContext';
+import { db } from '../firebase-setup';
+import { doc, onSnapshot } from 'firebase/firestore';
 import { uploadFileChunks } from '../services/dbs';
 import giftBg from '../assets/gift-boxes-background.png';
 import giftBox from '../assets/gift-box.png';
+import btcBg from '../assets/btc-bg.jpg';
 
 const Profile = () => {
     const navigate = useNavigate();
@@ -16,7 +19,19 @@ const Profile = () => {
     const [showLogoutConfirm, setShowLogoutConfirm] = React.useState(false);
     const [showQrPopup, setShowQrPopup] = React.useState(false);
     const [copied, setCopied] = React.useState(false);
+    const [rewardsConfig, setRewardsConfig] = React.useState({ active: false, levels: [] });
+    const [showVIPRewards, setShowVIPRewards] = React.useState(true);
     const fileInputRef = React.useRef(null);
+
+    // Fetch Rewards Config
+    React.useEffect(() => {
+        const unsubscribe = onSnapshot(doc(db, 'admin_set', 'rewards'), (snapshot) => {
+            if (snapshot.exists()) {
+                setRewardsConfig(snapshot.data());
+            }
+        });
+        return () => unsubscribe();
+    }, []);
     // Removed heavy userLevel fetching - it was loading ALL users data
 
     const referralLink = `${window.location.origin}/signup?ref=${user?.id}`;
@@ -72,6 +87,7 @@ const Profile = () => {
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             className="app-container"
+            style={{ overflow: 'visible' }}
         >
             <div className="flex-between" style={{ marginBottom: '24px' }}>
                 {user ? (
@@ -220,6 +236,75 @@ const Profile = () => {
                 </div>
 
             </div>
+            <div style={{ paddingTop: '1px' }}></div>
+            {/* Dynamic Rewards Card */}
+            {rewardsConfig.active && showVIPRewards && (
+                <motion.div
+                    className="glass"
+                    animate={{ y: [0, -10, 0] }}
+                    transition={{ duration: 2, repeat: Infinity, ease: "easeInOut" }}
+                    style={{
+                        padding: '20px',
+                        borderRadius: '24px',
+                        marginTop: '30px',
+                        marginLeft: '15px',
+                        marginBottom: '24px',
+                        width: 'calc(100% - 15px)',
+                        border: '1px solid rgba(0, 192, 137, 0.2)',
+                        backgroundImage: `linear-gradient(rgba(0, 0, 0, 0.8), rgba(0, 0, 0, 0.9)), url(${btcBg})`,
+                        backgroundSize: 'cover',
+                        backgroundPosition: 'center',
+                        position: 'relative',
+                        overflow: 'visible'
+                    }}
+                >
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '15px', position: 'relative', zIndex: 2 }}>
+                        <div></div>   <div className='shimmer-icon' style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                            <Trophy size={18} color="#00c087" />
+                            <span style={{ fontSize: '13px', fontWeight: '900', color: '#fff' }}>VIP REWARD TIERS</span>
+                        </div>
+                        <X
+                            size={25}
+                            color="#888"
+                            style={{ cursor: 'pointer', padding: '5px', background: 'rgba(255,255,255,0.1)', borderRadius: '50%' }}
+                            onClick={() => setShowVIPRewards(false)}
+                        />
+                    </div>
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', position: 'relative', zIndex: 2 }}>
+                        {rewardsConfig.levels.map((level) => (
+                            <div key={level.id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '10px 14px', background: 'rgba(255,255,255,0.05)', borderRadius: '12px', border: '1px solid rgba(255,255,255,0.1)', backdropFilter: 'blur(4px)' }}>
+                                <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                                    <span style={{ fontSize: '12px', fontWeight: '900', color: '#fff' }}>{level.label}</span>
+                                    <span style={{ fontSize: '12px', color: '#aaa' }}>Add {level.deposit}$</span>
+                                </div>
+                                <div style={{ fontSize: '12px', fontWeight: '900', color: '#00c087' }}>
+                                    Reward {level.reward}$
+                                </div>
+                            </div>
+                        ))}
+                    </div>
+
+                    <motion.img
+                        src={giftBox}
+                        alt="Gift"
+                        animate={{ y: [0, -5, 0], rotate: [0, -15, 0], opacity: [0.4, 0.6, 0.8, 1, 1, 0.4] }}
+                        transition={{ duration: 2, repeat: Infinity, ease: "easeInOut" }}
+                        className='animate-pulse'
+                        style={{
+                            width: '90px',
+                            height: '90px',
+                            objectFit: 'contain',
+                            position: 'absolute',
+                            left: '-30px',
+                            top: '-30px',
+                            opacity: 1,
+                            filter: 'drop-shadow(0 10px 20px rgba(0,192,135,0.4))',
+                            zIndex: 1,
+                            transformOrigin: 'center',
+                        }}
+                    />
+                </motion.div>
+            )}
 
             {/* KYC Status Notification — only for unverified users */}
             {user && !user.isVerified && (
@@ -324,171 +409,171 @@ const Profile = () => {
 
             {/* Referral / Invitation Section - Only show when user is logged in */}
             {user && (
-            <div style={{
-                backgroundImage: `linear-gradient(rgba(26,26,26,0.85), rgba(26,26,26,0.95)), url(${giftBg})`,
-                backgroundSize: 'cover',
-                backgroundPosition: 'center',
-                borderRadius: '24px',
-                padding: '24px',
-                marginBottom: '32px',
-                border: '1px solid rgba(255,255,255,0.05)',
-                boxShadow: '0 10px 30px rgba(0,0,0,0.3)',
-                overflow: 'visible',
-                width: '100%',
-                position: 'relative'
-            }}>
-                <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '20px' }}>
-                    <div style={{ padding: '8px', backgroundColor: 'rgba(240, 185, 11, 0.1)', borderRadius: '10px', color: 'var(--accent-gold)' }}>
-                        <Share2 size={18} />
+                <div style={{
+                    backgroundImage: `linear-gradient(rgba(26,26,26,0.85), rgba(26,26,26,0.95)), url(${giftBg})`,
+                    backgroundSize: 'cover',
+                    backgroundPosition: 'center',
+                    borderRadius: '24px',
+                    padding: '24px',
+                    marginBottom: '32px',
+                    border: '1px solid rgba(255,255,255,0.05)',
+                    boxShadow: '0 10px 30px rgba(0,0,0,0.3)',
+                    overflow: 'visible',
+                    width: '100%',
+                    position: 'relative'
+                }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '20px' }}>
+                        <div style={{ padding: '8px', backgroundColor: 'rgba(240, 185, 11, 0.1)', borderRadius: '10px', color: 'var(--accent-gold)' }}>
+                            <Share2 size={18} />
+                        </div>
+                        <h3 style={{ fontSize: '16px', fontWeight: '800', margin: 0 }}>Invite Friends</h3>
                     </div>
-                    <h3 style={{ fontSize: '16px', fontWeight: '800', margin: 0 }}>Invite Friends</h3>
-                </div>
 
-                <div style={{ display: 'flex', gap: '20px', alignItems: 'center' }}>
-                    <div
-                        onClick={() => setShowQrPopup(true)}
-                        style={{
-                            backgroundColor: '#fff',
-                            padding: '8px',
-                            borderRadius: '12px',
-                            width: '100px',
-                            height: '100px',
-                            minWidth: '100px',
-                            display: 'flex',
-                            alignItems: 'center',
-                            justifyContent: 'center',
-                            boxShadow: '0 4px 12px rgba(0,0,0,0.2)',
-                            overflow: 'hidden',
-                            cursor: 'pointer'
-                        }}
-                    >
-                        <img
-                            src={qrCodeUrl}
-                            alt="QR Code"
+                    <div style={{ display: 'flex', gap: '20px', alignItems: 'center' }}>
+                        <div
+                            onClick={() => setShowQrPopup(true)}
                             style={{
-                                width: '100%',
-                                height: '100%',
-                                objectFit: 'contain',
-                                display: 'block'
-                            }}
-                        />
-                    </div>
-
-                    <div style={{ flex: 1, minWidth: 0 }}>
-                        <div style={{ fontSize: '12px', color: '#666', fontWeight: '700', textTransform: 'uppercase', marginBottom: '8px', letterSpacing: '0.5px' }}>Your Referral Link</div>
-                        <div style={{
-                            display: 'flex',
-                            alignItems: 'center',
-                            gap: '10px',
-                            backgroundColor: 'rgba(0,0,0,0.3)',
-                            padding: '12px 14px',
-                            borderRadius: '12px',
-                            border: '1px solid #222',
-                            overflow: 'hidden'
-                        }}>
-                            <div style={{
-                                fontSize: '13px',
-                                color: '#aaa',
+                                backgroundColor: '#fff',
+                                padding: '8px',
+                                borderRadius: '12px',
+                                width: '100px',
+                                height: '100px',
+                                minWidth: '100px',
+                                display: 'flex',
+                                alignItems: 'center',
+                                justifyContent: 'center',
+                                boxShadow: '0 4px 12px rgba(0,0,0,0.2)',
                                 overflow: 'hidden',
-                                textOverflow: 'ellipsis',
-                                whiteSpace: 'nowrap',
-                                flex: 1,
-                                minWidth: 0,
-                                fontFamily: 'monospace'
+                                cursor: 'pointer'
+                            }}
+                        >
+                            <img
+                                src={qrCodeUrl}
+                                alt="QR Code"
+                                style={{
+                                    width: '100%',
+                                    height: '100%',
+                                    objectFit: 'contain',
+                                    display: 'block'
+                                }}
+                            />
+                        </div>
+
+                        <div style={{ flex: 1, minWidth: 0 }}>
+                            <div style={{ fontSize: '12px', color: '#666', fontWeight: '700', textTransform: 'uppercase', marginBottom: '8px', letterSpacing: '0.5px' }}>Your Referral Link</div>
+                            <div style={{
+                                display: 'flex',
+                                alignItems: 'center',
+                                gap: '10px',
+                                backgroundColor: 'rgba(0,0,0,0.3)',
+                                padding: '12px 14px',
+                                borderRadius: '12px',
+                                border: '1px solid #222',
+                                overflow: 'hidden'
                             }}>
-                                {referralLink}
-                            </div>
-                            {copied ? (
-                                <Check
-                                    size={18}
-                                    color="#00c087"
-                                    style={{ cursor: 'pointer' }}
-                                />
-                            ) : (
-                                <Copy
-                                    size={18}
-                                    color="var(--accent-gold)"
-                                    style={{ cursor: 'pointer' }}
-                                    onClick={copyToClipboard}
-                                />
-                            )}
-                        </div>
-                    </div>
-                </div>
-
-                <div style={{
-                    marginTop: '20px',
-                    padding: '16px',
-                    backgroundColor: 'rgba(0, 192, 137, 0.05)',
-                    borderRadius: '12px',
-                    border: '1px dashed rgba(0, 192, 137, 0.2)',
-                    position: 'relative',
-                    overflow: 'visible'
-                }}>
-                    <div style={{ position: 'relative', zIndex: 1 }}>
-                        <div style={{ color: '#00c087', fontWeight: '800', fontSize: '13px', marginBottom: '4px' }}>
-                            Commission Rewards
-                        </div>
-                        <div style={{ fontSize: '11px', color: '#888', lineHeight: '1.5', maxWidth: '80%' }}>
-                            Invite friends to join {websiteName} and earn <span style={{ color: '#fff', fontWeight: '700' }}>{referralCommission}%</span> commission on every deposit they make. Rewards are credited instantly.
-                        </div>
-                    </div>
-                    {/* Golden Decorative Image Overlay - Popping Out & Floating */}
-                    <motion.div
-                        animate={{
-                            y: [0, -15, 0],
-                            rotate: [-15, -12, -15]
-                        }}
-                        transition={{
-                            duration: 4,
-                            repeat: Infinity,
-                            ease: "easeInOut"
-                        }}
-                        style={{
-                            position: 'absolute',
-                            right: '-20px',
-                            top: '10%',
-                            opacity: 1,
-                            pointerEvents: 'none',
-                            width: '100px',
-                            display: 'flex',
-                            alignItems: 'center',
-                            justifyContent: 'center',
-                            zIndex: 10
-                        }}
-                    >
-                        <img src={giftBox} alt="Gift" style={{ width: '100%', height: 'auto', filter: 'drop-shadow(0 20px 40px rgba(0,0,0,0.9))' }} />
-                    </motion.div>
-                </div>
-
-                {/* My Team Statistics inside the card at bottom */}
-                <div style={{
-                    marginTop: '20px',
-                    padding: '16px',
-                    backgroundColor: 'rgba(255, 255, 255, 0.02)',
-                    borderRadius: '16px',
-                    border: '1px solid rgba(255,255,255,0.05)'
-                }}>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '12px' }}>
-                        <Users size={16} color="var(--accent-gold)" />
-                        <span style={{ fontSize: '13px', fontWeight: '800', color: '#fff', textTransform: 'uppercase', letterSpacing: '0.5px' }}>My Team Statistics</span>
-                    </div>
-
-                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '15px' }}>
-                        <div>
-                            <div style={{ fontSize: '10px', color: '#666', marginBottom: '2px' }}>Total Ref</div>
-                            <div style={{ fontSize: '15px', fontWeight: '800', color: '#888' }}>{user?.totalReferrals || 0} Members</div>
-                        </div>
-                        <div>
-                            <div style={{ fontSize: '10px', color: '#666', marginBottom: '2px' }}>Ref By</div>
-                            <div style={{ fontSize: '14px', fontWeight: '800', color: user?.referredBy ? 'var(--accent-gold)' : '#888' }}>
-                                {user?.referredBy ? user.referredBy.slice(-6).toUpperCase() : 'Direct'}
+                                <div style={{
+                                    fontSize: '13px',
+                                    color: '#aaa',
+                                    overflow: 'hidden',
+                                    textOverflow: 'ellipsis',
+                                    whiteSpace: 'nowrap',
+                                    flex: 1,
+                                    minWidth: 0,
+                                    fontFamily: 'monospace'
+                                }}>
+                                    {referralLink}
+                                </div>
+                                {copied ? (
+                                    <Check
+                                        size={18}
+                                        color="#00c087"
+                                        style={{ cursor: 'pointer' }}
+                                    />
+                                ) : (
+                                    <Copy
+                                        size={18}
+                                        color="var(--accent-gold)"
+                                        style={{ cursor: 'pointer' }}
+                                        onClick={copyToClipboard}
+                                    />
+                                )}
                             </div>
                         </div>
+                    </div>
 
+                    <div style={{
+                        marginTop: '20px',
+                        padding: '16px',
+                        backgroundColor: 'rgba(0, 192, 137, 0.05)',
+                        borderRadius: '12px',
+                        border: '1px dashed rgba(0, 192, 137, 0.2)',
+                        position: 'relative',
+                        overflow: 'visible'
+                    }}>
+                        <div style={{ position: 'relative', zIndex: 1 }}>
+                            <div style={{ color: '#00c087', fontWeight: '800', fontSize: '13px', marginBottom: '4px' }}>
+                                Commission Rewards
+                            </div>
+                            <div style={{ fontSize: '11px', color: '#888', lineHeight: '1.5', maxWidth: '80%' }}>
+                                Invite friends to join {websiteName} and earn <span style={{ color: '#fff', fontWeight: '700' }}>{referralCommission}%</span> commission on every deposit they make. Rewards are credited instantly.
+                            </div>
+                        </div>
+                        {/* Golden Decorative Image Overlay - Popping Out & Floating */}
+                        <motion.div
+                            animate={{
+                                y: [0, -15, 0],
+                                rotate: [-15, -12, -15]
+                            }}
+                            transition={{
+                                duration: 4,
+                                repeat: Infinity,
+                                ease: "easeInOut"
+                            }}
+                            style={{
+                                position: 'absolute',
+                                right: '-20px',
+                                top: '10%',
+                                opacity: 1,
+                                pointerEvents: 'none',
+                                width: '100px',
+                                display: 'flex',
+                                alignItems: 'center',
+                                justifyContent: 'center',
+                                zIndex: 10
+                            }}
+                        >
+                            <img src={giftBox} alt="Gift" style={{ width: '100%', height: 'auto', filter: 'drop-shadow(0 20px 40px rgba(0,0,0,0.9))' }} />
+                        </motion.div>
+                    </div>
+
+                    {/* My Team Statistics inside the card at bottom */}
+                    <div style={{
+                        marginTop: '20px',
+                        padding: '16px',
+                        backgroundColor: 'rgba(255, 255, 255, 0.02)',
+                        borderRadius: '16px',
+                        border: '1px solid rgba(255,255,255,0.05)'
+                    }}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '12px' }}>
+                            <Users size={16} color="var(--accent-gold)" />
+                            <span style={{ fontSize: '13px', fontWeight: '800', color: '#fff', textTransform: 'uppercase', letterSpacing: '0.5px' }}>My Team Statistics</span>
+                        </div>
+
+                        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '15px' }}>
+                            <div>
+                                <div style={{ fontSize: '10px', color: '#666', marginBottom: '2px' }}>Total Ref</div>
+                                <div style={{ fontSize: '15px', fontWeight: '800', color: '#888' }}>{user?.totalReferrals || 0} Members</div>
+                            </div>
+                            <div>
+                                <div style={{ fontSize: '10px', color: '#666', marginBottom: '2px' }}>Ref By</div>
+                                <div style={{ fontSize: '14px', fontWeight: '800', color: user?.referredBy ? 'var(--accent-gold)' : '#888' }}>
+                                    {user?.referredBy ? user.referredBy.slice(-6).toUpperCase() : 'Direct'}
+                                </div>
+                            </div>
+
+                        </div>
                     </div>
                 </div>
-            </div>
             )}
 
             <div className="menu-list" style={{ marginBottom: '30px' }}>

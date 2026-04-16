@@ -18,6 +18,22 @@ import { doc } from 'firebase/firestore';
 const Home = () => {
     const { assets, loading: marketLoading, setIsActive } = useMarket();
     const { websiteName, logoUrl } = useBranding();
+
+    const renderFormattedText = (text) => {
+        if (!text) return '';
+        const parts = text.split(/(<[^>]*>)/g);
+        return parts.map((part, index) => {
+            const match = part.match(/<([^>]*)>/);
+            if (match) {
+                return (
+                    <span key={index} style={{ color: '#00c087', fontWeight: '900' }}>
+                        {match[1]}
+                    </span>
+                );
+            }
+            return part;
+        });
+    };
     const { user, logout } = useAuth();
     const [activeTab, setActiveTab] = useState('All');
     const [banners, setBanners] = useState([]);
@@ -421,6 +437,7 @@ const Home = () => {
                             initial={{ scale: 0.9, opacity: 0, y: 30 }}
                             animate={{ scale: 1, opacity: 1, y: 0 }}
                             exit={{ scale: 0.9, opacity: 0, y: 30 }}
+                            className='shimmer-icon'
                             style={{
                                 width: '100%',
                                 maxWidth: '360px',
@@ -428,7 +445,7 @@ const Home = () => {
                                 borderRadius: '25px',
                                 overflow: 'hidden',
                                 position: 'relative',
-                                border: '1px solid rgba(255,255,255,0.05)',
+                                border: '1px solid #00C0865D',
                                 boxShadow: '0 25px 50px rgba(0,0,0,0.5)'
                             }}
                         >
@@ -445,10 +462,14 @@ const Home = () => {
 
                             <div style={{ padding: '25px', textAlign: 'center' }}>
                                 {announcement.popupTitle && (
-                                    <h2 style={{ fontSize: '22px', fontWeight: '900', color: '#fff', marginBottom: '10px' }}>{announcement.popupTitle}</h2>
+                                    <h2 style={{ fontSize: '22px', fontWeight: '900', color: '#fff', marginBottom: '10px' }}>
+                                        {announcement.popupTitle}
+                                    </h2>
                                 )}
                                 {announcement.popupDescription && (
-                                    <p style={{ fontSize: '13px', color: '#888', lineHeight: '1.6', margin: 0 }}>{announcement.popupDescription}</p>
+                                    <p style={{ fontSize: '13px', color: '#888', lineHeight: '1.6', margin: 0 }}>
+                                        {renderFormattedText(announcement.popupDescription)}
+                                    </p>
                                 )}
 
 
@@ -483,12 +504,17 @@ const Home = () => {
                             gap: '12px'
                         }}
                     >
-                        <div style={{ width: '40px', height: '40px', borderRadius: '12px', background: 'rgba(240,185,11,0.1)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+                        <div className='shimmer-icon' style={{ width: '40px', height: '40px', borderRadius: '12px', background: 'rgba(240,185,11,0.1)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
                             <Megaphone size={20} color="#f0b90b" />
                         </div>
                         <div style={{ flex: 1, overflow: 'hidden' }}>
-                            <h4 style={{ color: '#fff', fontSize: '14px', fontWeight: '900', margin: '0 0 2px 0' }}>{announcement.barTitle}</h4>
-                            <p style={{ color: '#888', fontSize: '11px', margin: 0, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{announcement.barSubtitle}</p>
+                            <h4
+                                style={{ color: '#fff', fontSize: '14px', fontWeight: '900', margin: '0 0 2px 0' }}>
+                                {announcement.barTitle}
+                            </h4>
+                            <p style={{ color: '#888', fontSize: '11px', margin: 0, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                                {renderFormattedText(announcement.barSubtitle)}
+                            </p>
                         </div>
                         <button
                             onClick={() => setShowBottom(false)}

@@ -1,12 +1,13 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { motion } from 'framer-motion';
-import { ChevronLeft, Upload, Clock, Loader2, Camera, CheckCircle2 } from 'lucide-react';
+import { ChevronLeft, Upload, Clock, Loader2, Camera, CheckCircle2, Megaphone } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { useBranding } from '../context/BrandingContext';
 import { uploadFileChunks } from '../services/dbs';
 import { db } from '../firebase-setup';
-import { collection, addDoc, doc, getDoc } from 'firebase/firestore';
+import { collection, addDoc, doc, getDoc, onSnapshot } from 'firebase/firestore';
+import giftBox from '../assets/gift-box.png';
 
 const Deposit = () => {
     const navigate = useNavigate();
@@ -18,6 +19,17 @@ const Deposit = () => {
     const [screenshot, setScreenshot] = useState(null);
     const [preview, setPreview] = useState(null);
     const fileInputRef = useRef(null);
+    const [rewardsConfig, setRewardsConfig] = useState({ active: false, levels: [] });
+
+    // Fetch Rewards Config
+    useEffect(() => {
+        const unsubscribe = onSnapshot(doc(db, 'admin_set', 'rewards'), (snapshot) => {
+            if (snapshot.exists()) {
+                setRewardsConfig(snapshot.data());
+            }
+        });
+        return () => unsubscribe();
+    }, []);
 
     // Redirect to login if user is not logged in
     useEffect(() => {
@@ -105,6 +117,77 @@ const Deposit = () => {
                     <Clock size={14} /> History
                 </button>
             </div>
+
+            {/* Reward Card Section */}
+            {rewardsConfig.active && (
+                <motion.div
+                    initial={{ scale: 0.95, opacity: 0 }}
+                    animate={{ scale: 1, opacity: 1 }}
+                    style={{
+                        background: 'linear-gradient(135deg, rgba(0, 192, 135, 0.1), rgba(0, 0, 0, 0.2))',
+                        borderRadius: '24px',
+                        padding: '20px',
+                        marginBottom: '24px',
+                        border: '1px solid rgba(0, 192, 135, 0.2)',
+                        overflow: 'hidden'
+                    }}
+                >
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '20px', position: 'relative' }}>
+                        <div style={{ position: 'relative', zIndex: 2 }}>
+                            <div className="shimmer" style={{ fontSize: '14px', marginBottom: '4px', display: 'block' }}>
+                                Deposit Reward Event
+                            </div>
+                            <h3 style={{ fontSize: '18px', fontWeight: '900', color: '#fff', marginBottom: '6px' }}>
+                                Get up to <span style={{ color: '#00c087' }}>Bonus USDT</span>
+                            </h3>
+                            <p style={{ fontSize: '11px', color: '#888', lineHeight: '1.4', maxWidth: '200px' }}>
+                                Recharge now and receive an instant trading bonus credited to your account.
+                            </p>
+                        </div>
+                        
+                        <motion.img 
+                            src={giftBox} 
+                            alt="Gift"
+                            animate={{ y: [0, -8, 0] }}
+                            transition={{ duration: 2, repeat: Infinity, ease: "easeInOut" }}
+                            style={{ 
+                                width: '80px', 
+                                height: '80px', 
+                                objectFit: 'contain',
+                                position: 'absolute',
+                                right: '0px',
+                                top: '50%',
+                                transform: 'translateY(-50%)',
+                                filter: 'drop-shadow(0 10px 20px rgba(0,192,135,0.3))'
+                            }} 
+                        />
+                    </div>
+
+                    {/* Dynamic Prize List */}
+                    <div style={{ 
+                        marginTop: '20px', 
+                        padding: '15px', 
+                        background: 'rgba(0,0,0,0.3)', 
+                        borderRadius: '16px',
+                        border: '1px solid rgba(255,255,255,0.05)'
+                    }}>
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+                            {rewardsConfig.levels.map((level, idx) => (
+                                <div key={level.id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', color: '#fff' }}>
+                                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                                        <div style={{ width: '6px', height: '6px', borderRadius: '50%', background: '#00c087' }}></div>
+                                        <span style={{ fontSize: '12px', fontWeight: '800', color: '#666' }}>{level.label}</span>
+                                        <span style={{ fontSize: '12px' }}>Add {level.deposit}$</span>
+                                    </div>
+                                    <div style={{ fontSize: '12px', fontWeight: '900', color: '#00c087' }}>
+                                        Reward {level.reward}$
+                                    </div>
+                                </div>
+                            ))}
+                        </div>
+                    </div>
+                </motion.div>
+            )}
 
             <div className="glass" style={{ padding: '24px', borderRadius: '24px', border: '1px solid rgba(255,255,255,0.05)', textAlign: 'center' }}>
 

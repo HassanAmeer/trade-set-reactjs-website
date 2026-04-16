@@ -8,13 +8,14 @@ import AdminSupport from './AdminSupport';
 import AdminKYC from './AdminKYC';
 import AdminBlogs from './AdminBlogs';
 import AdminSettings from './AdminSettings';
-import AdminTrades from './AdminTrades';
-import AdminCarousel from './AdminCarousel';
 import AdminEmail from './AdminEmail';
 import AdminAnnouncements from './AdminAnnouncements';
+import AdminRewards from './AdminRewards';
 import AdminMenu from './AdminMenu';
 import AdminSignals from './AdminSignals';
-import { BarChart3, Presentation, Mail, LayoutList, Zap, Megaphone } from 'lucide-react';
+import AdminCarousel from './AdminCarousel';
+import AdminTrades from './AdminTrades';
+import { BarChart3, Presentation, Mail, LayoutList, Zap, Megaphone, Trophy } from 'lucide-react';
 import { db } from '../../firebase-setup';
 import { doc, getDoc } from 'firebase/firestore';
 
@@ -48,6 +49,7 @@ const AdminDashboard = () => {
             case 'carousel': return <AdminCarousel />;
             case 'email': return <AdminEmail />;
             case 'announcements': return <AdminAnnouncements />;
+            case 'rewards': return <AdminRewards />;
             case 'menu': return <AdminMenu />;
             case 'signals': return <AdminSignals />;
             default: return null;
@@ -83,25 +85,37 @@ const AdminDashboard = () => {
     }, []);
 
     const baseNavItems = [
-        { id: 'deposits', label: 'Deposits', icon: <CreditCard size={18} /> },
-        { id: 'withdrawals', label: 'Withdrawals', icon: <Download size={18} /> },
-        { id: 'users', label: 'Users', icon: <Users size={18} /> },
-        { id: 'support', label: 'Support Center', icon: <MessageSquare size={18} /> },
-        { id: 'trades', label: 'Global Trades', icon: <BarChart3 size={18} /> },
-        { id: 'blogs', label: 'News & Blogs', icon: <FileText size={18} /> },
-        { id: 'kyc', label: 'KYC Approvals', icon: <ShieldCheck size={18} /> },
-        { id: 'carousel', label: 'Home Banners', icon: <Presentation size={18} /> },
-        { id: 'email', label: 'Email Campaign', icon: <Mail size={18} /> },
-        { id: 'announcements', label: 'Announcements', icon: <Megaphone size={18} /> },
-        { id: 'signals', label: 'Market Signals', icon: <Zap size={18} /> },
-        { id: 'settings', label: 'Settings', icon: <Settings size={18} /> },
+        { id: 'deposits', label: 'Deposits', icon: <CreditCard size={18} />, section: 'FINANCIAL' },
+        { id: 'withdrawals', label: 'Withdrawals', icon: <Download size={18} />, section: 'FINANCIAL' },
+        { id: 'users', label: 'Users', icon: <Users size={18} />, section: 'MANAGEMENT' },
+        { id: 'support', label: 'Support Center', icon: <MessageSquare size={18} />, section: 'MANAGEMENT' },
+        { id: 'kyc', label: 'KYC Approvals', icon: <ShieldCheck size={18} />, section: 'MANAGEMENT' },
+        { id: 'blogs', label: 'News & Blogs', icon: <FileText size={18} />, section: 'CONTENT' },
+        { id: 'carousel', label: 'Home Banners', icon: <Presentation size={18} />, section: 'CONTENT' },
+        { id: 'email', label: 'Email Campaign', icon: <Mail size={18} />, section: 'CONTENT' },
+        { id: 'announcements', label: 'Announcements', icon: <Megaphone size={18} />, section: 'CONTENT' },
+        { id: 'rewards', label: 'Deposit Rewards', icon: <Trophy size={18} />, section: 'GROWTH' },
+        { id: 'signals', label: 'Market Signals', icon: <Zap size={18} />, section: 'GROWTH' },
+        { id: 'trades', label: 'Trades Log', icon: <BarChart3 size={18} />, section: 'RECORDS' },
+        { id: 'settings', label: 'Settings', icon: <Settings size={18} />, section: 'SYSTEM' },
     ];
 
     const isAdminSuper = localStorage.getItem('adminToken') === 'super';
 
     let finalNavItems = isAdminSuper 
-        ? [...baseNavItems, { id: 'menu', label: 'Menu Control', icon: <LayoutList size={18} /> }]
+        ? [...baseNavItems, { id: 'menu', label: 'Menu Control', icon: <LayoutList size={18} />, section: 'SYSTEM' }]
         : baseNavItems.filter(item => visibleMenus[item.id] !== false);
+
+    // Group items by section for rendering
+    const sections = [];
+    finalNavItems.forEach(item => {
+        let sec = sections.find(s => s.name === item.section);
+        if (!sec) {
+            sec = { name: item.section, items: [] };
+            sections.push(sec);
+        }
+        sec.items.push(item);
+    });
 
     return (
         <div className="admin-layout">
@@ -136,21 +150,37 @@ const AdminDashboard = () => {
                             <div key={i} className="skeleton-loader" style={{ width: '100%', height: '45px', borderRadius: '8px' }}></div>
                         ))
                     ) : (
-                        finalNavItems.map(item => (
-                            <button
-                                key={item.id}
-                                onClick={() => {
-                                    setActiveTab(item.id);
-                                    setIsMobileMenuOpen(false);
-                                }}
-                                style={{ 
-                                    ...sidebarBtnStyle, 
-                                    backgroundColor: activeTab === item.id ? 'rgba(0,192,135,0.1)' : 'transparent', 
-                                    color: activeTab === item.id ? '#00c087' : '#888' 
-                                }}
-                            >
-                                {item.icon} {item.label}
-                            </button>
+                        sections.map(sec => (
+                            <div key={sec.name} style={{ marginBottom: '20px' }}>
+                                <div style={{ 
+                                    fontSize: '10px', 
+                                    fontWeight: '800', 
+                                    color: '#555', 
+                                    marginBottom: '10px', 
+                                    paddingLeft: '16px',
+                                    letterSpacing: '1px'
+                                }}>
+                                    {sec.name}
+                                </div>
+                                <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
+                                    {sec.items.map(item => (
+                                        <button
+                                            key={item.id}
+                                            onClick={() => {
+                                                setActiveTab(item.id);
+                                                setIsMobileMenuOpen(false);
+                                            }}
+                                            style={{ 
+                                                ...sidebarBtnStyle, 
+                                                backgroundColor: activeTab === item.id ? 'rgba(0,192,135,0.1)' : 'transparent', 
+                                                color: activeTab === item.id ? '#00c087' : '#888' 
+                                            }}
+                                        >
+                                            {item.icon} {item.label}
+                                        </button>
+                                    ))}
+                                </div>
+                            </div>
                         ))
                     )}
                 </nav>

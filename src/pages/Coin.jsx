@@ -22,6 +22,8 @@ import { useMarket } from '../context/MarketContext';
 
 import btcBg from '../assets/btc-bg.jpg';
 import minerBot from '../assets/btc-mining.webp';
+import { db } from '../firebase-setup';
+import { collection, addDoc, increment } from 'firebase/firestore';
 
 const Coin = () => {
     const { user, updateUser } = useAuth();
@@ -80,11 +82,11 @@ const Coin = () => {
                 }
             };
 
-            const newHistoryItem = {
+            const historyItem = {
                 id: Date.now().toString(),
                 type: 'buy',
-                status: 'Holding',
-                usdtAmount: amount,
+                status: 'Completed',
+                usdtAmount: parseFloat(exchangeAmount),
                 assetAmount: assetAmount,
                 symbol: selectedAssetForExchange.symbol || selectedAssetForExchange.name.split('/')[0],
                 rate: assetRate,
@@ -92,9 +94,17 @@ const Coin = () => {
             };
 
             await updateUser({
-                balance: user.balance - amount,
+                balance: increment(-parseFloat(exchangeAmount)),
                 holdings: newHoldings,
-                miningHistory: [newHistoryItem, ...(user.miningHistory || [])]
+                miningHistory: [historyItem, ...(user.miningHistory || [])]
+            });
+
+            // Log to global trades collection
+            await addDoc(collection(db, 'users', user.id, 'trades'), {
+                ...historyItem,
+                asset: selectedAssetForExchange.name,
+                direction: 'SECURE',
+                category: 'mining'
             });
 
             showNotify(`Successfully exchanged ${amount} USDT to ${assetAmount.toFixed(6)} ${selectedAssetForExchange.symbol || selectedAssetForExchange.name.split('/')[0]}`);
@@ -130,7 +140,7 @@ const Coin = () => {
             const newHoldings = { ...user.holdings };
             delete newHoldings[assetId];
 
-            const newHistoryItem = {
+            const historyItem = {
                 id: Date.now().toString(),
                 type: 'sell',
                 status: 'Closed',
@@ -142,9 +152,17 @@ const Coin = () => {
             };
 
             await updateUser({
-                balance: user.balance + refundAmount,
+                balance: increment(refundAmount),
                 holdings: newHoldings,
-                miningHistory: [newHistoryItem, ...(user.miningHistory || [])]
+                miningHistory: [historyItem, ...(user.miningHistory || [])]
+            });
+
+            // Log to global trades collection
+            await addDoc(collection(db, 'users', user.id, 'trades'), {
+                ...historyItem,
+                asset: holding.symbol,
+                direction: 'LIQUIDATE',
+                category: 'mining'
             });
 
             showNotify(`Exchanged back to ${refundAmount.toFixed(2)} USDT`);
@@ -160,18 +178,50 @@ const Coin = () => {
 
         const holding = user.holdings[assetId];
         const newStatus = !holding.isFrozen;
+        const asset = assets.find(a => a.id === assetId);
+        const currentRate = asset ? parseFloat(String(asset.rate).replace(/,/g, '')) : 0;
 
         setProcessing(true);
         try {
+            const entryRate = holding.frozenRate || currentRate;
+            const frozenAt = holding.frozenAt || new Date().toISOString();
+
             const newHoldings = {
                 ...user.holdings,
                 [assetId]: {
                     ...holding,
-                    isFrozen: newStatus
+                    isFrozen: newStatus,
+                    frozenRate: newStatus ? currentRate : (holding.frozenRate || currentRate),
+                    frozenAt: newStatus ? new Date().toISOString() : holding.frozenAt
                 }
             };
 
-            await updateUser({ holdings: newHoldings });
+            const historyItem = {
+                id: Date.now().toString(),
+                type: newStatus ? 'freeze' : 'release',
+                status: 'Completed',
+                assetAmount: holding.amount,
+                symbol: holding.symbol,
+                rate: currentRate,
+                entryRate: entryRate,
+                timestamp: new Date().toISOString(),
+                frozenAt: newStatus ? null : frozenAt,
+                usdtAmount: holding.amount * currentRate
+            };
+
+            await updateUser({
+                holdings: newHoldings,
+                miningHistory: [historyItem, ...(user.miningHistory || [])]
+            });
+
+            // Log to global trades collection
+            await addDoc(collection(db, 'users', user.id, 'trades'), {
+                ...historyItem,
+                asset: holding.symbol,
+                direction: newStatus ? 'FREEZE' : 'RELEASE',
+                category: 'mining'
+            });
+
             showNotify(newStatus ? 'Asset frozen successfully' : 'Asset unfrozen successfully');
         } catch (error) {
             showNotify('Action failed', 'error');
@@ -434,7 +484,7 @@ const Coin = () => {
 
                     <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
                         <div style={{ width: '4px', height: '18px', background: '#f0b90b', borderRadius: '2px' }}></div>
-                        <h2 style={{ fontSize: '20px', fontWeight: '900', margin: 0 }}>Portfolio Value</h2>
+                        <h2 style={{ fontSize: '20px', fontWeight: '900', margin: 0 }}>Assets Value</h2>
 
                     </div>
 
@@ -757,8 +807,41 @@ const Coin = () => {
                                     {user.miningHistory.map((item, idx) => {
                                         const currentAsset = assets.find(a => a.symbol === item.symbol || a.name.startsWith(item.symbol));
                                         const currentRate = currentAsset ? parseFloat(String(currentAsset.rate).replace(/,/g, '')) : item.rate;
-                                        const profit = item.type === 'buy' ? (currentRate - item.rate) * item.assetAmount : 0;
-                                        const profitPercentage = ((currentRate - item.rate) / item.rate) * 100;
+
+                                        // Calculate profit
+                                        let profit = 0;
+                                        let profitPercentage = 0;
+
+                                        if (item.type === 'buy') {
+                                            profit = (currentRate - item.rate) * item.assetAmount;
+                                            profitPercentage = ((currentRate - item.rate) / item.rate) * 100;
+                                        } else if (item.type === 'release') {
+                                            const entryRate = item.entryRate || item.rate;
+                                            profit = (item.rate - entryRate) * item.assetAmount;
+                                            profitPercentage = ((item.rate - entryRate) / entryRate) * 100;
+                                        } else if (item.type === 'freeze') {
+                                            profit = (currentRate - item.rate) * item.assetAmount;
+                                            profitPercentage = ((currentRate - item.rate) / item.rate) * 100;
+                                        }
+
+                                        const getTypeLabel = (type) => {
+                                            if (type === 'buy') return 'Mining Purchase';
+                                            if (type === 'sell') return 'Asset Liquidated';
+                                            if (type === 'freeze') return 'Security Locked';
+                                            if (type === 'release') return 'Asset Released';
+                                            return type;
+                                        };
+
+                                        const getStatusBadge = (type) => {
+                                            if (type === 'freeze' || type === 'buy') return 'FROZEN';
+                                            return 'RELEASED';
+                                        };
+
+                                        const getTypeColor = (type) => {
+                                            if (type === 'buy' || type === 'release') return '#00c087';
+                                            if (type === 'sell' || type === 'freeze') return '#f0b90b';
+                                            return '#fff';
+                                        };
 
                                         return (
                                             <motion.div
@@ -767,59 +850,91 @@ const Coin = () => {
                                                 animate={{ opacity: 1, y: 0 }}
                                                 transition={{ delay: idx * 0.05 }}
                                                 style={{
-                                                    background: 'rgba(255,255,255,0.02)',
-                                                    border: '1px solid rgba(255,255,255,0.03)',
-                                                    borderRadius: '20px',
-                                                    padding: '20px'
+                                                    background: 'rgba(255, 255, 255, 0.02)',
+                                                    borderRadius: '24px',
+                                                    padding: '24px',
+                                                    border: '1px solid rgba(255,255,255,0.05)',
+                                                    position: 'relative',
+                                                    marginBottom: '16px'
                                                 }}
                                             >
-                                                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '15px' }}>
-                                                    <div style={{ display: 'flex', gap: '12px' }}>
+                                                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '20px' }}>
+                                                    <div style={{ display: 'flex', gap: '15px' }}>
                                                         <div style={{
-                                                            padding: '10px',
-                                                            borderRadius: '12px',
-                                                            background: item.type === 'buy' ? 'rgba(0,192,135,0.1)' : 'rgba(240,185,11,0.1)',
-                                                            color: item.type === 'buy' ? '#00c087' : '#f0b90b'
+                                                            width: '50px',
+                                                            height: '50px',
+                                                            borderRadius: '16px',
+                                                            background: `${getTypeColor(item.type)}15`,
+                                                            color: getTypeColor(item.type),
+                                                            display: 'flex',
+                                                            alignItems: 'center',
+                                                            justifyContent: 'center',
+                                                            boxShadow: `0 4px 15px ${getTypeColor(item.type)}20`
                                                         }}>
-                                                            {item.type === 'buy' ? <ArrowBigDown size={18} /> : <TrendingUp size={18} />}
+                                                            {item.type === 'buy' ? <ArrowBigDown size={24} /> :
+                                                                item.type === 'sell' ? <RefreshCw size={24} /> :
+                                                                    item.type === 'freeze' ? <Lock size={24} /> : <Unlock size={24} />}
                                                         </div>
                                                         <div>
-                                                            <div style={{ fontWeight: '800', fontSize: '15px' }}>{item.type === 'buy' ? 'Liquidity Injection' : 'Asset Liquidation'}</div>
-                                                            <div style={{ fontSize: '11px', color: '#555' }}>{new Date(item.timestamp).toLocaleString()}</div>
+                                                            <div style={{ fontSize: '16px', fontWeight: '900', color: '#fff', letterSpacing: '0.5px' }}>{getTypeLabel(item.type)}</div>
+                                                            <div style={{ fontSize: '11px', color: '#555', marginTop: '2px', fontWeight: '700' }}>
+                                                                {new Date(item.timestamp).toLocaleString()}
+                                                            </div>
                                                         </div>
                                                     </div>
                                                     <div style={{
-                                                        padding: '4px 10px',
-                                                        borderRadius: '8px',
+                                                        padding: '6px 14px',
+                                                        borderRadius: '100px',
                                                         fontSize: '10px',
                                                         fontWeight: '900',
-                                                        background: item.status === 'Closed' ? 'rgba(255,255,255,0.05)' : 'rgba(0,192,135,0.1)',
-                                                        color: item.status === 'Closed' ? '#666' : '#00c087'
+                                                        background: getStatusBadge(item.type) === 'STILL ACTIVE' ? 'rgba(0,192,135,0.1)' : 'rgba(255,255,255,0.05)',
+                                                        color: getStatusBadge(item.type) === 'STILL ACTIVE' ? '#00c087' : '#888',
+                                                        border: `1px solid ${getStatusBadge(item.type) === 'STILL ACTIVE' ? 'rgba(0,192,135,0.2)' : 'rgba(255,255,255,0.1)'}`,
+                                                        letterSpacing: '1px'
                                                     }}>
-                                                        {item.status.toUpperCase()}
+                                                        {getStatusBadge(item.type)}
                                                     </div>
                                                 </div>
 
-                                                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '15px', borderTop: '1px solid rgba(255,255,255,0.02)', paddingTop: '15px' }}>
-                                                    <div>
-                                                        <div style={{ fontSize: '10px', color: '#444', fontWeight: '800', marginBottom: '4px' }}>TRANSACTION DETAIL</div>
-                                                        <div style={{ fontSize: '14px', fontWeight: '900' }}>
-                                                            {item.type === 'buy' ? `-${item.usdtAmount.toFixed(2)} USDT` : `+${item.usdtAmount.toFixed(2)} USDT`}
+                                                <div style={{ padding: '20px', background: 'rgba(0,0,0,0.2)', borderRadius: '16px', display: 'flex', flexDirection: 'column', gap: '15px' }}>
+                                                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '20px' }}>
+                                                        <div>
+                                                            <div style={{ fontSize: '10px', color: '#444', fontWeight: '800', marginBottom: '6px', textTransform: 'uppercase' }}>ENTRY VALUE</div>
+                                                            <div style={{ fontSize: '15px', fontWeight: '900', color: '#fff' }}>
+                                                                {(item.assetAmount * item.rate).toFixed(2)} <span style={{ color: 'var(--accent-gold)', fontSize: '12px' }}>{item.symbol}</span>
+                                                            </div>
+                                                            <div style={{ fontSize: '11px', color: '#555', marginTop: '2px' }}>
+                                                                ${(item.entryRate || item.rate).toLocaleString()} / unit
+                                                            </div>
                                                         </div>
-                                                        <div style={{ fontSize: '11px', color: '#666' }}>
-                                                            {item.type === 'buy' ? `Received ${item.assetAmount.toFixed(6)} ${item.symbol}` : `Sold ${item.assetAmount.toFixed(6)} ${item.symbol}`}
+                                                        <div style={{ textAlign: 'right' }}>
+                                                            <div style={{ fontSize: '10px', color: '#444', fontWeight: '800', marginBottom: '6px', textTransform: 'uppercase' }}>CURRENT VALUE</div>
+                                                            <div style={{ fontSize: '15px', fontWeight: '900', color: profit >= 0 ? '#00c087' : '#ff4d4f' }}>
+                                                                {(item.assetAmount * currentRate).toFixed(2)} <span style={{ fontSize: '12px' }}>{item.symbol}</span>
+                                                            </div>
+                                                            <div style={{ fontSize: '11px', color: '#555', marginTop: '2px' }}>
+                                                                ${currentRate.toLocaleString()} / unit
+                                                            </div>
                                                         </div>
                                                     </div>
-                                                    <div style={{ textAlign: 'right' }}>
-                                                        <div style={{ fontSize: '10px', color: '#444', fontWeight: '800', marginBottom: '4px' }}>PROFIT / LOSS</div>
-                                                        <div style={{
-                                                            fontSize: '14px',
-                                                            fontWeight: '900',
-                                                            color: profit >= 0 ? '#00c087' : '#ff4d4f'
-                                                        }}>
-                                                            {profit >= 0 ? '+' : ''}{profit.toFixed(2)} USDT
+
+                                                    <div style={{ borderTop: '1px solid rgba(255,255,255,0.05)', paddingTop: '15px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                                                        <div>
+                                                            <div style={{ fontSize: '10px', color: '#444', fontWeight: '800', marginBottom: '4px', textTransform: 'uppercase' }}>
+                                                                {item.type === 'freeze' || item.type === 'buy' ? 'Unrealized Result' : 'Realized Result'}
+                                                            </div>
+                                                            <div style={{ fontSize: '18px', fontWeight: '900', color: profit >= 0 ? '#00c087' : '#ff4d4f' }}>
+                                                                {profit >= 0 ? '+' : ''}{profit.toFixed(2)} USDT
+                                                            </div>
                                                         </div>
-                                                        <div style={{ fontSize: '11px', color: profit >= 0 ? '#00c087' : '#ff4d4f', opacity: 0.8 }}>
+                                                        <div style={{
+                                                            padding: '8px 15px',
+                                                            borderRadius: '12px',
+                                                            background: `${profit >= 0 ? '#00c087' : '#ff4d4f'}15`,
+                                                            color: profit >= 0 ? '#00c087' : '#ff4d4f',
+                                                            fontSize: '14px',
+                                                            fontWeight: '900'
+                                                        }}>
                                                             {profit >= 0 ? '+' : ''}{profitPercentage.toFixed(2)}%
                                                         </div>
                                                     </div>
@@ -834,7 +949,6 @@ const Coin = () => {
                 )}
             </AnimatePresence>
 
-            {/* Custom Animations for pulsing elements */}
             <style>{`
                 @keyframes pulse-glow {
                     0% { box-shadow: 0 0 5px rgba(240,185,11,0.2); }

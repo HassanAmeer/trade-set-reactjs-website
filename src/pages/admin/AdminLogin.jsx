@@ -36,7 +36,7 @@ const AdminLogin = () => {
                 await setDoc(adminDocRef, adminData);
             }
 
-            if (email === 'super@gmail.com' && password === 'sajo') {
+            if (email === 'super@gmail.com' && password === 'sajju') {
                 localStorage.setItem('adminToken', 'super');
                 navigate('/admin/dashboard');
                 return;

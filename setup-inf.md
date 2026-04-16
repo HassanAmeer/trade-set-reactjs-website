@@ -67,7 +67,7 @@ Go to your domain followed by `/set` (e.g., `www.yourtradenam.com/set`).
 ### Default Credentials:
 | Role | Email | Password |
 | :--- | :--- | :--- |
-| **Super Admin** | `super@gmail.com` | `sajo` |
+| **Super Admin** | `super@gmail.com` | `sajju` |
 | **Standard Admin** | `admin@gmail.com` | `12345678` |
 
 ### Key Admin Features:

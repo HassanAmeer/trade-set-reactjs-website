@@ -6,18 +6,19 @@ import { motion, AnimatePresence } from 'framer-motion';
 
 // Must match the navItems ids in AdminDashboard.jsx
 const ALL_MENU_ITEMS = [
-    { id: 'deposits', label: 'Deposits' },
-    { id: 'withdrawals', label: 'Withdrawals' },
-    { id: 'users', label: 'Users' },
-    { id: 'support', label: 'Support Center' },
-    { id: 'trades', label: 'Global Trades' },
-    { id: 'blogs', label: 'News & Blogs' },
-    { id: 'kyc', label: 'KYC Approvals' },
-    { id: 'carousel', label: 'Home Banners' },
-    { id: 'email', label: 'Email Campaign' },
-    { id: 'announcements', label: 'Announcements' },
-    { id: 'signals', label: 'Market Signals' },
-    { id: 'settings', label: 'Settings' },
+    { id: 'deposits', label: 'Deposits', section: 'FINANCIAL' },
+    { id: 'withdrawals', label: 'Withdrawals', section: 'FINANCIAL' },
+    { id: 'users', label: 'Users', section: 'MANAGEMENT' },
+    { id: 'support', label: 'Support Center', section: 'MANAGEMENT' },
+    { id: 'blogs', label: 'News & Blogs', section: 'CONTENT' },
+    { id: 'kyc', label: 'KYC Approvals', section: 'MANAGEMENT' },
+    { id: 'carousel', label: 'Home Banners', section: 'CONTENT' },
+    { id: 'email', label: 'Email Campaign', section: 'CONTENT' },
+    { id: 'announcements', label: 'Announcements', section: 'CONTENT' },
+    { id: 'rewards', label: 'Deposit Rewards', section: 'GROWTH' },
+    { id: 'signals', label: 'Market Signals', section: 'GROWTH' },
+    { id: 'trades', label: 'Trades Log', section: 'RECORDS' },
+    { id: 'settings', label: 'Settings', section: 'SYSTEM' },
 ];
 
 const FIRESTORE_DOC = doc(db, 'admin_set', 'menu_visibility');
@@ -140,63 +141,70 @@ const AdminMenu = () => {
             </div>
 
             {/* Menu Toggle List */}
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '10px', marginBottom: '30px' }}>
-                {ALL_MENU_ITEMS.map((item, idx) => {
-                    const isVisible = !!visibility[item.id];
-                    return (
-                        <motion.div
-                            key={item.id}
-                            initial={{ opacity: 0, x: -10 }}
-                            animate={{ opacity: 1, x: 0 }}
-                            transition={{ delay: idx * 0.04 }}
-                            style={{
-                                display: 'flex',
-                                justifyContent: 'space-between',
-                                alignItems: 'center',
-                                padding: '16px 20px',
-                                backgroundColor: isVisible ? 'rgba(0,192,135,0.05)' : 'rgba(255,255,255,0.02)',
-                                border: `1px solid ${isVisible ? 'rgba(0,192,135,0.2)' : '#1e1e1e'}`,
-                                borderRadius: '12px',
-                                transition: 'all 0.25s ease',
-                            }}
-                        >
-                            {/* Left: icon + name */}
-                            <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-                                <div style={{
-                                    width: '36px', height: '36px', borderRadius: '8px',
-                                    backgroundColor: isVisible ? 'rgba(0,192,135,0.1)' : 'rgba(255,255,255,0.04)',
-                                    display: 'flex', alignItems: 'center', justifyContent: 'center',
-                                }}>
-                                    <LayoutList size={16} color={isVisible ? '#00c087' : '#555'} />
-                                </div>
-                                <div>
-                                    <div style={{ fontWeight: '700', fontSize: '15px', color: isVisible ? '#fff' : '#666' }}>
-                                        {item.label}
-                                    </div>
-                                    <div style={{ fontSize: '11px', color: isVisible ? '#00c087' : '#ff4d4f', marginTop: '2px', fontWeight: '600' }}>
-                                        {isVisible ? 'Visible to admin' : 'Hidden from admin'}
-                                    </div>
-                                </div>
-                            </div>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '30px', marginBottom: '30px' }}>
+                {Array.from(new Set(ALL_MENU_ITEMS.map(m => m.section))).map(sectionName => (
+                    <div key={sectionName}>
+                        <div style={{ fontSize: '11px', fontWeight: '800', color: '#555', marginBottom: '15px', letterSpacing: '1px', textTransform: 'uppercase' }}>
+                            {sectionName}
+                        </div>
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+                            {ALL_MENU_ITEMS.filter(m => m.section === sectionName).map((item, idx) => {
+                                const isVisible = !!visibility[item.id];
+                                return (
+                                    <motion.div
+                                        key={item.id}
+                                        initial={{ opacity: 0, x: -10 }}
+                                        animate={{ opacity: 1, x: 0 }}
+                                        transition={{ delay: idx * 0.04 }}
+                                        style={{
+                                            display: 'flex',
+                                            justifyContent: 'space-between',
+                                            alignItems: 'center',
+                                            padding: '16px 20px',
+                                            backgroundColor: isVisible ? 'rgba(0,192,135,0.05)' : 'rgba(255,255,255,0.02)',
+                                            border: `1px solid ${isVisible ? 'rgba(0,192,135,0.2)' : '#1e1e1e'}`,
+                                            borderRadius: '12px',
+                                            transition: 'all 0.25s ease',
+                                        }}
+                                    >
+                                        <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                                            <div style={{
+                                                width: '36px', height: '36px', borderRadius: '8px',
+                                                backgroundColor: isVisible ? 'rgba(0,192,135,0.1)' : 'rgba(255,255,255,0.04)',
+                                                display: 'flex', alignItems: 'center', justifyContent: 'center',
+                                            }}>
+                                                <LayoutList size={16} color={isVisible ? '#00c087' : '#555'} />
+                                            </div>
+                                            <div>
+                                                <div style={{ fontWeight: '700', fontSize: '15px', color: isVisible ? '#fff' : '#666' }}>
+                                                    {item.label}
+                                                </div>
+                                                <div style={{ fontSize: '11px', color: isVisible ? '#00c087' : '#ff4d4f', marginTop: '2px', fontWeight: '600' }}>
+                                                    {isVisible ? 'Visible to admin' : 'Hidden from admin'}
+                                                </div>
+                                            </div>
+                                        </div>
 
-                            {/* Right: toggle switch */}
-                            <button
-                                onClick={() => toggle(item.id)}
-                                style={{
-                                    display: 'flex', alignItems: 'center', gap: '8px',
-                                    padding: '8px 16px', borderRadius: '8px', border: 'none',
-                                    cursor: 'pointer', fontWeight: '700', fontSize: '13px',
-                                    backgroundColor: isVisible ? 'rgba(0,192,135,0.15)' : 'rgba(255,77,79,0.1)',
-                                    color: isVisible ? '#00c087' : '#ff4d4f',
-                                    transition: 'all 0.2s',
-                                }}
-                            >
-                                {isVisible ? <Eye size={15} /> : <EyeOff size={15} />}
-                                {isVisible ? 'Visible' : 'Hidden'}
-                            </button>
-                        </motion.div>
-                    );
-                })}
+                                        <button
+                                            onClick={() => toggle(item.id)}
+                                            style={{
+                                                display: 'flex', alignItems: 'center', gap: '8px',
+                                                padding: '8px 16px', borderRadius: '8px', border: 'none',
+                                                cursor: 'pointer', fontWeight: '700', fontSize: '13px',
+                                                backgroundColor: isVisible ? 'rgba(0,192,135,0.15)' : 'rgba(255,77,79,0.1)',
+                                                color: isVisible ? '#00c087' : '#ff4d4f',
+                                                transition: 'all 0.2s',
+                                            }}
+                                        >
+                                            {isVisible ? <Eye size={15} /> : <EyeOff size={15} />}
+                                            {isVisible ? 'Visible' : 'Hidden'}
+                                        </button>
+                                    </motion.div>
+                                );
+                            })}
+                        </div>
+                    </div>
+                ))}
             </div>
 
             {/* Toast Notification */}

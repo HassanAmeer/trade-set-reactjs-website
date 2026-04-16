@@ -71,8 +71,6 @@ const AdminSettings = () => {
                 };
                 setPlatformConfig(defaultPlatform);
             }
-
-            }
         } catch (error) {
             console.error("Error fetching configs:", error);
         } finally {
