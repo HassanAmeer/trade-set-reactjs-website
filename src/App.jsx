@@ -12,7 +12,7 @@ import Login from './pages/Login';
 import Signup from './pages/Signup';
 
 // Non-critical pages - lazy load
-const Coin = lazy(() => import('./pages/Coin'));
+const Trading = lazy(() => import('./pages/trading'));
 const ForgotPassword = lazy(() => import('./pages/ForgotPassword'));
 const Verification = lazy(() => import('./pages/Verification'));
 const Deposit = lazy(() => import('./pages/Deposit'));
@@ -46,7 +46,7 @@ const BottomNav = () => {
     { name: 'Home', path: '/', icon: HomeIcon },
     { name: 'Market', path: '/market', icon: BarChart2 },
     { name: 'Trade', path: '/trade', icon: Activity },
-    { name: 'Mining', path: '/coin', icon: Pickaxe },
+    { name: 'Mining', path: '/trading', icon: Pickaxe },
     { name: 'User', path: '/profile', icon: User }
   ];
 
@@ -90,7 +90,7 @@ const AppContent = () => {
           <Route path="/trade" element={<Trade />} />
           <Route path="/trade-history" element={<TradesRecord />} />
           <Route path="/binary-history" element={<BinaryHistory />} />
-          <Route path="/coin" element={<Coin />} />
+          <Route path="/trading" element={<Trading />} />
           <Route path="/profile" element={<Profile />} />
           <Route path="/login" element={<Login />} />
           <Route path="/signup" element={<Signup />} />

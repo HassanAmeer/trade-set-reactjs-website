@@ -25,7 +25,7 @@ import minerBot from '../assets/btc-mining.webp';
 import { db } from '../firebase-setup';
 import { collection, addDoc, increment } from 'firebase/firestore';
 
-const Coin = () => {
+const Trading = () => {
     const { user, updateUser } = useAuth();
     const { assets, setIsActive } = useMarket();
 
