@@ -295,7 +295,7 @@ const Profile = () => {
                             height: '90px',
                             objectFit: 'contain',
                             position: 'absolute',
-                            left: '-30px',
+                            left: '-18px',
                             top: '-30px',
                             opacity: 1,
                             filter: 'drop-shadow(0 10px 20px rgba(0,192,135,0.4))',
