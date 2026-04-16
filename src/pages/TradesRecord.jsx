@@ -20,7 +20,8 @@ const TradesRecord = () => {
         try {
             const q = query(collection(db, 'users', user.id, 'trades'), orderBy('timestamp', 'desc'));
             const snap = await getDocs(q);
-            setTrades(snap.docs.map(doc => ({ id: doc.id, ...doc.data() })));
+            // Show only non-binary trades for general transaction history
+            setTrades(snap.docs.map(doc => ({ id: doc.id, ...doc.data() })).filter(t => t.direction !== 'BUY' && t.direction !== 'SELL'));
         } catch (error) {
             console.error(error);
         } finally {

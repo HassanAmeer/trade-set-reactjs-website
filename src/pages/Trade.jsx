@@ -7,7 +7,7 @@ import { db } from '../firebase-setup';
 import { useAuth } from '../context/AuthContext';
 import { collection, addDoc, updateDoc, doc, increment, onSnapshot, getDoc } from 'firebase/firestore';
 import LightweightChart from '../components/LightweightChart';
-import { Trophy, CircleAlert, Sparkles } from 'lucide-react';
+import { Trophy, CircleAlert, Sparkles, History as HistoryIcon } from 'lucide-react';
 
 const Trade = () => {
     const { assets, selectedAsset, setSelectedAsset, setIsActive } = useMarket();
@@ -35,6 +35,7 @@ const Trade = () => {
     const [showResult, setShowResult] = useState(null); // { status: 'win' | 'loss', amount: number }
     const [tradeCountdown, setTradeCountdown] = useState(0);
     const [tradeDirection, setTradeDirection] = useState(null);
+    const [intendedOutcome, setIntendedOutcome] = useState(null); // 'win' or 'loss'
     const [capturedCandles, setCapturedCandles] = useState(null);
     const [useCustomChart, setUseCustomChart] = useState(false); // Toggle: false = LightweightChart, true = Custom
     const container = useRef();
@@ -187,6 +188,21 @@ const Trade = () => {
             // Deduct balance immediately
             await updateUser({ balance: increment(-amount) });
 
+            // Pre-calculate outcome if signal is active
+            const signalSnap = await getDoc(doc(db, 'admin_set', 'market_signal'));
+            const signal = signalSnap.data();
+            const isSignalActiveNow = signal?.isActive && new Date(signal?.expiresAt) > new Date();
+            const userSignalConfig = isSignalActiveNow ? signal.affectedUsersMap?.[user?.id] : null;
+
+            let decidedOutcome = null;
+            if (userSignalConfig) {
+                const roll = Math.random() * 100;
+                decidedOutcome = (roll <= (userSignalConfig.winRate ?? 100)) ? 'win' : 'loss';
+            } else {
+                decidedOutcome = Math.random() > 0.5 ? 'win' : 'loss';
+            }
+            setIntendedOutcome(decidedOutcome);
+
             const tradeRef = await addDoc(collection(db, 'users', user.id, 'trades'), {
                 asset: selectedAsset.name,
                 amount: amount,
@@ -195,7 +211,8 @@ const Trade = () => {
                 timestamp: new Date().toISOString(),
                 status: 'open',
                 userEmail: user.email,
-                userId: user.id
+                userId: user.id,
+                intendedOutcome: decidedOutcome // Store for tracking
             });
 
             // Start countdown timer
@@ -207,38 +224,10 @@ const Trade = () => {
                 if (timeLeft <= 0) {
                     clearInterval(timer);
 
-                    // Resolve trade
-                    let isWin = false;
-                    let profitAmount = 0;
-                    // Check signal (refetch to be sure)
-                    const signalSnap = await getDoc(doc(db, 'admin_set', 'market_signal'));
-                    const signal = signalSnap.data();
-                    const isSignalActiveNow = signal?.isActive && new Date(signal?.expiresAt) > new Date();
-
-                    if (isSignalActiveNow) {
-                        const userSignalConfig = signal.affectedUsersMap?.[user?.id];
-
-                        if (userSignalConfig) {
-                            // Apply individual Win Probability (from admin_set/market_signal/affectedUsersMap)
-                            const winProb = userSignalConfig.winRate ?? 100;
-                            const roll = Math.random() * 100;
-                            const matchesSignalDirection = (direction === 'BUY' && signal.direction === 'UP') || (direction === 'SELL' && signal.direction === 'DOWN');
-
-                            isWin = matchesSignalDirection && (roll <= winProb);
-
-                            // Apply individual Payout Rate
-                            const userPayoutRate = (userSignalConfig.payoutRate || 85) / 100;
-                            profitAmount = isWin ? amount * (1 + userPayoutRate) : 0;
-                        } else {
-                            // User not targeted: Normal 50/50 resolve
-                            isWin = Math.random() > 0.5;
-                            profitAmount = isWin ? amount * 1.85 : 0;
-                        }
-                    } else {
-                        // No active signal: 50/50 chance, default 85% payout
-                        isWin = Math.random() > 0.5;
-                        profitAmount = isWin ? amount * 1.85 : 0;
-                    }
+                    // Resolve trade based on pre-calculated outcome
+                    const isWin = intendedOutcome === 'win';
+                    const payoutPct = userSignalConfig?.payoutRate || 85;
+                    const profitAmount = isWin ? amount * (1 + (payoutPct / 100)) : 0;
 
                     if (isWin) {
                         await updateUser({ balance: increment(profitAmount) });
@@ -251,6 +240,7 @@ const Trade = () => {
                     });
 
                     setShowResult({ status: isWin ? 'win' : 'loss', amount: isWin ? profitAmount : amount });
+                    setIntendedOutcome(null);
                     setTrading(false);
                 }
             }, 1000);
@@ -393,8 +383,8 @@ const Trade = () => {
                         </div>
                     </div>
                 </div>
-                <Link to="/">
-                    <HomeIcon size={20} color="#fff" />
+                <Link to="/binary-history">
+                    <HistoryIcon size={20} color="#fff" />
                 </Link>
             </div>
 
@@ -517,6 +507,7 @@ const Trade = () => {
                         user={user}
                         isTrading={trading}
                         tradeDirection={tradeDirection}
+                        intendedOutcome={intendedOutcome}
                     />
                 </div>
 

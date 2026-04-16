@@ -134,6 +134,11 @@ const AdminTrades = () => {
                                             trade.status === 'loss' ? `-${Math.abs(trade.amount || 0).toFixed(2)} Loss` :
                                                 trade.status?.toUpperCase() || 'COMPLETED'}
                                     </span>
+                                    {trade.intendedOutcome && (
+                                        <div style={{ fontSize: '9px', color: '#444', marginTop: '2px' }}>
+                                            Result: {trade.intendedOutcome === 'win' ? 'FORCED WIN' : 'FORCED LOSS'}
+                                        </div>
+                                    )}
                                 </td>
                             </tr>
                         ))}

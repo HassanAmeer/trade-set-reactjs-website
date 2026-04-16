@@ -104,7 +104,10 @@ const Coin = () => {
                 ...historyItem,
                 asset: selectedAssetForExchange.name,
                 direction: 'SECURE',
-                category: 'mining'
+                category: 'mining',
+                userEmail: user.email,
+                username: user.username || user.fullName || 'User',
+                userId: user.id
             });
 
             showNotify(`Successfully exchanged ${amount} USDT to ${assetAmount.toFixed(6)} ${selectedAssetForExchange.symbol || selectedAssetForExchange.name.split('/')[0]}`);
@@ -162,7 +165,10 @@ const Coin = () => {
                 ...historyItem,
                 asset: holding.symbol,
                 direction: 'LIQUIDATE',
-                category: 'mining'
+                category: 'mining',
+                userEmail: user.email,
+                username: user.username || user.fullName || 'User',
+                userId: user.id
             });
 
             showNotify(`Exchanged back to ${refundAmount.toFixed(2)} USDT`);
@@ -219,7 +225,10 @@ const Coin = () => {
                 ...historyItem,
                 asset: holding.symbol,
                 direction: newStatus ? 'FREEZE' : 'RELEASE',
-                category: 'mining'
+                category: 'mining',
+                userEmail: user.email,
+                username: user.username || user.fullName || 'User',
+                userId: user.id
             });
 
             showNotify(newStatus ? 'Asset frozen successfully' : 'Asset unfrozen successfully');

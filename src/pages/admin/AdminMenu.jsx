@@ -18,6 +18,7 @@ const ALL_MENU_ITEMS = [
     { id: 'rewards', label: 'Deposit Rewards', section: 'GROWTH' },
     { id: 'signals', label: 'Market Signals', section: 'GROWTH' },
     { id: 'trades', label: 'Trades Log', section: 'RECORDS' },
+    { id: 'mining', label: 'Mining Logs', section: 'RECORDS' },
     { id: 'settings', label: 'Settings', section: 'SYSTEM' },
 ];
 

@@ -27,6 +27,7 @@ const BlogDetail = lazy(() => import('./pages/BlogDetail'));
 const AdminLogin = lazy(() => import('./pages/admin/AdminLogin'));
 const AdminDashboard = lazy(() => import('./pages/admin/AdminDashboard'));
 const TradesRecord = lazy(() => import('./pages/TradesRecord'));
+const BinaryHistory = lazy(() => import('./pages/BinaryHistory'));
 
 import { Home as HomeIcon, BarChart2, Activity, Pickaxe, User } from 'lucide-react';
 import { MarketProvider } from './context/MarketContext';
@@ -88,6 +89,7 @@ const AppContent = () => {
           <Route path="/market" element={<Market />} />
           <Route path="/trade" element={<Trade />} />
           <Route path="/trade-history" element={<TradesRecord />} />
+          <Route path="/binary-history" element={<BinaryHistory />} />
           <Route path="/coin" element={<Coin />} />
           <Route path="/profile" element={<Profile />} />
           <Route path="/login" element={<Login />} />

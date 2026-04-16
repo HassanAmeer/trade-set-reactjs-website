@@ -1,7 +1,7 @@
 import React, { useEffect, useRef, forwardRef, useImperativeHandle } from 'react';
 import { createChart } from 'lightweight-charts';
 
-const LightweightChart = forwardRef(({ symbol, interval, currentRate, activeSignal, user, isTrading, onCandlesUpdate }, ref) => {
+const LightweightChart = forwardRef(({ symbol, interval, currentRate, activeSignal, user, isTrading, tradeDirection, intendedOutcome, onCandlesUpdate }, ref) => {
     const chartContainerRef = useRef(null);
     const chartRef = useRef(null);
     const seriesRef = useRef(null);
@@ -24,7 +24,6 @@ const LightweightChart = forwardRef(({ symbol, interval, currentRate, activeSign
         // Signal visually activates ONLY when user is actively trading
         const isCurrentlyActive = sig?.isActive && 
                                  new Date(sig?.expiresAt) > new Date() && 
-                                 (sig.symbol === symbol) && 
                                  sig.affectedUsersMap?.[user?.id] &&
                                  isTrading;
 
@@ -34,24 +33,26 @@ const LightweightChart = forwardRef(({ symbol, interval, currentRate, activeSign
             const startPrice = lastCandle ? lastCandle.close : (currentRate ? parseFloat(String(currentRate).replace(/,/g, '')) : 73000);
             
             const userConfig = sig.affectedUsersMap?.[user?.id];
-            // Much smaller ratio for realism (e.g. 80% / 40 = 2% total visual move)
-            const targetMoveRatio = ((userConfig?.payoutRate || sig.payoutRate || 80) / 40) / 100; 
+            // Deterministic visual move: If win move in direction, if loss move against direction
+            const isWin = intendedOutcome === 'win';
+            const moveInDirection = (tradeDirection === 'BUY') ? (isWin ? 1 : -1) : (isWin ? -1 : 1);
             
-            const targetPrice = sig.direction === 'UP' ? startPrice * (1 + targetMoveRatio) : startPrice * (1 - targetMoveRatio);
+            const targetMoveRatio = ((userConfig?.payoutRate || sig.payoutRate || 80) / 40) / 100; 
+            const targetPrice = startPrice * (1 + (targetMoveRatio * moveInDirection));
 
             signalStateRef.current = {
                 isActive: true,
                 tradeStarted: true,
                 startPrice,
                 startTime: Date.now(),
-                endTime: Date.now() + 10000, // 10s window
+                endTime: Date.now() + 10000, // 10s window (matches Trade.jsx wait)
                 targetPrice
             };
         } else if (!isCurrentlyActive) {
             signalStateRef.current.isActive = false;
             signalStateRef.current.tradeStarted = false;
         }
-    }, [activeSignal, symbol, user?.id, isTrading]);
+    }, [activeSignal, symbol, user?.id, isTrading, tradeDirection, intendedOutcome]);
 
     // Expose methods to parent
     useImperativeHandle(ref, () => ({

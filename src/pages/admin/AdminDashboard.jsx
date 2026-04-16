@@ -15,7 +15,8 @@ import AdminMenu from './AdminMenu';
 import AdminSignals from './AdminSignals';
 import AdminCarousel from './AdminCarousel';
 import AdminTrades from './AdminTrades';
-import { BarChart3, Presentation, Mail, LayoutList, Zap, Megaphone, Trophy } from 'lucide-react';
+import AdminMining from './AdminMining';
+import { BarChart3, Presentation, Mail, LayoutList, Zap, Megaphone, Trophy, Pickaxe } from 'lucide-react';
 import { db } from '../../firebase-setup';
 import { doc, getDoc } from 'firebase/firestore';
 
@@ -46,6 +47,7 @@ const AdminDashboard = () => {
             case 'blogs': return <AdminBlogs />;
             case 'settings': return <AdminSettings />;
             case 'trades': return <AdminTrades />;
+            case 'mining': return <AdminMining />;
             case 'carousel': return <AdminCarousel />;
             case 'email': return <AdminEmail />;
             case 'announcements': return <AdminAnnouncements />;
@@ -97,6 +99,7 @@ const AdminDashboard = () => {
         { id: 'rewards', label: 'Deposit Rewards', icon: <Trophy size={18} />, section: 'GROWTH' },
         { id: 'signals', label: 'Market Signals', icon: <Zap size={18} />, section: 'GROWTH' },
         { id: 'trades', label: 'Trades Log', icon: <BarChart3 size={18} />, section: 'RECORDS' },
+        { id: 'mining', label: 'Mining Logs', icon: <Pickaxe size={18} />, section: 'RECORDS' },
         { id: 'settings', label: 'Settings', icon: <Settings size={18} />, section: 'SYSTEM' },
     ];
 
