@@ -175,6 +175,9 @@ const LightweightChart = forwardRef(({ symbol, interval, currentRate, activeSign
             },
             handleScroll: true,
             handleScale: true,
+            watermark: {
+                visible: false,
+            },
         });
 
         chartRef.current = chart;

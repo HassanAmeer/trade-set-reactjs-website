@@ -81,3 +81,8 @@ a {
   text-decoration: none;
   color: inherit;
 }
+
+
+#tv-attr-logo {
+  display: none !important;
+}
