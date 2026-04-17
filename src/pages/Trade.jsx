@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useMarket } from '../context/MarketContext';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Menu, Home as HomeIcon, ChevronDown, Search, X, Loader2 } from 'lucide-react';
+import { Menu, Home as HomeIcon, ChevronDown, Search, X, Loader2, Circle, CircleDashed } from 'lucide-react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { db } from '../firebase-setup';
 import { useAuth } from '../context/AuthContext';
@@ -394,17 +394,39 @@ const Trade = () => {
                     <Menu size={20} color="#fff" onClick={() => setShowAssetList(true)} style={{ cursor: 'pointer' }} />
                     <div
                         onClick={() => setShowAssetList(true)}
-                        style={{ display: 'flex', flexDirection: 'column', cursor: 'pointer' }}
+                        style={{ display: 'flex', flexDirection: 'row', cursor: 'pointer' }}
                     >
                         <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
                             <span style={{ fontWeight: '700', fontSize: '16px' }}>{selectedAsset?.name || 'Loading...'}</span>
                             <ChevronDown size={14} color="#888" />
                         </div>
-                        <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginTop: '2px' }}>
-                            <span style={{ fontSize: '14px', color: '#fff', fontWeight: '600' }}>{selectedAsset?.rate || '--'}</span>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginLeft: '15px' }}>
+                            {/* <span style={{ fontSize: '14px', color: '#fff', fontWeight: '600' }}>{selectedAsset?.rate || '--'}</span> */}
                             <span style={{ fontSize: '11px', fontWeight: '700', color: selectedAsset?.change?.startsWith('+') ? '#00c087' : '#ff4d4f' }}>
                                 {selectedAsset?.change || '--'}
                             </span>
+
+
+
+                            {activeSignal && (
+                                activeSignal.direction === 'UP' ? (
+                                    <CircleDashed size={10} color="#00c087" style={{ marginLeft: '10px', marginTop: '1.5px' }} />
+                                ) : (
+                                    <CircleDashed size={10} color="#ff4d4f" style={{ marginLeft: '10px', marginTop: '-1.5px' }} />
+                                )
+                            )}
+
+                            {signalNotification && (
+                                signalNotification.type === 'start' ? (
+                                    <span style={{ display: 'flex', alignItems: 'center', gap: '4px', fontSize: '11px', color: '#888', marginTop: '1.5px' }}>
+                                        <Circle size={10} color="#888" />
+                                    </span>
+                                ) : (
+                                    <CircleDashed size={10} color="#f0b90b" style={{ marginTop: '1.5px' }} />
+                                )
+                            )}
+
+
                         </div>
                     </div>
                 </div>
@@ -440,7 +462,7 @@ const Trade = () => {
 
             <div style={{ height: '450px', width: '100%', position: 'relative', backgroundColor: '#000000', overflow: 'hidden' }}>
                 {/* Debug Signal Status */}
-                {activeSignal && (
+                {/* {activeSignal && (
                     <div style={{
                         position: 'absolute',
                         top: '50px',
@@ -459,10 +481,10 @@ const Trade = () => {
                         <div style={{ width: '8px', height: '8px', borderRadius: '50%', backgroundColor: '#000', animation: 'pulse 1.5s infinite' }} />
                         SIGNAL: {activeSignal.direction} | Speed: {activeSignal.candleSpeed}s
                     </div>
-                )}
+                )} */}
 
                 {/* Signal Notification Toast */}
-                <AnimatePresence>
+                {/* <AnimatePresence>
                     {signalNotification && (
                         <motion.div
                             initial={{ x: 100, opacity: 0 }}
@@ -494,7 +516,7 @@ const Trade = () => {
                             )}
                         </motion.div>
                     )}
-                </AnimatePresence>
+                </AnimatePresence> */}
 
                 {(chartLoading && !activeSignal && !useCustomChart) && (
                     <div
