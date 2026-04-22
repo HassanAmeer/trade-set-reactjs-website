@@ -265,7 +265,9 @@ const Home = () => {
                                     }}
                                 />
                                 <span className="trending-symbol">{coin.symbol}</span>
-                                <span className="trending-price">${coin.rate}</span>
+                                <span className="trending-price" title={coin.isLive === false ? 'Static Rate' : 'Live Rate'}>
+                                    ${coin.rate}
+                                </span>
                                 <span className="trending-change" style={{ color: coin.change.startsWith('+') ? 'var(--accent-green)' : 'var(--accent-red)' }}>
                                     {coin.change}
                                 </span>
@@ -322,7 +324,9 @@ const Home = () => {
                                         )}
                                     </div>
                                 </div>
-                                <div className="asset-rate">{asset.rate}</div>
+                                <div className={`asset-rate ${(activeTab === 'Precious Metals' && asset.isLive === false) ? 'static-rate' : ''}`} title={asset.isLive === false ? 'Static Rate' : 'Live Rate'}>
+                                    {asset.rate}
+                                </div>
                                 <div style={{ justifySelf: 'end' }}>
                                     <div className={`rate-btn ${isUp ? 'rate-up' : 'rate-down'}`}>
                                         {asset.change}
@@ -431,33 +435,32 @@ const Home = () => {
                             animate={{ opacity: 1 }}
                             exit={{ opacity: 0 }}
                             onClick={() => setShowPopup(false)}
-                            style={{ position: 'absolute', inset: 0, background: 'rgba(0,0,0,0.4)', backdropFilter: 'blur(4px)' }}
+                            style={{ position: 'absolute', inset: 0, background: 'rgba(0,0,0,0.6)', backdropFilter: 'blur(8px)' }}
                         />
                         <motion.div
                             initial={{ scale: 0.9, opacity: 0, y: 30 }}
                             animate={{ scale: 1, opacity: 1, y: 0 }}
                             exit={{ scale: 0.9, opacity: 0, y: 30 }}
-                            className='shimmer-icon'
                             style={{
                                 width: '100%',
-                                maxWidth: '360px',
+                                maxWidth: '380px',
                                 background: '#111',
                                 borderRadius: '25px',
                                 overflow: 'hidden',
                                 position: 'relative',
-                                border: '1px solid #00C0865D',
-                                boxShadow: '0 25px 50px rgba(0,0,0,0.5)'
+                                border: '1px solid rgba(0, 192, 134, 0.2)',
+                                boxShadow: '0 25px 50px rgba(0,0,0,0.6)'
                             }}
                         >
                             <button
                                 onClick={() => setShowPopup(false)}
-                                style={{ position: 'absolute', top: '15px', right: '15px', zIndex: 10, background: 'rgba(0,0,0,0.5)', border: 'none', color: '#fff', width: '30px', height: '30px', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
+                                style={{ position: 'absolute', top: '15px', right: '15px', zIndex: 10, background: 'rgba(0,0,0,0.5)', border: 'none', color: '#fff', width: '30px', height: '30px', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer' }}
                             >
                                 <X size={18} />
                             </button>
 
                             {announcement.popupImage && (
-                                <img src={announcement.popupImage} alt="Announcement" style={{ width: '100%', height: '180px', objectFit: 'cover' }} />
+                                <img src={announcement.popupImage} alt="Announcement" style={{ width: '100%', height: 'auto', maxHeight: '550px', objectFit: 'cover', display: 'block' }} />
                             )}
 
                             <div style={{ padding: '25px', textAlign: 'center' }}>

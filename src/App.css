@@ -166,6 +166,14 @@
   font-family: monospace;
 }
 
+.static-rate {
+  text-decoration: line-through;
+  text-decoration-color: #ff4d4f; /* Bright red line */
+  text-decoration-thickness: 2px;
+  color: #666 !important; /* Dim the text */
+  cursor: help;
+}
+
 .rate-btn {
   padding: 8px 12px;
   border-radius: 6px;
