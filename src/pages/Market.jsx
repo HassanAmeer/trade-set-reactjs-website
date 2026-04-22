@@ -16,7 +16,10 @@ const Market = () => {
 
     const filteredAssets = assets.filter(a => {
         if (activeTab === 'All') return true;
-        return a.category?.toLowerCase() === activeTab.toLowerCase();
+        if (a.category !== activeTab) return false;
+        // Explicitly exclude Ethereum from Precious Metals section
+        if (activeTab === 'Precious Metals' && (a.symbol?.includes('ETH') || a.name?.includes('ETH'))) return false;
+        return true;
     });
 
     return (
@@ -61,7 +64,7 @@ const Market = () => {
             </div>
 
             {/* Asset List */}
-            <div style={{ padding: '0 10px' }}>
+            <div style={{ padding: '0 10px 30px 10px' }}>
                 {loading ? (
                     [1, 2, 3, 4, 5, 6, 7, 8].map(i => (
                         <div key={i} style={{ display: 'grid', gridTemplateColumns: '1.5fr 1fr 1fr', alignItems: 'center', padding: '14px 2px', borderBottom: '1px solid rgba(255,255,255,0.03)' }}>
@@ -101,7 +104,17 @@ const Market = () => {
                                         )}
                                     </div>
                                 </div>
-                                <div style={{ fontSize: '13px', textAlign: 'center', color: '#fff', fontWeight: '500' }}>{asset.rate}</div>
+                                <div
+                                    className={`${(activeTab === 'Precious Metals' && asset.isLive === false) ? 'static-rate' : ''}`}
+                                    style={{
+                                        fontSize: '13px',
+                                        textAlign: 'center',
+                                        color: (activeTab === 'Precious Metals' && asset.isLive === false) ? '#666' : '#fff',
+                                        fontWeight: '500'
+                                    }}
+                                >
+                                    {asset.rate}
+                                </div>
                                 <div style={{ textAlign: 'right' }}>
                                     <div
                                         className={`rate-btn ${isUp ? 'rate-up' : 'rate-down'}`}

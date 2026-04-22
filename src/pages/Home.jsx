@@ -96,7 +96,11 @@ const Home = () => {
 
     const filteredAssets = assets.filter(a => {
         if (activeTab === 'All') return true;
-        return a.category?.toLowerCase() === activeTab.toLowerCase();
+        // Strict category match
+        if (a.category !== activeTab) return false;
+        // Explicitly exclude Ethereum from Precious Metals section
+        if (activeTab === 'Precious Metals' && (a.symbol?.includes('ETH') || a.name?.includes('ETH'))) return false;
+        return true;
     });
 
     const trendingCoins = assets.filter(a => a.category === 'Cryptocurrency').slice(0, 5);
@@ -291,7 +295,7 @@ const Home = () => {
             </div>
 
             {marketLoading ? renderSkeleton() : (
-                <div className="asset-list">
+                <div className="asset-list" style={{ paddingBottom: '30px' }}>
                     <div className="asset-header">
                         <span>Currency</span>
                         <span>Price</span>
