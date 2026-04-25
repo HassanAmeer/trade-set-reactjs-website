@@ -34,6 +34,7 @@ const Trade = () => {
     const [activeSignal, setActiveSignal] = useState(null);
     const [showResult, setShowResult] = useState(null); // { status: 'win' | 'loss', amount: number }
     const [tradeCountdown, setTradeCountdown] = useState(0);
+    const [initialTradeDuration, setInitialTradeDuration] = useState(10);
     const [tradeDirection, setTradeDirection] = useState(null);
     const [intendedOutcome, setIntendedOutcome] = useState(null); // 'win' or 'loss'
     const [capturedCandles, setCapturedCandles] = useState(null);
@@ -86,23 +87,23 @@ const Trade = () => {
                     const expiresAt = new Date(data.expiresAt);
                     const isExpired = expiresAt < now;
                     const isManuallyActive = data.isActive === true;
-                    // Fix: Check if current user is affected by this signal
                     const userAffected = data.affectedUsersMap?.[user?.id];
-                    const isActive = isManuallyActive && !isExpired && !!userAffected;
+                    const symbolMatch = data.symbol === selectedAsset?.name;
+                    const isActuallyActive = isManuallyActive && !isExpired && !!userAffected && symbolMatch;
 
-                    console.log(`[${timestamp}] Signal State:`, isActive ? 'ACTIVE' : 'INACTIVE', data.direction);
+                    console.log(`[${timestamp}] Signal State:`, isActuallyActive ? 'ACTIVE' : 'INACTIVE', data.direction);
 
                     // Detect changes for notification
-                    if (isActive && lastSignalState.current !== 'ACTIVE') {
+                    if (isActuallyActive && lastSignalState.current !== 'ACTIVE') {
                         setSignalNotification({ type: 'start', direction: data.direction });
                         setTimeout(() => setSignalNotification(null), 5000);
-                    } else if (!isActive && lastSignalState.current === 'ACTIVE') {
+                    } else if (!isActuallyActive && lastSignalState.current === 'ACTIVE') {
                         setSignalNotification({ type: 'stop' });
                         setTimeout(() => setSignalNotification(null), 5000);
                     }
 
-                    lastSignalState.current = isActive ? 'ACTIVE' : 'INACTIVE';
-                    setActiveSignal(isActive ? data : null);
+                    lastSignalState.current = isActuallyActive ? 'ACTIVE' : 'INACTIVE';
+                    setActiveSignal(isActuallyActive ? data : null);
                 } else {
                     if (lastSignalState.current === 'ACTIVE') {
                         setSignalNotification({ type: 'stop' });
@@ -118,7 +119,7 @@ const Trade = () => {
         );
 
         return () => unsub();
-    }, [user?.id]); // Empty dependency array for stability
+    }, [user?.id, selectedAsset?.name]); // Added selectedAsset?.name for symbol matching
 
     // Auto-select asset passed via navigation state (from Home / Market page click)
     useEffect(() => {
@@ -182,7 +183,7 @@ const Trade = () => {
 
         setTrading(true);
         setTradeDirection(direction);
-        setTradeCountdown(10); // 10 second trade for testing, can be 30 or 60
+        setTradeCountdown(activeSignal?.duration || 10);
 
         try {
             // Deduct balance immediately
@@ -224,8 +225,9 @@ const Trade = () => {
                     decidedOutcome = 'loss'; // Went against signal
                 }
             } else {
-                decidedOutcome = Math.random() > 0.5 ? 'win' : 'loss'; // Organic
+                decidedOutcome = 'organic';
             }
+            const entryPrice = parseFloat(String(selectedAsset.rate).replace(/,/g, ''));
             setIntendedOutcome(decidedOutcome);
 
             const tradeRef = await addDoc(collection(db, 'users', user.id, 'trades'), {
@@ -240,8 +242,15 @@ const Trade = () => {
                 intendedOutcome: decidedOutcome // Store for tracking
             });
 
+            const nowTime = new Date().getTime();
+            const expiresTime = new Date(signal?.expiresAt).getTime();
+            const remainingSecs = Math.max(1, Math.floor((expiresTime - nowTime) / 1000));
+            const finalDuration = isSignalActiveNow ? remainingSecs : 10;
+            setTradeCountdown(finalDuration);
+            setInitialTradeDuration(finalDuration);
+
             // Start countdown timer
-            let timeLeft = 10;
+            let timeLeft = finalDuration;
             const timer = setInterval(async () => {
                 timeLeft -= 1;
                 setTradeCountdown(timeLeft);
@@ -249,8 +258,16 @@ const Trade = () => {
                 if (timeLeft <= 0) {
                     clearInterval(timer);
 
-                    // Resolve trade based on pre-calculated outcome (use decidedOutcome directly to avoid stale state issues)
-                    const isWin = decidedOutcome === 'win';
+                    // Resolve trade based on outcome type
+                    let isWin = false;
+                    if (decidedOutcome === 'organic') {
+                        const currentCandles = lightweightChartRef.current?.getCandles?.();
+                        const finalPrice = currentCandles?.[currentCandles.length - 1]?.close || entryPrice;
+                        isWin = direction === 'BUY' ? (finalPrice > entryPrice) : (finalPrice < entryPrice);
+                    } else {
+                        isWin = decidedOutcome === 'win';
+                    }
+                    
                     const payoutPct = userSignalConfig?.payoutRate || 85;
                     const totalReturn = isWin ? amount * (1 + (payoutPct / 100)) : 0;
 
@@ -555,6 +572,7 @@ const Trade = () => {
                         isTrading={trading}
                         tradeDirection={tradeDirection}
                         intendedOutcome={intendedOutcome}
+                        tradeDuration={initialTradeDuration}
                     />
                 </div>
 

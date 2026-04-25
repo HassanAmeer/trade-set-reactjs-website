@@ -1,14 +1,15 @@
 import React, { useState, useEffect } from 'react';
 import { db } from '../../firebase-setup';
-import { doc, getDoc, setDoc, serverTimestamp, collection, getDocs } from 'firebase/firestore';
+import { doc, getDoc, setDoc, serverTimestamp, collection, getDocs, onSnapshot } from 'firebase/firestore';
 import { TrendingUp, TrendingDown, Sparkles, Loader2, AlertCircle, ShieldCheck, X, Search } from 'lucide-react';
 import { motion } from 'framer-motion';
 
 const AdminSignals = () => {
-    const [duration, setDuration] = useState('5');
+    const [duration, setDuration] = useState('10');
     const [loading, setLoading] = useState(false);
     const [currentSignal, setCurrentSignal] = useState(null);
     const [fetching, setFetching] = useState(true);
+    const [timeRemaining, setTimeRemaining] = useState(0);
 
     // Global defaults (used when adding new users or bulk applying)
     const [globalPayout, setGlobalPayout] = useState(85);
@@ -67,15 +68,37 @@ const AdminSignals = () => {
         };
         fetchAll();
 
-        const interval = setInterval(async () => {
-            const snap = await getDoc(doc(db, 'admin_set', 'market_signal'));
+        const unsub = onSnapshot(doc(db, 'admin_set', 'market_signal'), (snap) => {
             if (snap.exists()) {
                 const data = snap.data();
                 if (!showUserModal) setCurrentSignal(data);
             }
-        }, 10000);
-        return () => clearInterval(interval);
+        });
+        return () => unsub();
     }, []);
+
+    useEffect(() => {
+        if (!currentSignal?.expiresAt || !currentSignal?.isActive) {
+            setTimeRemaining(0);
+            return;
+        }
+
+        const tick = () => {
+            const now = new Date().getTime();
+            const expires = new Date(currentSignal.expiresAt).getTime();
+            const diff = Math.max(0, Math.floor((expires - now) / 1000));
+            setTimeRemaining(diff);
+
+            // Auto-clear local state if expired
+            if (diff <= 0 && currentSignal.isActive) {
+                setDoc(doc(db, 'admin_set', 'market_signal'), { isActive: false }, { merge: true }).catch(console.error);
+            }
+        };
+
+        tick();
+        const timer = setInterval(tick, 1000);
+        return () => clearInterval(timer);
+    }, [currentSignal?.expiresAt, currentSignal?.isActive]);
 
     const addUserToSignal = (user) => {
         setAffectedUsers(prev => ({
@@ -116,7 +139,7 @@ const AdminSignals = () => {
         setLoading(true);
         try {
             const expiresAt = new Date();
-            expiresAt.setMinutes(expiresAt.getMinutes() + parseInt(duration));
+            expiresAt.setSeconds(expiresAt.getSeconds() + parseInt(duration));
 
             const signalData = {
                 direction,
@@ -258,8 +281,8 @@ const AdminSignals = () => {
                                 </div>
                                 <div style={{ display: 'flex', gap: '10px' }}>
                                     <div style={{ flex: 1, padding: '10px', background: '#000', borderRadius: '10px', border: '1px solid #222' }}>
-                                        <p style={{ fontSize: '9px', color: '#444', textTransform: 'uppercase' }}>Expires At</p>
-                                        <p style={{ fontSize: '12px', fontWeight: '700' }}>{new Date(currentSignal.expiresAt).toLocaleTimeString()}</p>
+                                        <p style={{ fontSize: '9px', color: '#444', textTransform: 'uppercase' }}>Time Remaining</p>
+                                        <p style={{ fontSize: '12px', fontWeight: '700', color: '#f0b90b' }}>{timeRemaining}s</p>
                                     </div>
                                     <button onClick={clearSignal} style={{ flex: 1, padding: '10px', background: 'rgba(255,77,79,0.1)', color: '#ff4d4f', border: '1px solid #ff4d4f', borderRadius: '10px', fontSize: '12px', fontWeight: '700', cursor: 'pointer' }}>
                                         STOP SIGNAL
@@ -283,10 +306,8 @@ const AdminSignals = () => {
 
                             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
                                 <div>
-                                    <label style={{ display: 'block', fontSize: '11px', color: '#444', marginBottom: '6px', marginLeft: '4px' }}>Duration</label>
-                                    <select value={duration} onChange={(e) => setDuration(e.target.value)} style={{ width: '100%', padding: '12px', background: '#000', color: '#fff', border: '1px solid #222', borderRadius: '12px', fontSize: '14px' }}>
-                                        {['1', '2', '5', '10', '15', '30'].map(m => <option key={m} value={m}>{m}m Session</option>)}
-                                    </select>
+                                    <label style={{ display: 'block', fontSize: '11px', color: '#444', marginBottom: '6px', marginLeft: '4px' }}>Duration (Seconds)</label>
+                                    <input type="number" value={duration} onChange={(e) => setDuration(e.target.value)} style={{ width: '100%', padding: '12px', background: '#000', color: '#fff', border: '1px solid #222', borderRadius: '12px', fontSize: '14px' }} placeholder="e.g. 10" />
                                 </div>
                                 <div>
                                     <label style={{ display: 'block', fontSize: '11px', color: '#444', marginBottom: '6px', marginLeft: '4px' }}>Target Move %</label>
