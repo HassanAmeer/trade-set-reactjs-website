@@ -28,7 +28,9 @@ const AdminLogin = lazy(() => import('./pages/admin/AdminLogin'));
 const AdminDashboard = lazy(() => import('./pages/admin/AdminDashboard'));
 const TradesRecord = lazy(() => import('./pages/TradesRecord'));
 const BinaryHistory = lazy(() => import('./pages/BinaryHistory'));
+const LiveChat = lazy(() => import('./pages/LiveChat'));
 
+import FloatingChatButton from './components/FloatingChatButton';
 import { Home as HomeIcon, BarChart2, Activity, Pickaxe, User } from 'lucide-react';
 import { MarketProvider } from './context/MarketContext';
 import { AuthProvider } from './context/AuthContext';
@@ -39,8 +41,8 @@ const BottomNav = () => {
   const location = useLocation();
   const path = location.pathname;
 
-  // Hide bottom nav on auth pages and admin routes
-  if (path === '/login' || path === '/signup' || path === '/forgot-password' || path.startsWith('/set') || path.startsWith('/admin')) return null;
+  // Hide bottom nav on auth pages, chat page, and admin routes
+  if (path === '/login' || path === '/signup' || path === '/forgot-password' || path === '/chat' || path.startsWith('/set') || path.startsWith('/admin')) return null;
 
   const navItems = [
     { name: 'Home', path: '/', icon: HomeIcon },
@@ -105,12 +107,14 @@ const AppContent = () => {
           <Route path="/inbox" element={<Messages />} />
           <Route path="/news" element={<NewsAndBlog />} />
           <Route path="/news/:id" element={<BlogDetail />} />
+          <Route path="/chat" element={<LiveChat />} />
 
           {/* Admin Routes */}
           <Route path="/set" element={<AdminLogin />} />
           <Route path="/admin/*" element={<AdminDashboard />} />
         </Routes>
       </Suspense>
+      <FloatingChatButton />
       <BottomNav />
     </div>
   );

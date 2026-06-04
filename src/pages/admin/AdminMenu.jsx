@@ -10,6 +10,7 @@ const ALL_MENU_ITEMS = [
     { id: 'withdrawals', label: 'Withdrawals', section: 'FINANCIAL' },
     { id: 'users', label: 'Users', section: 'MANAGEMENT' },
     { id: 'support', label: 'Support Center', section: 'MANAGEMENT' },
+    { id: 'livechat', label: 'Live Chat', section: 'MANAGEMENT' },
     { id: 'blogs', label: 'News & Blogs', section: 'CONTENT' },
     { id: 'kyc', label: 'KYC Approvals', section: 'MANAGEMENT' },
     { id: 'carousel', label: 'Home Banners', section: 'CONTENT' },

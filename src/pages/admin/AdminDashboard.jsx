@@ -17,7 +17,8 @@ import AdminCarousel from './AdminCarousel';
 import AdminTrades from './AdminTrades';
 import AdminMining from './AdminMining';
 import AdminCoinsSettings from './AdminCoinsSettings';
-import { BarChart3, Presentation, Mail, LayoutList, Zap, Megaphone, Trophy, Pickaxe, Coins } from 'lucide-react';
+import AdminLiveChat from './AdminLiveChat';
+import { BarChart3, Presentation, Mail, LayoutList, Zap, Megaphone, Trophy, Pickaxe, Coins, MessageCircle } from 'lucide-react';
 import { db } from '../../firebase-setup';
 import { doc, getDoc } from 'firebase/firestore';
 
@@ -44,6 +45,7 @@ const AdminDashboard = () => {
             case 'withdrawals': return <AdminWithdrawals />;
             case 'users': return <AdminUsers />;
             case 'support': return <AdminSupport />;
+            case 'livechat': return <AdminLiveChat />;
             case 'kyc': return <AdminKYC />;
             case 'blogs': return <AdminBlogs />;
             case 'settings': return <AdminSettings />;
@@ -93,6 +95,7 @@ const AdminDashboard = () => {
         { id: 'withdrawals', label: 'Withdrawals', icon: <Download size={18} />, section: 'FINANCIAL' },
         { id: 'users', label: 'Users', icon: <Users size={18} />, section: 'MANAGEMENT' },
         { id: 'support', label: 'Support Center', icon: <MessageSquare size={18} />, section: 'MANAGEMENT' },
+        { id: 'livechat', label: 'Live Chat', icon: <MessageCircle size={18} />, section: 'MANAGEMENT' },
         { id: 'kyc', label: 'KYC Approvals', icon: <ShieldCheck size={18} />, section: 'MANAGEMENT' },
         { id: 'blogs', label: 'News & Blogs', icon: <FileText size={18} />, section: 'CONTENT' },
         { id: 'carousel', label: 'Home Banners', icon: <Presentation size={18} />, section: 'CONTENT' },
