@@ -1,5 +1,5 @@
 import React, { createContext, useContext, useState, useEffect, useCallback } from 'react';
-import { fetchCryptoMarkets, fetchForexMarkets, fetchMetalMarkets, fetchCryptoByDynamicCodes } from '../services/api';
+import { fetchCryptoMarkets, fetchMetalMarkets, fetchCryptoByDynamicCodes } from '../services/api';
 import { db } from '../firebase-setup';
 import { doc, getDoc, setDoc } from 'firebase/firestore';
 
@@ -26,34 +26,30 @@ const FALLBACK_CRYPTO = [
 ];
 
 const FALLBACK_FOREX = [
-    { id: 'fx-eur', name: 'EUR/USD', fullName: 'Euro / US Dollar',               rate: '1.085420', change: '+0.04%', flag: 'https://flagcdn.com/w40/eu.png', category: 'Foreign Exchange', isLive: false },
     { id: 'fx-gbp', name: 'GBP/USD', fullName: 'British Pound / US Dollar',      rate: '1.267430', change: '-0.12%', flag: 'https://flagcdn.com/w40/gb.png', category: 'Foreign Exchange', isLive: false },
-    { id: 'fx-jpy', name: 'USD/JPY', fullName: 'US Dollar / Japanese Yen',       rate: '151.42',   change: '+0.25%', flag: 'https://flagcdn.com/w40/jp.png', category: 'Foreign Exchange', isLive: false },
-    { id: 'fx-cad', name: 'USD/CAD', fullName: 'US Dollar / Canadian Dollar',    rate: '1.352000', change: '+0.10%', flag: 'https://flagcdn.com/w40/ca.png', category: 'Foreign Exchange', isLive: false },
+    { id: 'fx-eur', name: 'EUR/USD', fullName: 'Euro / US Dollar',               rate: '1.085420', change: '+0.04%', flag: 'https://flagcdn.com/w40/eu.png', category: 'Foreign Exchange', isLive: false },
     { id: 'fx-aud', name: 'AUD/USD', fullName: 'Australian Dollar / US Dollar',  rate: '0.654000', change: '-0.15%', flag: 'https://flagcdn.com/w40/au.png', category: 'Foreign Exchange', isLive: false },
     { id: 'fx-nzd', name: 'NZD/USD', fullName: 'New Zealand Dollar / US Dollar', rate: '0.602000', change: '-0.05%', flag: 'https://flagcdn.com/w40/nz.png', category: 'Foreign Exchange', isLive: false },
+    { id: 'fx-jpy', name: 'USD/JPY', fullName: 'US Dollar / Japanese Yen',       rate: '151.42',   change: '+0.25%', flag: 'https://flagcdn.com/w40/jp.png', category: 'Foreign Exchange', isLive: false },
+    { id: 'fx-cad', name: 'USD/CAD', fullName: 'US Dollar / Canadian Dollar',    rate: '1.352000', change: '+0.10%', flag: 'https://flagcdn.com/w40/ca.png', category: 'Foreign Exchange', isLive: false },
     { id: 'fx-chf', name: 'USD/CHF', fullName: 'US Dollar / Swiss Franc',        rate: '0.901500', change: '+0.08%', flag: 'https://flagcdn.com/w40/ch.png', category: 'Foreign Exchange', isLive: false },
-    { id: 'fx-eurgbp',name:'EUR/GBP',fullName: 'Euro / British Pound',           rate: '0.856000', change: '+0.02%', flag: 'https://flagcdn.com/w40/gb.png', category: 'Foreign Exchange', isLive: false },
+    { id: 'fx-hkd', name: 'USD/HKD', fullName: 'US Dollar / Hong Kong Dollar',   rate: '7.824500', change: '+0.01%', flag: 'https://flagcdn.com/w40/hk.png', category: 'Foreign Exchange', isLive: false },
+    { id: 'fx-inr', name: 'INR/USD', fullName: 'Indian Rupee / US Dollar',       rate: '0.012000', change: '-0.05%', flag: 'https://flagcdn.com/w40/in.png', category: 'Foreign Exchange', isLive: false },
+    { id: 'fx-krw', name: 'USD/KRW', fullName: 'US Dollar / South Korean Won',   rate: '1354.20',  change: '+0.15%', flag: 'https://flagcdn.com/w40/kr.png', category: 'Foreign Exchange', isLive: false },
+    { id: 'fx-thb', name: 'USD/THB', fullName: 'US Dollar / Thai Baht',          rate: '36.4500',  change: '+0.12%', flag: 'https://flagcdn.com/w40/th.png', category: 'Foreign Exchange', isLive: false },
+    { id: 'fx-aed', name: 'AED/USD', fullName: 'UAE Dirham / US Dollar',         rate: '0.272300', change: '+0.00%', flag: 'https://flagcdn.com/w40/ae.png', category: 'Foreign Exchange', isLive: false },
 ];
 
 const STATIC_METALS = [
     { id: 'metal-1',  name: 'XAU/USD',   fullName: 'Gold',        rate: '2,385.50', change: '+0.45%', flag: 'https://img.icons8.com/color/96/gold-bars.png',    category: 'Precious Metals', isLive: false },
     { id: 'metal-2',  name: 'XAG/USD',   fullName: 'Silver',      rate: '28.40',    change: '+1.20%', flag: 'https://img.icons8.com/color/96/silver-bars.png',  category: 'Precious Metals', isLive: false },
-    { id: 'metal-3',  name: 'WTI/USD',   fullName: 'Crude Oil',   rate: '83.40',    change: '+0.15%', flag: 'https://img.icons8.com/color/96/oil-industry.png', category: 'Precious Metals', isLive: false },
     { id: 'metal-4',  name: 'XPT/USD',   fullName: 'Platinum',    rate: '965.40',   change: '+0.15%', flag: 'https://img.icons8.com/color/96/silver-bars.png',  category: 'Precious Metals', isLive: false },
     { id: 'metal-5',  name: 'XPD/USD',   fullName: 'Palladium',   rate: '1,025.15', change: '-0.85%', flag: 'https://img.icons8.com/color/96/silver-bars.png',  category: 'Precious Metals', isLive: false },
     { id: 'metal-6',  name: 'XCU/USD',   fullName: 'Copper',      rate: '4.45',     change: '+0.20%', flag: 'https://img.icons8.com/color/96/copper-ingot.png', category: 'Precious Metals', isLive: false },
     { id: 'metal-7',  name: 'ALU/USD',   fullName: 'Aluminum',    rate: '2,450.00', change: '-0.10%', flag: 'https://img.icons8.com/color/96/aluminum-ingot.png',category: 'Precious Metals', isLive: false },
-    { id: 'metal-8',  name: 'NG/USD',    fullName: 'Natural Gas', rate: '1.95',     change: '+3.10%', flag: 'https://img.icons8.com/color/96/natural-gas.png',  category: 'Precious Metals', isLive: false },
     { id: 'metal-9',  name: 'ZNC/USD',   fullName: 'Zinc',        rate: '2,750.50', change: '+0.15%', flag: 'https://img.icons8.com/color/96/steel-ingot.png',  category: 'Precious Metals', isLive: false },
     { id: 'metal-10', name: 'NKL/USD',   fullName: 'Nickel',      rate: '17,850.00',change: '+1.15%', flag: 'https://img.icons8.com/color/96/steel-ingot.png',  category: 'Precious Metals', isLive: false },
     { id: 'metal-11', name: 'LD/USD',    fullName: 'Lead',        rate: '2,145.00', change: '-0.20%', flag: 'https://img.icons8.com/color/96/steel-ingot.png',  category: 'Precious Metals', isLive: false },
-    { id: 'metal-12', name: 'BRENT/USD', fullName: 'Brent Oil',   rate: '87.20',    change: '-0.40%', flag: 'https://img.icons8.com/color/96/oil-industry.png', category: 'Precious Metals', isLive: false },
-    { id: 'metal-13', name: 'WHEAT/USD', fullName: 'Wheat',       rate: '565.40',   change: '+0.25%', flag: 'https://img.icons8.com/color/48/wheat.png',        category: 'Precious Metals', isLive: false },
-    { id: 'metal-14', name: 'CORN/USD',  fullName: 'Corn',        rate: '430.15',   change: '-0.15%', flag: 'https://img.icons8.com/color/48/corn.png',         category: 'Precious Metals', isLive: false },
-    { id: 'metal-15', name: 'COFFEE/USD',fullName: 'Coffee',      rate: '235.30',   change: '+1.40%', flag: 'https://img.icons8.com/color/48/coffee-beans.png', category: 'Precious Metals', isLive: false },
-    { id: 'metal-16', name: 'SUGAR/USD', fullName: 'Sugar',       rate: '19.85',    change: '-0.30%', flag: 'https://img.icons8.com/color/48/sugar-cube.png',   category: 'Precious Metals', isLive: false },
-    { id: 'metal-17', name: 'COTTON/USD',fullName: 'Cotton',      rate: '81.50',    change: '+0.05%', flag: 'https://img.icons8.com/color/48/cotton.png',       category: 'Precious Metals', isLive: false },
 ];
 
 // ─── Default config if DB has nothing ─────────────────────────────────────
@@ -85,21 +81,46 @@ function applyCustomRatesToAssets(assets, customRatesMap) {
 function buildCryptoFromCachedRaw(rawArray) {
     if (!Array.isArray(rawArray)) return null;
     return rawArray.map(item => {
-        if (item.id && item.rate && item.category) return item; // already shaped
-        const rawName = item.code || item.symbol;
-        if (!rawName) return null;
+        if (item.id && item.rate && item.category) {
+            // Already shaped, check if symbol/id needs normalization
+            let norm = item.symbol;
+            if (norm === '_SUI') norm = 'SUI';
+            else if (norm === '____PEPE') norm = 'PEPE';
+            else if (norm === 'TONCOIN') norm = 'TON';
+            
+            if (norm !== item.symbol) {
+                return {
+                    ...item,
+                    id: norm + 'USDT',
+                    symbol: norm,
+                    name: `${norm}/USDT`
+                };
+            }
+            return item;
+        }
+        
+        let lcwCode = item.code || item.symbol;
+        if (!lcwCode) return null;
+        
+        let normalizedCode = lcwCode;
+        if (lcwCode === '_SUI') normalizedCode = 'SUI';
+        else if (lcwCode === '____PEPE') normalizedCode = 'PEPE';
+        else if (lcwCode === 'TONCOIN') normalizedCode = 'TON';
+
         const pct = item.delta && item.delta.day ? (item.delta.day - 1) * 100 : 0;
         const sign = pct >= 0 ? '+' : '';
         return {
-            id: rawName + 'USDT',
-            symbol: rawName,
-            name: `${rawName}/USDT`,
-            fullName: item.name || rawName,
-            rate: parseFloat(item.rate) > 100
-                ? parseFloat(item.rate).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })
-                : parseFloat(item.rate).toFixed(6),
+            id: normalizedCode + 'USDT',
+            symbol: normalizedCode,
+            name: `${normalizedCode}/USDT`,
+            fullName: item.name || normalizedCode,
+            rate: (item.rate !== null && item.rate !== undefined && !isNaN(parseFloat(item.rate))) ? (
+                parseFloat(item.rate) > 100
+                    ? parseFloat(item.rate).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })
+                    : parseFloat(item.rate).toFixed(6)
+            ) : '0.00',
             change: `${sign}${pct.toFixed(2)}%`,
-            flag: item.png64 || item.png32 || `https://raw.githubusercontent.com/spothq/cryptocurrency-icons/master/128/color/${rawName.toLowerCase()}.png`,
+            flag: item.png64 || item.png32 || `https://raw.githubusercontent.com/spothq/cryptocurrency-icons/master/128/color/${normalizedCode.toLowerCase()}.png`,
             category: 'Cryptocurrency',
             volume24h: item.volume ? (parseFloat(item.volume) / 1000000).toFixed(1) + 'M' : '0M',
             high24h: 'N/A', low24h: 'N/A',
@@ -149,14 +170,86 @@ function buildForexFromCachedRaw(raw, extraForex = []) {
             rate: rate.toFixed(6),
             change: `${(Math.random() * 0.4 - 0.2).toFixed(2)}%`, // Mock change as free API doesn't provide it
             flag: `https://flagcdn.com/w40/${pair.flag}.png`,
-            category: 'Foreign Exchange', isLive: true,
         };
     }).filter(Boolean);
 }
 
+// ─── Helper: build metals assets from raw cached metals.dev data ────────────
+function buildMetalsFromCachedRaw(cachedMetalData, extraMetals = []) {
+    const extraMetalsList = extraMetals.map((str, idx) => {
+        const parts = str.split('|');
+        const symbol = parts[0]?.trim() || 'UNKNOWN/USD';
+        const name = parts[1]?.trim() || symbol;
+        return {
+            id: `metal-extra-${idx}`,
+            name: symbol,
+            fullName: name,
+            rate: '0.00', // default rate, admin should set custom rate
+            change: '0.00%',
+            flag: 'https://img.icons8.com/color/96/steel-ingot.png', // generic metal icon
+            category: 'Precious Metals',
+            isLive: false,
+        };
+    });
+
+    const baseMetalsCombined = [...STATIC_METALS, ...extraMetalsList];
+
+    if (!cachedMetalData) return baseMetalsCombined;
+
+    return baseMetalsCombined.map(m => {
+        const nameLower = m.fullName.toLowerCase();
+        let price = null;
+        if (nameLower.includes('gold')      && cachedMetalData.gold)      price = cachedMetalData.gold;
+        else if (nameLower.includes('silver')    && cachedMetalData.silver)    price = cachedMetalData.silver;
+        else if (nameLower.includes('platinum')  && cachedMetalData.platinum)  price = cachedMetalData.platinum;
+        else if (nameLower.includes('palladium') && cachedMetalData.palladium) price = cachedMetalData.palladium;
+        else if (nameLower.includes('copper')    && cachedMetalData.copper)    price = cachedMetalData.copper;
+        else if (nameLower.includes('aluminum')  && cachedMetalData.aluminum)  price = cachedMetalData.aluminum;
+        else if (nameLower.includes('zinc')      && cachedMetalData.zinc)      price = cachedMetalData.zinc;
+        else if (nameLower.includes('nickel')    && cachedMetalData.nickel)    price = cachedMetalData.nickel;
+        else if (nameLower.includes('lead')      && cachedMetalData.lead)      price = cachedMetalData.lead;
+        
+        if (!price) {
+            // Try dynamic symbol lookup for custom metals (e.g. LME_COPPER/USD -> lme_copper)
+            const cleanSymbol = m.name.toLowerCase().split('/')[0];
+            if (cleanSymbol && cachedMetalData[cleanSymbol]) {
+                price = cachedMetalData[cleanSymbol];
+            }
+        }
+
+        if (price) {
+            return {
+                ...m,
+                rate: price > 100
+                    ? price.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })
+                    : price.toFixed(price < 1 ? 4 : 2),
+                isLive: true,
+            };
+        }
+        return m;
+    });
+}
+
+const getCachedVisibilityAndFilter = (baseAssets) => {
+    try {
+        const visStr = localStorage.getItem('cached_visibility');
+        const delStr = localStorage.getItem('cached_deleted_coins');
+        const visibility = visStr ? JSON.parse(visStr) : {};
+        const deletedCoins = delStr ? JSON.parse(delStr) : [];
+        
+        return baseAssets.filter(a => {
+            const isDeleted = deletedCoins.includes(a.id);
+            const isHidden = visibility[a.id] === false;
+            return !isDeleted && !isHidden;
+        });
+    } catch (_) {
+        return baseAssets;
+    }
+};
+
 // ─── Provider ─────────────────────────────────────────────────────────────
 export const MarketProvider = ({ children }) => {
-    const [assets, setAssets]               = useState([...FALLBACK_FOREX, ...FALLBACK_CRYPTO, ...STATIC_METALS]);
+    const [assets, setAssets]               = useState(() => getCachedVisibilityAndFilter([...FALLBACK_FOREX, ...FALLBACK_CRYPTO, ...STATIC_METALS]));
     const [loading, setLoading]             = useState(true);
     const [selectedAsset, setSelectedAsset] = useState(null);
     const [isActive, setIsActive]           = useState(false);
@@ -173,12 +266,14 @@ export const MarketProvider = ({ children }) => {
         console.log('[Market] Starting smart market data load...');
         try {
             // ── Read admin config from Firestore ──────────────────────
-            const [cfgSnap, ratesSnap, customRatesSnap, visSnap, listSnap] = await Promise.all([
+            const [cfgSnap, customRatesSnap, visSnap, listSnap, cryptoRatesSnap, forexRatesSnap, metalsRatesSnap] = await Promise.all([
                 getDoc(doc(db, 'admin_set', 'coins_config')),
-                getDoc(doc(db, 'admin_set', 'coins_rates')),
                 getDoc(doc(db, 'admin_set', 'coins_custom_rates')),
                 getDoc(doc(db, 'admin_set', 'coins_visibility')),
                 getDoc(doc(db, 'admin_set', 'coins_list')),
+                getDoc(doc(db, 'coins_rates_crypto', 'latest')),
+                getDoc(doc(db, 'coins_rates_forex', 'latest')),
+                getDoc(doc(db, 'coins_rates_metals', 'latest')),
             ]);
 
             const cfg = cfgSnap.exists()
@@ -189,7 +284,11 @@ export const MarketProvider = ({ children }) => {
                   }
                 : DEFAULT_TAB_CONFIG;
 
-            const cachedRates    = ratesSnap.exists()    ? ratesSnap.data()    : {};
+            const cachedRates = {
+                crypto: cryptoRatesSnap.exists() ? cryptoRatesSnap.data().rates : null,
+                forex: forexRatesSnap.exists() ? forexRatesSnap.data().rates : null,
+                metals: metalsRatesSnap.exists() ? metalsRatesSnap.data().rates : null,
+            };
             const customRatesAll = customRatesSnap.exists() ? customRatesSnap.data() : {};
             const visibility     = visSnap.exists()      ? visSnap.data()      : {};
             
@@ -230,11 +329,9 @@ export const MarketProvider = ({ children }) => {
                     if (freshData && freshData.length > 0) {
                         cryptoAssets = freshData;
                         // Store raw API response to DB
-                        const existingRates = ratesSnap.exists() ? ratesSnap.data() : {};
-                        await setDoc(doc(db, 'admin_set', 'coins_rates'), {
-                            ...existingRates,
-                            crypto: freshData,
-                            cryptoSyncedAt: now,
+                        await setDoc(doc(db, 'coins_rates_crypto', 'latest'), {
+                            rates: freshData,
+                            syncedAt: now,
                         });
                         // Update lastSyncedAt
                         const newCfg = { ...cfg, crypto: { ...cfg.crypto, lastSyncedAt: now } };
@@ -253,41 +350,37 @@ export const MarketProvider = ({ children }) => {
             // ─────────────────────────────────────────────────────────
             // FOREX
             // ─────────────────────────────────────────────────────────
-            let forexAssets = [...FALLBACK_FOREX];
+            let forexAssets = buildForexFromCachedRaw(cachedRates.forex, extraForex) || [...FALLBACK_FOREX];
 
             if (cfg.forex.useCustomPrice) {
                 console.log('[Market][Forex] Custom price mode ON — loading from DB');
-                const baseForex = buildForexFromCachedRaw(cachedRates.forex, extraForex) || FALLBACK_FOREX;
-                forexAssets = applyCustomRatesToAssets(baseForex, customRatesAll.forex);
+                forexAssets = applyCustomRatesToAssets(forexAssets, customRatesAll.forex);
             } else {
                 const timeSince = now - (cfg.forex.lastSyncedAt || 0);
                 const shouldSync = timeSince >= cfg.forex.syncIntervalSeconds * 1000;
 
                 if (shouldSync) {
                     console.log('[Market][Forex] Sync time elapsed — fetching from API...');
-                    const freshForex = await fetchForexMarkets();
-                    if (freshForex && freshForex.length > 0) {
-                        forexAssets = freshForex;
-                        // Fetch raw for cache
-                        let rawData = null;
-                        try {
-                            const rawRes = await fetch('https://api.exchangerate-api.com/v4/latest/USD');
-                            rawData = rawRes.ok ? await rawRes.json() : null;
-                            const existingRates = ratesSnap.exists() ? ratesSnap.data() : {};
-                            await setDoc(doc(db, 'admin_set', 'coins_rates'), {
-                                ...existingRates,
-                                forex: rawData,
-                                forexSyncedAt: now,
+                    try {
+                        const response = await fetch('https://api.exchangerate-api.com/v4/latest/USD');
+                        if (response.ok) {
+                            const rawData = await response.json();
+                            await setDoc(doc(db, 'coins_rates_forex', 'latest'), {
+                                rates: rawData,
+                                syncedAt: now,
                             });
-                        } catch (_) { /* non-critical */ }
-                        const newCfg = { ...cfg, forex: { ...cfg.forex, lastSyncedAt: now } };
-                        await setDoc(doc(db, 'admin_set', 'coins_config'), newCfg);
-                        console.log('[Market][Forex] API data fetched & stored to DB');
+                            const newCfg = { ...cfg, forex: { ...cfg.forex, lastSyncedAt: now } };
+                            await setDoc(doc(db, 'admin_set', 'coins_config'), newCfg);
+                            console.log('[Market][Forex] API data fetched & stored to DB');
 
-                        const built = buildForexFromCachedRaw(rawData || cachedRates.forex, extraForex);
-                        if (built && built.length > 0) {
-                            forexAssets = built;
+                            const built = buildForexFromCachedRaw(rawData, extraForex);
+                            if (built && built.length > 0) {
+                                forexAssets = built;
+                            }
                         }
+                    } catch (err) {
+                        console.error('[Market][Forex] Failed to fetch live forex:', err);
+                        forexAssets = buildForexFromCachedRaw(cachedRates.forex, extraForex) || [...FALLBACK_FOREX];
                     }
                 } else {
                     console.log('[Market][Forex] Using cached DB data (sync not due yet)');
@@ -301,72 +394,33 @@ export const MarketProvider = ({ children }) => {
             // ─────────────────────────────────────────────────────────
             // METALS
             // ─────────────────────────────────────────────────────────
-            const extraMetalsList = extraMetals.map((str, idx) => {
-                const parts = str.split('|');
-                const symbol = parts[0]?.trim() || 'UNKNOWN/USD';
-                const name = parts[1]?.trim() || symbol;
-                return {
-                    id: `metal-extra-${idx}`,
-                    name: symbol,
-                    fullName: name,
-                    rate: '0.00', // default rate, admin should set custom rate
-                    change: '0.00%',
-                    flag: 'https://img.icons8.com/color/96/steel-ingot.png', // generic metal icon
-                    category: 'Precious Metals',
-                    isLive: false,
-                };
-            });
-            const baseMetalsCombined = [...STATIC_METALS, ...extraMetalsList];
-            let metalAssets = baseMetalsCombined;
+            let metalAssets = buildMetalsFromCachedRaw(cachedRates.metals, extraMetals);
 
             if (cfg.metals.useCustomPrice) {
                 console.log('[Market][Metals] Custom price mode ON — loading from DB');
-                metalAssets = applyCustomRatesToAssets(baseMetalsCombined, customRatesAll.metals);
+                metalAssets = applyCustomRatesToAssets(metalAssets, customRatesAll.metals);
             } else {
-                const lastMetalFetch = localStorage.getItem('lastMetalFetch');
                 const timeSince = now - (cfg.metals.lastSyncedAt || 0);
                 const shouldSync = forceMetals
-                    || timeSince >= cfg.metals.syncIntervalSeconds * 1000
-                    || !lastMetalFetch
-                    || (now - parseInt(lastMetalFetch) > 6 * 60 * 60 * 1000);
+                    || timeSince >= cfg.metals.syncIntervalSeconds * 1000;
 
                 if (shouldSync) {
                     console.log('[Market][Metals] Sync time elapsed — fetching from API...');
                     const metalData = await fetchMetalMarkets();
                     if (metalData) {
-                        localStorage.setItem('lastMetalFetch', now.toString());
-                        localStorage.setItem('cachedMetalData', JSON.stringify(metalData));
+                        await setDoc(doc(db, 'coins_rates_metals', 'latest'), {
+                            rates: metalData,
+                            syncedAt: now,
+                        });
                         const newCfg = { ...cfg, metals: { ...cfg.metals, lastSyncedAt: now } };
                         await setDoc(doc(db, 'admin_set', 'coins_config'), newCfg);
-                    }
-                }
+                        console.log('[Market][Metals] API data fetched & stored to DB');
 
-                // Always try to apply metal data (from API or localStorage cache)
-                const cachedMetalData = JSON.parse(localStorage.getItem('cachedMetalData') || 'null');
-                if (cachedMetalData) {
-                    metalAssets = baseMetalsCombined.map(m => {
-                        const nameLower = m.fullName.toLowerCase();
-                        let price = null;
-                        if (nameLower.includes('gold')      && cachedMetalData.gold)      price = cachedMetalData.gold;
-                        else if (nameLower.includes('silver')    && cachedMetalData.silver)    price = cachedMetalData.silver;
-                        else if (nameLower.includes('platinum')  && cachedMetalData.platinum)  price = cachedMetalData.platinum;
-                        else if (nameLower.includes('palladium') && cachedMetalData.palladium) price = cachedMetalData.palladium;
-                        else if (nameLower.includes('copper')    && cachedMetalData.copper)    price = cachedMetalData.copper;
-                        else if (nameLower.includes('aluminum')  && cachedMetalData.aluminum)  price = cachedMetalData.aluminum;
-                        else if (nameLower.includes('zinc')      && cachedMetalData.zinc)      price = cachedMetalData.zinc;
-                        else if (nameLower.includes('nickel')    && cachedMetalData.nickel)    price = cachedMetalData.nickel;
-                        else if (nameLower.includes('lead')      && cachedMetalData.lead)      price = cachedMetalData.lead;
-                        if (price) {
-                            return {
-                                ...m,
-                                rate: price > 100
-                                    ? price.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })
-                                    : price.toFixed(price < 1 ? 4 : 2),
-                                isLive: true,
-                            };
-                        }
-                        return m;
-                    });
+                        metalAssets = buildMetalsFromCachedRaw(metalData, extraMetals);
+                    }
+                } else {
+                    console.log('[Market][Metals] Using cached DB data (sync not due yet)');
+                    metalAssets = buildMetalsFromCachedRaw(cachedRates.metals, extraMetals);
                 }
 
                 // Apply custom overrides on top if any
@@ -379,6 +433,17 @@ export const MarketProvider = ({ children }) => {
             // Merge + Apply visibility filter
             // ─────────────────────────────────────────────────────────
             let allAssets = [...forexAssets, ...cryptoAssets, ...metalAssets];
+
+            // hide deleted default coins
+            const deletedCoins = listSnap.exists() ? (listSnap.data().deletedCoins || []) : [];
+            try {
+                localStorage.setItem('cached_visibility', JSON.stringify(visibility));
+                localStorage.setItem('cached_deleted_coins', JSON.stringify(deletedCoins));
+            } catch (_) {}
+
+            if (deletedCoins.length > 0) {
+                allAssets = allAssets.filter(a => !deletedCoins.includes(a.id));
+            }
 
             // Hide coins that admin set to false in coins_visibility
             if (Object.keys(visibility).length > 0) {
@@ -394,62 +459,16 @@ export const MarketProvider = ({ children }) => {
         }
     }, []);
 
-    // ── Crypto-only live update (respects custom price mode) ─────────────
-    const loadCryptoData = useCallback(async () => {
-        try {
-            // Quick config check — don't hit API if custom price is ON
-            const cfgSnap = await getDoc(doc(db, 'admin_set', 'coins_config'));
-            const cfg = cfgSnap.exists() ? cfgSnap.data() : DEFAULT_TAB_CONFIG;
-            const cryptoCfg = { ...DEFAULT_TAB_CONFIG.crypto, ...(cfg.crypto || {}) };
-
-            if (cryptoCfg.useCustomPrice) {
-                // Custom mode ON: no live API call needed
-                return;
-            }
-
-            const listSnap = await getDoc(doc(db, 'admin_set', 'coins_list'));
-            let extraCrypto = [];
-            if (listSnap.exists()) {
-                const listData = listSnap.data();
-                extraCrypto = listData.crypto || listData.extraCoins || [];
-            }
-            const allCodes = [
-                'BTC','ETH','SOL','XRP','AVAX','LINK','MATIC','SHIB','TON','NEAR','PEPE','SUI','DOGE','TRX','DOT','LTC',
-                ...extraCrypto,
-            ].filter((v, i, a) => a.indexOf(v) === i);
-
-            const cryptoData = await fetchCryptoByDynamicCodes(allCodes);
-            if (cryptoData && cryptoData.length > 0) {
-                setAssets(prev => {
-                    const nonCrypto = prev.filter(a => a.category !== 'Cryptocurrency');
-                    return [...nonCrypto, ...cryptoData];
-                });
-                setSelectedAsset(current => {
-                    if (!current || current.category !== 'Cryptocurrency') return current;
-                    const updated = cryptoData.find(a => a.id === current.id);
-                    return updated || current;
-                });
-            }
-        } catch (error) {
-            console.error('[Market] Failed to load crypto live data:', error);
-        }
-    }, []);
-
     // ── Intervals & lifecycle ────────────────────────────────────────────
     useEffect(() => {
-        if (!isActive) {
-            setLoading(false);
-            return;
-        }
+        if (!isActive) return;
+        setLoading(true);
 
         // Initial load
         loadMarketData(true);
 
-        // Full market refresh every 5 min (respects admin config)
-        const apiInterval = setInterval(() => loadMarketData(false), 300_000);
-
-        // Crypto live updates every 5 seconds
-        const cryptoInterval = setInterval(() => loadCryptoData(), 5000);
+        // Check and refresh market data according to sync intervals every 30 seconds
+        const apiInterval = setInterval(() => loadMarketData(false), 30_000);
 
         // Price simulation for live non-crypto assets (only when NOT in custom price mode)
         const simInterval = setInterval(async () => {
@@ -468,7 +487,7 @@ export const MarketProvider = ({ children }) => {
                 const newAssets = prev.map(asset => {
                     if (asset.isLive === false) return asset;
                     if (asset.category === 'Cryptocurrency') return asset;
-                    if (asset.category === 'Precious Metals' && metalsCustom) return asset;
+                    if (asset.category === 'Precious Metals') return asset;
                     if (asset.category === 'Foreign Exchange' && forexCustom)  return asset;
 
                     const currentPrice = parseFloat(asset.rate.replace(/,/g, ''));
@@ -495,10 +514,9 @@ export const MarketProvider = ({ children }) => {
 
         return () => {
             clearInterval(apiInterval);
-            clearInterval(cryptoInterval);
             clearInterval(simInterval);
         };
-    }, [loadMarketData, loadCryptoData, isActive]);
+    }, [loadMarketData, isActive]);
 
     return (
         <MarketContext.Provider value={{ assets, loading, refreshData: loadMarketData, selectedAsset, setSelectedAsset, setIsActive }}>

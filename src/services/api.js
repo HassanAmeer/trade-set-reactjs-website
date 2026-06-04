@@ -17,7 +17,7 @@ export const fetchCryptoMarkets = async () => {
                 "x-api-key": "20c87391-6c37-4e83-a9cb-ad52ab7a3da2",
             },
             body: JSON.stringify({
-                codes: ["BTC", "ETH", "SOL", "XRP", "AVAX", "LINK", "MATIC", "SHIB", "TON", "NEAR", "PEPE", "SUI", "DOGE", "TRX", "DOT", "LTC"],
+                codes: ["BTC", "ETH", "SOL", "XRP", "AVAX", "LINK", "MATIC", "SHIB", "TONCOIN", "NEAR", "____PEPE", "_SUI", "DOGE", "TRX", "DOT", "LTC"],
                 currency: "USD",
                 sort: "rank",
                 order: "ascending",
@@ -30,17 +30,23 @@ export const fetchCryptoMarkets = async () => {
         const data = await response.json();
 
         return data.map(item => {
-            const rawName = item.code;
+            let rawName = item.code;
+            if (rawName === '_SUI') rawName = 'SUI';
+            else if (rawName === '____PEPE') rawName = 'PEPE';
+            else if (rawName === 'TONCOIN') rawName = 'TON';
+
             const pct = item.delta && item.delta.day ? (item.delta.day - 1) * 100 : 0;
             const sign = pct >= 0 ? '+' : '';
             return {
-                id: item.code + 'USDT',
+                id: rawName + 'USDT',
                 symbol: rawName,
                 name: `${rawName}/USDT`,
                 fullName: item.name || rawName,
-                rate: parseFloat(item.rate) > 100 ?
-                    parseFloat(item.rate).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 }) :
-                    parseFloat(item.rate).toFixed(6),
+                rate: (item.rate !== null && item.rate !== undefined && !isNaN(parseFloat(item.rate))) ? (
+                    parseFloat(item.rate) > 100 ?
+                        parseFloat(item.rate).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 }) :
+                        parseFloat(item.rate).toFixed(6)
+                ) : '0.00',
                 change: `${sign}${pct.toFixed(2)}%`,
                 flag: item.png64 || item.png32 || `https://raw.githubusercontent.com/spothq/cryptocurrency-icons/master/128/color/${rawName.toLowerCase()}.png`,
                 category: 'Cryptocurrency',
@@ -64,6 +70,16 @@ export const fetchCryptoMarkets = async () => {
  */
 export const fetchCryptoByDynamicCodes = async (codes = []) => {
     if (!codes.length) return [];
+
+    // Map standard codes to LiveCoinWatch specific codes
+    const mappedCodes = codes.map(c => {
+        const upper = c.toUpperCase();
+        if (upper === 'SUI') return '_SUI';
+        if (upper === 'PEPE') return '____PEPE';
+        if (upper === 'TON') return 'TONCOIN';
+        return c;
+    });
+
     try {
         const response = await fetch('https://api.livecoinwatch.com/coins/map', {
             method: 'POST',
@@ -72,7 +88,7 @@ export const fetchCryptoByDynamicCodes = async (codes = []) => {
                 'x-api-key': '20c87391-6c37-4e83-a9cb-ad52ab7a3da2',
             },
             body: JSON.stringify({
-                codes,
+                codes: mappedCodes,
                 currency: 'USD',
                 sort: 'rank',
                 order: 'ascending',
@@ -84,17 +100,23 @@ export const fetchCryptoByDynamicCodes = async (codes = []) => {
         if (!response.ok) throw new Error('LiveCoinWatch dynamic fetch not ok');
         const data = await response.json();
         return data.map(item => {
-            const rawName = item.code;
+            let rawName = item.code;
+            if (rawName === '_SUI') rawName = 'SUI';
+            else if (rawName === '____PEPE') rawName = 'PEPE';
+            else if (rawName === 'TONCOIN') rawName = 'TON';
+
             const pct = item.delta && item.delta.day ? (item.delta.day - 1) * 100 : 0;
             const sign = pct >= 0 ? '+' : '';
             return {
-                id: item.code + 'USDT',
+                id: rawName + 'USDT',
                 symbol: rawName,
                 name: `${rawName}/USDT`,
                 fullName: item.name || rawName,
-                rate: parseFloat(item.rate) > 100 ?
-                    parseFloat(item.rate).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 }) :
-                    parseFloat(item.rate).toFixed(6),
+                rate: (item.rate !== null && item.rate !== undefined && !isNaN(parseFloat(item.rate))) ? (
+                    parseFloat(item.rate) > 100 ?
+                        parseFloat(item.rate).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 }) :
+                        parseFloat(item.rate).toFixed(6)
+                ) : '0.00',
                 change: `${sign}${pct.toFixed(2)}%`,
                 flag: item.png64 || item.png32 || `https://raw.githubusercontent.com/spothq/cryptocurrency-icons/master/128/color/${rawName.toLowerCase()}.png`,
                 category: 'Cryptocurrency',
@@ -136,7 +158,6 @@ export const fetchForexMarkets = async () => {
             { id: 'inr', symbol: 'INR/USD', flag: 'in', rateKey: 'INR' },
             { id: 'krw', symbol: 'USD/KRW', flag: 'kr', rateKey: 'KRW' },
             { id: 'thb', symbol: 'USD/THB', flag: 'th', rateKey: 'THB' },
-            { id: 'vnd', symbol: 'VND/USD', flag: 'vn', rateKey: 'VND' },
             { id: 'aed', symbol: 'AED/USD', flag: 'ae', rateKey: 'AED' },
         ];
 
@@ -165,73 +186,38 @@ export const fetchForexMarkets = async () => {
 };
 
 /**
- * Fetches metal market data with fallback.
+ * Fetches metal market data.
  * @returns {Promise<Object>} Object containing metal rates.
  */
 export const fetchMetalMarkets = async () => {
-    const results = { source: 'none' };
-    const metalsToFetch = ['gold', 'silver', 'platinum', 'palladium', 'aluminum', 'copper', 'lead', 'nickel', 'zinc'];
-
     console.log('API: Starting Metal Fetching...');
-
-    // 1. Try Metals.dev for each metal (Parallel calls for speed)
     try {
-        const fetchPromises = metalsToFetch.map(async (metal) => {
-            try {
-                const url = `https://api.metals.dev/v1/metal/spot?api_key=${METALS_DEV_KEY}&currency=USD&unit=toz&metal=${metal}`;
-                const response = await fetch(url);
-                if (response.ok) {
-                    const data = await response.json();
-                    console.log(`API: Metals.dev Response for ${metal}:`, data);
-                    if (data.status === 'success' && data.rate) {
-                        return { metal, price: data.rate.price };
-                    }
-                } else {
-                    console.warn(`API: Metals.dev ${metal} failed with status: ${response.status}`);
-                }
-            } catch (err) {
-                console.error(`API: Metals.dev error for ${metal}:`, err.message);
-            }
-            return null;
+        const url = 'https://api.metals.dev/v1/latest?api_key=DCU40FCSUKCJAJ3WJVJI9823WJVJI&currency=USD&unit=toz';
+        const response = await fetch(url, {
+            headers: {
+                'Accept': 'application/json',
+            },
         });
+        if (!response.ok) throw new Error(`Metals.dev API error: ${response.status}`);
+        const result = await response.json();
 
-        const metalResults = await Promise.all(fetchPromises);
-        metalResults.forEach(res => {
-            if (res) {
-                results[res.metal] = res.price;
-                results.source = 'metals.dev';
-            }
-        });
-    } catch (error) {
-        console.error('API: Metals.dev main loop failed:', error);
-    }
-
-    // 2. Check if any metals are still missing and try GoldAPI.io as fallback
-    const missingMetals = metalsToFetch.filter(m => !results[m]);
-
-    if (missingMetals.length > 0 && GOLD_API_KEY) {
-        console.log('API: Missing from Metals.dev, trying GoldAPI for:', missingMetals);
-        try {
-            for (const metalName of missingMetals) {
-                const symbol = metalName === 'gold' ? 'XAU' : metalName === 'silver' ? 'XAG' : metalName === 'platinum' ? 'XPT' : 'XPD';
-                const res = await fetch(`https://www.goldapi.io/api/${symbol}/USD`, {
-                    headers: { 'x-access-token': GOLD_API_KEY }
-                });
-                if (res.ok) {
-                    const data = await res.json();
-                    console.log(`API: GoldAPI Response for ${symbol}:`, data);
-                    results[metalName] = data.price;
-                    if (results.source === 'none') results.source = 'goldapi';
-                } else {
-                    const errorData = await res.json().catch(() => ({}));
-                    console.error(`API: GoldAPI ${symbol} failed (${res.status}):`, errorData.error || res.statusText);
-                }
-            }
-        } catch (err) {
-            console.error('API: Fallback GoldAPI failed:', err);
+        if (result.status === 'success' && result.metals) {
+            const metals = result.metals;
+            return {
+                source: 'metals.dev',
+                gold: metals.gold,
+                silver: metals.silver,
+                platinum: metals.platinum,
+                palladium: metals.palladium,
+                aluminum: metals.aluminum,
+                copper: metals.copper,
+                lead: metals.lead,
+                nickel: metals.nickel,
+                zinc: metals.zinc
+            };
         }
+    } catch (error) {
+        console.error('API: Failed to fetch metals data:', error);
     }
-
-    console.log('API: Final Compiled Results:', results);
-    return Object.keys(results).length > 1 ? results : null;
+    return null;
 };

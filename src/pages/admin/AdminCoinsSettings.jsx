@@ -60,16 +60,13 @@ const DEFAULT_COINS = {
     metals: [
         { id: 'metal-1',  label: 'XAU/USD (Gold)',     icon: 'https://img.icons8.com/color/96/gold-bars.png' },
         { id: 'metal-2',  label: 'XAG/USD (Silver)',   icon: 'https://img.icons8.com/color/96/silver-bars.png' },
-        { id: 'metal-3',  label: 'WTI/USD (Crude Oil)',icon: 'https://img.icons8.com/color/96/oil-industry.png' },
         { id: 'metal-4',  label: 'XPT/USD (Platinum)', icon: 'https://img.icons8.com/color/96/silver-bars.png' },
         { id: 'metal-5',  label: 'XPD/USD (Palladium)',icon: 'https://img.icons8.com/color/96/silver-bars.png' },
         { id: 'metal-6',  label: 'XCU/USD (Copper)',   icon: 'https://img.icons8.com/color/96/copper-ingot.png' },
         { id: 'metal-7',  label: 'ALU/USD (Aluminum)', icon: 'https://img.icons8.com/color/96/aluminum-ingot.png' },
-        { id: 'metal-8',  label: 'NG/USD (Nat Gas)',   icon: 'https://img.icons8.com/color/96/natural-gas.png' },
         { id: 'metal-9',  label: 'ZNC/USD (Zinc)',     icon: 'https://img.icons8.com/color/96/steel-ingot.png' },
         { id: 'metal-10', label: 'NKL/USD (Nickel)',   icon: 'https://img.icons8.com/color/96/steel-ingot.png' },
         { id: 'metal-11', label: 'LD/USD (Lead)',      icon: 'https://img.icons8.com/color/96/steel-ingot.png' },
-        { id: 'metal-12', label: 'BRENT/USD (Brent)',  icon: 'https://img.icons8.com/color/96/oil-industry.png' },
     ],
 };
 
@@ -98,30 +95,36 @@ const Toggle = ({ checked, onChange, label, description, accentColor = '#00c087'
     <div style={{
         display: 'flex', justifyContent: 'space-between', alignItems: 'center',
         padding: '18px 20px',
-        background: checked ? `rgba(${hexToRgb(accentColor)}, 0.06)` : 'rgba(255,255,255,0.02)',
-        border: `1px solid ${checked ? `rgba(${hexToRgb(accentColor)}, 0.25)` : '#1e1e1e'}`,
+        background: checked ? `rgba(${hexToRgb(accentColor)}, 0.04)` : 'rgba(255,255,255,0.01)',
+        border: `1px solid ${checked ? `rgba(${hexToRgb(accentColor)}, 0.2)` : 'rgba(255,255,255,0.05)'}`,
         borderRadius: '14px',
         transition: 'all 0.3s ease',
         cursor: 'pointer',
         userSelect: 'none',
+        boxShadow: checked ? `inset 0 0 12px rgba(${hexToRgb(accentColor)}, 0.05)` : 'none',
     }} onClick={onChange}>
         <div>
-            <div style={{ color: '#fff', fontWeight: '700', fontSize: '14px' }}>{label}</div>
-            {description && <div style={{ color: '#555', fontSize: '11px', marginTop: '3px' }}>{description}</div>}
+            <div style={{ color: '#fff', fontWeight: '700', fontSize: '14px', letterSpacing: '0.3px' }}>{label}</div>
+            {description && <div style={{ color: '#666', fontSize: '11px', marginTop: '4px', lineHeight: '1.4' }}>{description}</div>}
         </div>
         <div style={{
-            width: '50px', height: '26px', borderRadius: '13px',
-            background: checked ? accentColor : '#2a2a2a',
-            position: 'relative', transition: 'background 0.3s',
-            flexShrink: 0, border: `1px solid ${checked ? accentColor : '#333'}`,
+            width: '52px', height: '28px', borderRadius: '14px',
+            background: checked ? accentColor : 'rgba(255,255,255,0.05)',
+            position: 'relative', transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
+            flexShrink: 0, border: `1px solid ${checked ? accentColor : 'rgba(255,255,255,0.1)'}`,
+            boxShadow: checked ? `0 0 10px rgba(${hexToRgb(accentColor)}, 0.3)` : 'none',
         }}>
-            <div style={{
-                position: 'absolute', top: '3px',
-                left: checked ? '26px' : '3px',
-                width: '18px', height: '18px', borderRadius: '50%',
-                background: '#fff', transition: 'left 0.3s',
-                boxShadow: '0 2px 4px rgba(0,0,0,0.4)',
-            }} />
+            <motion.div 
+                layout
+                transition={{ type: 'spring', stiffness: 500, damping: 30 }}
+                style={{
+                    position: 'absolute', top: '3px',
+                    left: checked ? '27px' : '3px',
+                    width: '20px', height: '20px', borderRadius: '50%',
+                    background: '#fff',
+                    boxShadow: '0 2px 4px rgba(0,0,0,0.4)',
+                }} 
+            />
         </div>
     </div>
 );
@@ -148,6 +151,7 @@ const AdminCoinsSettings = () => {
     const [localIntervals, setLocalIntervals] = useState({});
     const [localRates, setLocalRates]         = useState({});
     const [expandRates, setExpandRates]       = useState(false);
+    const [focusedInputId, setFocusedInputId] = useState(null);
 
     const tabInfo = TABS.find(t => t.id === activeTab);
     const accentColor = tabInfo?.color || '#00c087';
@@ -156,12 +160,14 @@ const AdminCoinsSettings = () => {
     const fetchAll = useCallback(async () => {
         setLoading(true);
         try {
-            const [cfgSnap, ratesSnap, visSnap, listSnap, liveRatesSnap] = await Promise.all([
+            const [cfgSnap, ratesSnap, visSnap, listSnap, cryptoRatesSnap, forexRatesSnap, metalsRatesSnap] = await Promise.all([
                 getDoc(doc(db, 'admin_set', 'coins_config')),
                 getDoc(doc(db, 'admin_set', 'coins_custom_rates')),
                 getDoc(doc(db, 'admin_set', 'coins_visibility')),
                 getDoc(doc(db, 'admin_set', 'coins_list')),
-                getDoc(doc(db, 'admin_set', 'coins_rates')),
+                getDoc(doc(db, 'coins_rates_crypto', 'latest')),
+                getDoc(doc(db, 'coins_rates_forex', 'latest')),
+                getDoc(doc(db, 'coins_rates_metals', 'latest')),
             ]);
 
             const cfgData = cfgSnap.exists() ? cfgSnap.data() : DEFAULT_CONFIG;
@@ -179,16 +185,23 @@ const AdminCoinsSettings = () => {
 
             if (ratesSnap.exists()) setCustomRates(ratesSnap.data());
             if (visSnap.exists())   setVisibility(visSnap.data());
-            if (liveRatesSnap.exists()) setLiveRates(liveRatesSnap.data());
+
+            const mergedRates = {
+                crypto: cryptoRatesSnap.exists() ? cryptoRatesSnap.data().rates : [],
+                forex: forexRatesSnap.exists() ? forexRatesSnap.data().rates : {},
+                metals: metalsRatesSnap.exists() ? metalsRatesSnap.data().rates : {},
+            };
+            setLiveRates(mergedRates);
             if (listSnap.exists()) {
                 const d = listSnap.data();
                 setExtraCoins({
                     crypto: d.crypto || d.extraCoins || [],
                     forex: d.forex || [],
                     metals: d.metals || [],
+                    deletedCoins: d.deletedCoins || [],
                 });
             } else {
-                setExtraCoins({ crypto: [], forex: [], metals: [] });
+                setExtraCoins({ crypto: [], forex: [], metals: [], deletedCoins: [] });
             }
         } catch (err) {
             showToast('error', 'Failed to load settings: ' + err.message);
@@ -270,31 +283,76 @@ const AdminCoinsSettings = () => {
                     'BTC','ETH','SOL','XRP','AVAX','LINK','MATIC','SHIB','TON','NEAR','PEPE','SUI','DOGE','TRX','DOT','LTC',
                     ...(extraCoins.crypto || [])
                 ].filter(Boolean);
+                const mappedCodes = codes.map(c => {
+                    const upper = c.toUpperCase();
+                    if (upper === 'SUI') return '_SUI';
+                    if (upper === 'PEPE') return '____PEPE';
+                    if (upper === 'TON') return 'TONCOIN';
+                    return c;
+                });
                 const res = await fetch('https://api.livecoinwatch.com/coins/map', {
                     method: 'POST',
                     headers: { 'content-type': 'application/json', 'x-api-key': LIVECOINWATCH_KEY },
-                    body: JSON.stringify({ codes, currency: 'USD', sort: 'rank', order: 'ascending', offset: 0, limit: 0, meta: true }),
+                    body: JSON.stringify({ codes: mappedCodes, currency: 'USD', sort: 'rank', order: 'ascending', offset: 0, limit: 0, meta: true }),
                 });
                 if (!res.ok) throw new Error('LiveCoinWatch API error: ' + res.status);
-                freshData = await res.json();
+                const rawData = await res.json();
+                freshData = rawData.map(item => {
+                    let rawName = item.code;
+                    if (rawName === '_SUI') rawName = 'SUI';
+                    else if (rawName === '____PEPE') rawName = 'PEPE';
+                    else if (rawName === 'TONCOIN') rawName = 'TON';
+
+                    const pct = item.delta && item.delta.day ? (item.delta.day - 1) * 100 : 0;
+                    const sign = pct >= 0 ? '+' : '';
+                    return {
+                        id: rawName + 'USDT',
+                        symbol: rawName,
+                        name: `${rawName}/USDT`,
+                        fullName: item.name || rawName,
+                        rate: (item.rate !== null && item.rate !== undefined && !isNaN(parseFloat(item.rate))) ? (
+                            parseFloat(item.rate) > 100 ?
+                                parseFloat(item.rate).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 }) :
+                                parseFloat(item.rate).toFixed(6)
+                        ) : '0.00',
+                        change: `${sign}${pct.toFixed(2)}%`,
+                        flag: item.png64 || item.png32 || `https://raw.githubusercontent.com/spothq/cryptocurrency-icons/master/128/color/${rawName.toLowerCase()}.png`,
+                        category: 'Cryptocurrency',
+                        volume24h: item.volume ? (parseFloat(item.volume) / 1000000).toFixed(1) + 'M' : '0M',
+                        high24h: 'N/A',
+                        low24h: 'N/A',
+                        isLive: true
+                    };
+                });
             } else if (tab === 'forex') {
                 const res = await fetch('https://api.exchangerate-api.com/v4/latest/USD');
                 if (!res.ok) throw new Error('ExchangeRate API error');
                 freshData = await res.json();
             } else if (tab === 'metals') {
-                freshData = { synced: true, note: 'Metals data synced from cache' };
+                const url = 'https://api.metals.dev/v1/latest?api_key=DCU40FCSUKCJAJ3WJVJI9823WJVJI&currency=USD&unit=toz';
+                const res = await fetch(url, {
+                    headers: { 'Accept': 'application/json' }
+                });
+                if (!res.ok) throw new Error(`Metals.dev API error: ${res.status}`);
+                const result = await res.json();
+                if (result.status === 'success' && result.metals) {
+                    freshData = result.metals;
+                } else {
+                    throw new Error('Metals.dev API returned success: false or invalid structure');
+                }
             }
 
             // Store to DB
-            const cachedSnap = await getDoc(doc(db, 'admin_set', 'coins_rates'));
-            const existing = cachedSnap.exists() ? cachedSnap.data() : {};
-            const nextLiveRates = {
-                ...existing,
+            const collectionName = `coins_rates_${tab}`;
+            await setDoc(doc(db, collectionName, 'latest'), {
+                rates: freshData,
+                syncedAt: now,
+            });
+
+            setLiveRates(prev => ({
+                ...prev,
                 [tab]: freshData,
-                [`${tab}SyncedAt`]: now,
-            };
-            await setDoc(doc(db, 'admin_set', 'coins_rates'), nextLiveRates);
-            setLiveRates(nextLiveRates);
+            }));
 
             // Update lastSyncedAt in config
             const newCfg = { ...config, [tab]: { ...config[tab], lastSyncedAt: now } };
@@ -334,11 +392,12 @@ const AdminCoinsSettings = () => {
                 if ((extraCoins.crypto || []).includes(code)) {
                     return showToast('error', 'Coin already added');
                 }
+                const lcwCode = code === 'SUI' ? '_SUI' : (code === 'PEPE' ? '____PEPE' : (code === 'TON' ? 'TONCOIN' : code));
                 // Verify with LiveCoinWatch
                 const res = await fetch('https://api.livecoinwatch.com/coins/map', {
                     method: 'POST',
                     headers: { 'content-type': 'application/json', 'x-api-key': LIVECOINWATCH_KEY },
-                    body: JSON.stringify({ codes: [code], currency: 'USD', sort: 'rank', order: 'ascending', offset: 0, limit: 0, meta: true }),
+                    body: JSON.stringify({ codes: [lcwCode], currency: 'USD', sort: 'rank', order: 'ascending', offset: 0, limit: 0, meta: true }),
                 });
                 const data = await res.json();
                 if (!Array.isArray(data) || data.length === 0) {
@@ -409,17 +468,39 @@ const AdminCoinsSettings = () => {
         }
     };
 
-    // ── Remove extra coin ────────────────────────────────────────────────
-    const removeCoin = async (itemToRemove) => {
+    // ─── Remove/Delete coin ────────────────────────────────────────────────
+    const removeCoin = async (itemToRemoveOrCoin) => {
         let updatedList = { ...extraCoins };
-        if (activeTab === 'crypto') {
-            const updatedCrypto = (extraCoins.crypto || []).filter(c => c !== itemToRemove);
-            updatedList.crypto = updatedCrypto;
-            updatedList.extraCoins = updatedCrypto; // backward compatibility
-        } else if (activeTab === 'forex') {
-            updatedList.forex = (extraCoins.forex || []).filter(c => c !== itemToRemove);
-        } else if (activeTab === 'metals') {
-            updatedList.metals = (extraCoins.metals || []).filter(c => c !== itemToRemove);
+        const deletedList = extraCoins.deletedCoins || [];
+
+        // Check if the argument is a default coin object or its ID
+        const isDefaultObject = typeof itemToRemoveOrCoin === 'object' && itemToRemoveOrCoin !== null && !itemToRemoveOrCoin.isExtra;
+        const isDefaultId = typeof itemToRemoveOrCoin === 'string' && (
+            itemToRemoveOrCoin.endsWith('USDT') || 
+            itemToRemoveOrCoin.startsWith('fx-') || 
+            itemToRemoveOrCoin.startsWith('metal-')
+        ) && !itemToRemoveOrCoin.includes('|'); // metals extra coins contain '|'
+
+        if (isDefaultObject || isDefaultId) {
+            const coinId = isDefaultObject ? itemToRemoveOrCoin.id : itemToRemoveOrCoin;
+            if (!deletedList.includes(coinId)) {
+                updatedList.deletedCoins = [...deletedList, coinId];
+            }
+        } else {
+            // It is an extra/custom coin identifier string
+            const stringIdentifier = typeof itemToRemoveOrCoin === 'object' 
+                ? (activeTab === 'metals' ? itemToRemoveOrCoin.rawString : itemToRemoveOrCoin.code)
+                : itemToRemoveOrCoin;
+
+            if (activeTab === 'crypto') {
+                const updatedCrypto = (extraCoins.crypto || []).filter(c => c !== stringIdentifier);
+                updatedList.crypto = updatedCrypto;
+                updatedList.extraCoins = updatedCrypto; // backward compatibility
+            } else if (activeTab === 'forex') {
+                updatedList.forex = (extraCoins.forex || []).filter(c => c !== stringIdentifier);
+            } else if (activeTab === 'metals') {
+                updatedList.metals = (extraCoins.metals || []).filter(c => c !== stringIdentifier);
+            }
         }
 
         try {
@@ -431,9 +512,30 @@ const AdminCoinsSettings = () => {
         }
     };
 
+    // ─── Restore default coin ──────────────────────────────────────────────
+    const restoreCoin = async (coinId) => {
+        const currentDeleted = extraCoins.deletedCoins || [];
+        const updatedDeleted = currentDeleted.filter(id => id !== coinId);
+        const updatedList = {
+            ...extraCoins,
+            deletedCoins: updatedDeleted,
+        };
+
+        try {
+            await setDoc(doc(db, 'admin_set', 'coins_list'), updatedList);
+            setExtraCoins(updatedList);
+            showToast('success', 'Restored successfully');
+        } catch (err) {
+            showToast('error', 'Restore failed: ' + err.message);
+        }
+    };
+
     // ── Get all coins for current tab ────────────────────────────────────
     const getCoinsForTab = (tab) => {
-        const base = DEFAULT_COINS[tab] || [];
+        let base = DEFAULT_COINS[tab] || [];
+        const deletedList = extraCoins.deletedCoins || [];
+        base = base.filter(c => !deletedList.includes(c.id));
+
         if (tab === 'crypto') {
             const extra = (extraCoins.crypto || []).map(code => ({
                 id: code + 'USDT',
@@ -476,9 +578,39 @@ const AdminCoinsSettings = () => {
 
         if (tab === 'crypto') {
             const rawCrypto = liveRates.crypto || [];
-            const found = rawCrypto.find(c => c.id === coin.id);
-            if (found && found.rate) {
-                return found.rate;
+            const coinCode = coin.code || coin.symbol || coin.id.replace('USDT', '').toUpperCase();
+            const found = rawCrypto.find(c => {
+                if (!c) return false;
+                const cId = (c.id || '').toUpperCase();
+                const cCode = (c.code || c.symbol || '').toUpperCase();
+                
+                if (cId && cId === coin.id.toUpperCase()) return true;
+                if (cCode && cCode === coinCode) return true;
+                
+                const normLcwCode = cCode === '_SUI' ? 'SUI' : (cCode === '____PEPE' ? 'PEPE' : (cCode === 'TONCOIN' ? 'TON' : cCode));
+                if (normLcwCode === coinCode) return true;
+                
+                return false;
+            });
+
+            if (found && found.rate !== undefined && found.rate !== null) {
+                const rateVal = found.rate;
+                if (typeof rateVal === 'number') {
+                    return rateVal > 100
+                        ? rateVal.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })
+                        : rateVal.toFixed(6);
+                } else if (typeof rateVal === 'string') {
+                    if (rateVal.includes(',')) {
+                        return rateVal;
+                    }
+                    const parsed = parseFloat(rateVal);
+                    if (!isNaN(parsed)) {
+                        return parsed > 100
+                            ? parsed.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })
+                            : parsed.toFixed(6);
+                    }
+                    return rateVal;
+                }
             }
         } else if (tab === 'forex') {
             const ratesObj = liveRates.forex?.rates;
@@ -505,6 +637,14 @@ const AdminCoinsSettings = () => {
             else if (labelLower.includes('zinc') && cachedMetal.zinc) price = cachedMetal.zinc;
             else if (labelLower.includes('nickel') && cachedMetal.nickel) price = cachedMetal.nickel;
             else if (labelLower.includes('lead') && cachedMetal.lead) price = cachedMetal.lead;
+
+            if (!price) {
+                // Try dynamic symbol lookup for custom metals (e.g. LME_COPPER/USD -> lme_copper)
+                const cleanSymbol = coin.label.split('(')[0]?.trim()?.toLowerCase()?.replace('/usd', '');
+                if (cleanSymbol && cachedMetal[cleanSymbol]) {
+                    price = cachedMetal[cleanSymbol];
+                }
+            }
 
             if (price) {
                 return price > 100
@@ -537,401 +677,683 @@ const AdminCoinsSettings = () => {
             style={{ width: '100%', padding: '0 20px', paddingBottom: '60px' }}
         >
             {/* Header */}
-            <div style={{ marginBottom: '28px' }}>
-                <h2 style={{ color: '#fff', fontSize: '24px', fontWeight: '800', margin: '0 0 6px' }}>
-                    Coins API Settings
-                </h2>
-                <p style={{ color: '#555', fontSize: '13px', margin: 0 }}>
-                    Manage price sources, sync intervals, custom rates and coin visibility per market category.
-                </p>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '32px', flexWrap: 'wrap', gap: '16px' }}>
+                <div>
+                    <h2 style={{
+                        background: 'linear-gradient(90deg, #fff 0%, rgba(255,255,255,0.75) 100%)',
+                        WebkitBackgroundClip: 'text',
+                        WebkitTextFillColor: 'transparent',
+                        fontSize: '28px', fontWeight: '900', margin: '0 0 6px',
+                        letterSpacing: '-0.5px'
+                    }}>
+                        Coins API Settings
+                    </h2>
+                    <p style={{ color: '#8a8a93', fontSize: '13px', margin: 0, fontWeight: '500' }}>
+                        Manage price sources, sync intervals, custom rates and coin visibility per market category.
+                    </p>
+                </div>
+                {/* Status Indicator */}
+                <div style={{
+                    display: 'flex', alignItems: 'center', gap: '10px',
+                    padding: '10px 18px', borderRadius: '30px',
+                    background: 'linear-gradient(135deg, rgba(255,255,255,0.02) 0%, rgba(255,255,255,0.005) 100%)',
+                    border: '1px solid rgba(255,255,255,0.05)',
+                    fontSize: '12px', fontWeight: '800', color: '#fff',
+                    boxShadow: '0 4px 15px rgba(0,0,0,0.2)',
+                    backdropFilter: 'blur(10px)'
+                }}>
+                    <motion.span
+                        animate={{ opacity: [1, 0.4, 1], scale: [1, 1.15, 1] }}
+                        transition={{ repeat: Infinity, duration: 2, ease: "easeInOut" }}
+                        style={{
+                            width: '8px', height: '8px', borderRadius: '50%',
+                            backgroundColor: isCustomOn ? '#f0b90b' : '#00c087',
+                            boxShadow: `0 0 12px ${isCustomOn ? '#f0b90b' : '#00c087'}`,
+                            display: 'inline-block'
+                        }}
+                    />
+                    {isCustomOn ? 'Custom Price Override' : 'API Sync Active'}
+                </div>
             </div>
 
             {/* Tab Switcher */}
-            <div style={{ display: 'flex', gap: '10px', marginBottom: '28px', flexWrap: 'wrap' }}>
+            <div style={{
+                display: 'inline-flex',
+                gap: '6px',
+                marginBottom: '36px',
+                flexWrap: 'wrap',
+                background: 'rgba(255,255,255,0.02)',
+                padding: '5px',
+                borderRadius: '16px',
+                border: '1px solid rgba(255,255,255,0.04)',
+                backdropFilter: 'blur(12px)',
+                boxShadow: '0 8px 32px rgba(0,0,0,0.2)',
+                width: 'fit-content'
+            }}>
                 {TABS.map(tab => {
                     const Icon = tab.icon;
                     const isActive = activeTab === tab.id;
                     return (
-                        <button
+                        <motion.button
                             key={tab.id}
                             onClick={() => { setActiveTab(tab.id); setExpandRates(false); }}
+                            whileHover={{ scale: 1.03 }}
+                            whileTap={{ scale: 0.97 }}
                             style={{
                                 display: 'flex', alignItems: 'center', gap: '8px',
-                                padding: '10px 18px', borderRadius: '12px',
-                                fontWeight: '700', fontSize: '13px', cursor: 'pointer',
-                                background: isActive ? `rgba(${hexToRgb(tab.color)},0.15)` : 'rgba(255,255,255,0.04)',
-                                color: isActive ? tab.color : '#555',
-                                border: `1px solid ${isActive ? `rgba(${hexToRgb(tab.color)},0.4)` : '#1a1a1a'}`,
-                                transition: 'all 0.25s ease',
+                                padding: '11px 22px', borderRadius: '12px',
+                                fontWeight: '800', fontSize: '13px', cursor: 'pointer',
+                                background: isActive ? `linear-gradient(135deg, rgba(${hexToRgb(tab.color)}, 0.15) 0%, rgba(${hexToRgb(tab.color)}, 0.04) 100%)` : 'transparent',
+                                color: isActive ? tab.color : '#8a8a93',
+                                border: isActive ? `1px solid rgba(${hexToRgb(tab.color)}, 0.25)` : '1px solid transparent',
+                                transition: 'all 0.2s ease',
+                                boxShadow: isActive ? `0 4px 15px rgba(${hexToRgb(tab.color)}, 0.12)` : 'none',
                             }}
                         >
-                            <Icon size={15} />
+                            <Icon size={15} style={{ filter: isActive ? `drop-shadow(0 0 4px ${tab.color})` : 'none' }} />
                             {tab.label}
-                        </button>
+                        </motion.button>
                     );
                 })}
             </div>
 
-            {/* ── SECTION 1: Price Source Toggle ── */}
-            <SectionCard title="Price Source" accentColor={accentColor}>
-                <Toggle
-                    checked={isCustomOn}
-                    onChange={() => toggleCustomPrice(activeTab)}
-                    accentColor={accentColor}
-                    label="Use Custom Price"
-                    description={
-                        isCustomOn
-                            ? '✅ Custom mode ON — rates are served from database only, no API calls'
-                            : '🌐 API mode ON — rates are fetched from live API based on sync interval'
-                    }
-                />
-                {isCustomOn && (
-                    <motion.div
-                        initial={{ opacity: 0, y: -6 }}
-                        animate={{ opacity: 1, y: 0 }}
-                        style={{
-                            marginTop: '12px',
-                            padding: '12px 16px',
-                            background: `rgba(${hexToRgb(accentColor)}, 0.06)`,
-                            borderRadius: '10px',
-                            border: `1px solid rgba(${hexToRgb(accentColor)}, 0.15)`,
-                            fontSize: '12px', color: '#888',
-                            display: 'flex', alignItems: 'center', gap: '8px',
-                        }}
-                    >
-                        <AlertCircle size={14} color={accentColor} />
-                        API sync is disabled. Even if sync time has passed, only DB custom rates will be shown to clients.
-                    </motion.div>
-                )}
-            </SectionCard>
-
-            {/* ── SECTION 2: Sync Interval ── */}
-            <SectionCard title="Sync Interval" accentColor={accentColor} style={{ opacity: isCustomOn ? 0.5 : 1 }}>
-                <div style={{ display: 'grid', gridTemplateColumns: '1fr auto', gap: '12px', alignItems: 'end' }}>
-                    <div>
-                        <label style={labelStyle}>Sync Every (seconds)</label>
-                        <div style={{ position: 'relative' }}>
-                            <Clock size={14} color="#555" style={{ position: 'absolute', left: '12px', top: '50%', transform: 'translateY(-50%)' }} />
-                            <input
-                                type="number"
-                                min="60"
-                                value={localIntervals[activeTab] ?? tabConfig.syncIntervalSeconds}
-                                onChange={e => setLocalIntervals(prev => ({ ...prev, [activeTab]: e.target.value }))}
-                                disabled={isCustomOn}
-                                style={{ ...inputStyle, paddingLeft: '36px', fontFamily: 'monospace' }}
-                                placeholder="e.g. 1800"
-                            />
-                        </div>
-                        <div style={{ fontSize: '11px', color: '#555', marginTop: '6px' }}>
-                            = <span style={{ color: '#888', fontWeight: '700' }}>{secondsToHuman(localIntervals[activeTab] || tabConfig.syncIntervalSeconds)}</span>
-                            &nbsp;|&nbsp; Minimum: 60s
-                            &nbsp;|&nbsp; Last sync: <span style={{ color: accentColor, fontWeight: '700' }}>{timeAgo(tabConfig.lastSyncedAt)}</span>
-                        </div>
-                    </div>
-                    <button
-                        onClick={() => saveTabConfig(activeTab)}
-                        disabled={saving === activeTab || isCustomOn}
-                        style={{ ...actionBtnStyle, background: accentColor, color: '#000', minWidth: '90px' }}
-                    >
-                        {saving === activeTab ? <Loader2 size={15} className="animate-spin" /> : <><Save size={14} /> Save</>}
-                    </button>
-                </div>
-
-                {/* Force Sync */}
-                <div style={{
-                    marginTop: '16px',
-                    display: 'flex', justifyContent: 'space-between', alignItems: 'center',
-                    padding: '14px 16px',
-                    background: 'rgba(255,255,255,0.02)',
-                    borderRadius: '12px', border: '1px solid #1e1e1e',
-                }}>
-                    <div>
-                        <div style={{ color: '#fff', fontSize: '13px', fontWeight: '700' }}>Force Sync Now</div>
-                        <div style={{ color: '#555', fontSize: '11px', marginTop: '2px' }}>
-                            Bypass time check — immediately fetch from API &amp; store to DB
-                        </div>
-                    </div>
-                    <button
-                        onClick={() => forceSyncNow(activeTab)}
-                        disabled={syncing === activeTab || isCustomOn}
-                        style={{ ...actionBtnStyle, background: 'rgba(255,255,255,0.05)', color: '#aaa', border: '1px solid #2a2a2a' }}
-                    >
-                        {syncing === activeTab
-                            ? <><Loader2 size={14} className="animate-spin" /> Syncing</>
-                            : <><RefreshCw size={14} /> Sync</>
-                        }
-                    </button>
-                </div>
-            </SectionCard>
-
-            {/* ── SECTION 3: Custom Rates ── */}
-            <AnimatePresence>
-                {isCustomOn && (
-                    <motion.div
-                        key="custom-rates"
-                        initial={{ opacity: 0, height: 0 }}
-                        animate={{ opacity: 1, height: 'auto' }}
-                        exit={{ opacity: 0, height: 0 }}
-                        style={{ overflow: 'hidden' }}
-                    >
-                        <SectionCard
-                            title={`Custom Rates (${tabInfo?.label})`}
+            {/* Two-Column Responsive Layout Grid */}
+            <div style={{
+                display: 'grid',
+                gridTemplateColumns: 'repeat(auto-fit, minmax(420px, 1fr))',
+                gap: '24px',
+                alignItems: 'start'
+            }}>
+                {/* ── LEFT COLUMN: Configuration & Adding Assets ── */}
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
+                    {/* Price Source Card */}
+                    <SectionCard title="Price Source" accentColor={accentColor}>
+                        <Toggle
+                            checked={isCustomOn}
+                            onChange={() => toggleCustomPrice(activeTab)}
                             accentColor={accentColor}
-                            headerRight={
-                                <button
-                                    onClick={() => setExpandRates(p => !p)}
-                                    style={{ background: 'none', border: 'none', color: '#555', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '4px', fontSize: '12px' }}
-                                >
-                                    {expandRates ? 'Collapse' : 'Expand All'}
-                                    <ChevronDown size={14} style={{ transform: expandRates ? 'rotate(180deg)' : 'none', transition: 'transform 0.2s' }} />
-                                </button>
+                            label="Use Custom Price"
+                            description={
+                                isCustomOn
+                                    ? '✅ Custom mode ON — rates are served from database only, no API calls'
+                                    : '🌐 API mode ON — rates are fetched from live API based on sync interval'
                             }
-                        >
-                            <p style={{ fontSize: '12px', color: '#555', marginBottom: '16px', marginTop: 0 }}>
-                                Set custom rates for each coin. These will override API data while custom mode is ON.
-                            </p>
-                            <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
-                                {(expandRates ? allCoins : allCoins.slice(0, 6)).map(coin => {
-                                    const savedRate = customRates[activeTab]?.[coin.id] || '';
-                                    const localRate = localRates[coin.id] !== undefined ? localRates[coin.id] : savedRate;
-                                    const isSaving = saving === coin.id;
-                                    return (
-                                        <div key={coin.id} style={{
-                                            display: 'grid', gridTemplateColumns: '1fr 140px auto',
-                                            gap: '8px', alignItems: 'center',
-                                        }}>
-                                            <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                                                <img
-                                                    src={coin.icon}
-                                                    alt={coin.label}
-                                                    style={{ width: '24px', height: '24px', borderRadius: '50%', objectFit: 'cover' }}
-                                                    onError={e => { e.target.src = 'https://cdn-icons-png.flaticon.com/512/25/25254.png'; }}
-                                                />
-                                                <div>
-                                                    <div style={{ color: '#fff', fontSize: '13px', fontWeight: '700' }}>{coin.label}</div>
-                                                    <div style={{ display: 'flex', gap: '8px', fontSize: '10px', marginTop: '1px' }}>
-                                                        {savedRate && <span style={{ color: '#555' }}>Saved: <strong style={{ color: accentColor }}>{savedRate}</strong></span>}
-                                                        <span style={{ color: '#444' }}>Live API: <strong style={{ color: '#777' }}>{getLiveRateForCoin(activeTab, coin) || 'N/A'}</strong></span>
-                                                    </div>
-                                                </div>
-                                            </div>
-                                            <div style={{ position: 'relative' }}>
-                                                <DollarSign size={11} color="#444" style={{ position: 'absolute', left: '9px', top: '50%', transform: 'translateY(-50%)' }} />
-                                                <input
-                                                    type="number"
-                                                    step="any"
-                                                    value={localRate}
-                                                    onChange={e => setLocalRates(prev => ({ ...prev, [coin.id]: e.target.value }))}
-                                                    placeholder="0.00"
-                                                    style={{ ...inputStyle, paddingLeft: '24px', fontSize: '13px', height: '38px' }}
-                                                />
-                                            </div>
-                                            <button
-                                                onClick={() => saveCustomRate(activeTab, coin.id)}
-                                                disabled={isSaving}
-                                                style={{ ...actionBtnStyle, background: `rgba(${hexToRgb(accentColor)},0.15)`, color: accentColor, height: '38px', padding: '0 12px' }}
-                                            >
-                                                {isSaving ? <Loader2 size={13} className="animate-spin" /> : <Save size={13} />}
-                                            </button>
-                                        </div>
-                                    );
-                                })}
-                                {!expandRates && allCoins.length > 6 && (
-                                    <button
-                                        onClick={() => setExpandRates(true)}
-                                        style={{ background: 'none', border: '1px dashed #2a2a2a', borderRadius: '10px', padding: '10px', color: '#555', cursor: 'pointer', fontSize: '12px' }}
-                                    >
-                                        + Show {allCoins.length - 6} more coins
-                                    </button>
-                                )}
-                            </div>
-                        </SectionCard>
-                    </motion.div>
-                )}
-            </AnimatePresence>
-
-            {/* ── SECTION 4: Coins Management ── */}
-            <SectionCard title="Coins Management" accentColor={accentColor}>
-                {/* Guidance panel */}
-                <div style={{
-                    marginBottom: '20px',
-                    padding: '16px',
-                    borderRadius: '12px',
-                    background: 'rgba(255,255,255,0.02)',
-                    border: '1px solid #222',
-                }}>
-                    <div style={{ color: '#fff', fontSize: '13px', fontWeight: '800', marginBottom: '8px', display: 'flex', alignItems: 'center', gap: '6px' }}>
-                        <AlertCircle size={14} color={accentColor} />
-                        {activeTab === 'crypto' && 'How to add Cryptocurrency:'}
-                        {activeTab === 'forex' && 'How to add Foreign Exchange Currency:'}
-                        {activeTab === 'metals' && 'How to add Precious Metal/Commodity:'}
-                    </div>
-                    <ul style={{ margin: 0, paddingLeft: '18px', color: '#888', fontSize: '12px', lineHeight: '1.6' }}>
-                        {activeTab === 'crypto' && (
-                            <>
-                                <li>Go to <a href="https://livecoinwatch.com" target="_blank" rel="noreferrer" style={{ color: accentColor, textDecoration: 'underline' }}>livecoinwatch.com</a>.</li>
-                                <li>Search for your target coin (e.g. <strong>BNB</strong>, <strong>FET</strong>, <strong>RENDER</strong>).</li>
-                                <li>Copy the bold ticker code and enter it below (e.g. <code>BNB</code>).</li>
-                                <li style={{ color: '#555' }}>Note: System automatically fetches its live icon and rate.</li>
-                            </>
-                        )}
-                        {activeTab === 'forex' && (
-                            <>
-                                <li>Use standard <strong>ISO 4217</strong> 3-letter currency codes.</li>
-                                <li>E.g., <code>SGD</code> (Singapore Dollar), <code>MXN</code> (Mexican Peso), <code>ZAR</code> (South African Rand).</li>
-                                <li>Check codes at <a href="https://xe.com" target="_blank" rel="noreferrer" style={{ color: accentColor, textDecoration: 'underline' }}>xe.com</a> if needed.</li>
-                                <li style={{ color: '#555' }}>Note: Rates are verified against the ExchangeRate API.</li>
-                            </>
-                        )}
-                        {activeTab === 'metals' && (
-                            <>
-                                <li>Enter the symbol and display name separated by <code>|</code>.</li>
-                                <li>Format: <code>SYMBOL|Full Name</code> (e.g. <code>IRON/USD|Iron Ore</code> or <code>TIN/USD|Tin</code>).</li>
-                                <li style={{ color: '#555' }}>Note: Since there is no auto-fetch for custom commodities, you must set their Custom Rates manually.</li>
-                            </>
-                        )}
-                    </ul>
-                </div>
-
-                {/* Add Input section */}
-                <div style={{ marginBottom: '24px' }}>
-                    <label style={labelStyle}>Add New Asset</label>
-                    <div style={{ display: 'grid', gridTemplateColumns: '1fr auto', gap: '10px' }}>
-                        <input
-                            type="text"
-                            value={newCoinCode}
-                            onChange={e => setNewCoinCode(e.target.value)}
-                            onKeyDown={e => e.key === 'Enter' && addCoin()}
-                            placeholder={
-                                activeTab === 'crypto'
-                                    ? "e.g. BNB, FET, RENDER"
-                                    : activeTab === 'forex'
-                                    ? "e.g. SGD, MXN, ZAR"
-                                    : "e.g. IRON/USD|Iron Ore"
-                            }
-                            style={inputStyle}
                         />
-                        <button
-                            onClick={addCoin}
-                            disabled={addingCoin}
-                            style={{ ...actionBtnStyle, background: accentColor, color: '#000', padding: '0 18px' }}
-                        >
-                            {addingCoin ? <Loader2 size={15} className="animate-spin" /> : <><Plus size={14} /> Add</>}
-                        </button>
-                    </div>
-                </div>
+                        {isCustomOn && (
+                            <motion.div
+                                initial={{ opacity: 0, y: -6 }}
+                                animate={{ opacity: 1, y: 0 }}
+                                style={{
+                                    marginTop: '14px',
+                                    padding: '14px 18px',
+                                    background: `linear-gradient(135deg, rgba(${hexToRgb(accentColor)}, 0.08) 0%, rgba(${hexToRgb(accentColor)}, 0.02) 100%)`,
+                                    borderRadius: '12px',
+                                    border: `1px solid rgba(${hexToRgb(accentColor)}, 0.15)`,
+                                    fontSize: '12px', color: '#a0a0ab',
+                                    display: 'flex', alignItems: 'center', gap: '10px',
+                                    boxShadow: `0 4px 20px rgba(${hexToRgb(accentColor)}, 0.05)`,
+                                }}
+                            >
+                                <AlertCircle size={15} color={accentColor} style={{ flexShrink: 0 }} />
+                                <span>API sync is disabled. Even if sync time has passed, only DB custom rates will be shown to clients.</span>
+                            </motion.div>
+                        )}
+                    </SectionCard>
 
-                {/* Added custom assets list */}
-                {(() => {
-                    const currentExtras =
-                        activeTab === 'crypto'
-                            ? (extraCoins.crypto || [])
-                            : activeTab === 'forex'
-                            ? (extraCoins.forex || [])
-                            : (extraCoins.metals || []);
-
-                    if (currentExtras.length === 0) return null;
-
-                    return (
-                        <div style={{ marginBottom: '24px' }}>
-                            <div style={{ fontSize: '11px', color: '#555', marginBottom: '8px', fontWeight: '800', textTransform: 'uppercase', letterSpacing: '0.5px' }}>
-                                Added Custom Assets ({currentExtras.length})
+                    {/* Sync Interval Card */}
+                    <SectionCard title="Sync Interval" accentColor={accentColor} style={{ opacity: isCustomOn ? 0.4 : 1 }}>
+                        <div style={{ display: 'grid', gridTemplateColumns: '1fr auto', gap: '12px', alignItems: 'end' }}>
+                            <div>
+                                <label style={labelStyle}>Sync Every (seconds)</label>
+                                <div style={{ position: 'relative' }}>
+                                    <Clock size={14} color="#666" style={{ position: 'absolute', left: '12px', top: '50%', transform: 'translateY(-50%)' }} />
+                                    <input
+                                        type="number"
+                                        min="60"
+                                        value={localIntervals[activeTab] ?? tabConfig.syncIntervalSeconds}
+                                        onChange={e => setLocalIntervals(prev => ({ ...prev, [activeTab]: e.target.value }))}
+                                        disabled={isCustomOn}
+                                        style={{
+                                            ...inputStyle,
+                                            paddingLeft: '36px',
+                                            fontFamily: 'monospace',
+                                            borderColor: focusedInputId === 'interval' ? accentColor : 'rgba(255,255,255,0.05)',
+                                            boxShadow: focusedInputId === 'interval' ? `0 0 14px rgba(${hexToRgb(accentColor)}, 0.2)` : 'none',
+                                            background: focusedInputId === 'interval' ? 'rgba(0,0,0,0.35)' : 'rgba(0,0,0,0.20)',
+                                        }}
+                                        onFocus={() => setFocusedInputId('interval')}
+                                        onBlur={() => setFocusedInputId(null)}
+                                        placeholder="e.g. 1800"
+                                    />
+                                </div>
+                                <div style={{ fontSize: '11px', color: '#777', marginTop: '8px' }}>
+                                    = <span style={{ color: '#fff', fontWeight: '800' }}>{secondsToHuman(localIntervals[activeTab] || tabConfig.syncIntervalSeconds)}</span>
+                                    &nbsp;|&nbsp; Minimum: 60s
+                                    &nbsp;|&nbsp; Last sync: <span style={{ color: accentColor, fontWeight: '800' }}>{timeAgo(tabConfig.lastSyncedAt)}</span>
+                                </div>
                             </div>
-                            <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
-                                {currentExtras.map(item => {
-                                    const displayLabel = activeTab === 'metals' ? item.split('|')[0] : item;
-                                    const titleTip = activeTab === 'metals' ? item.split('|')[1] : '';
-                                    return (
-                                        <div key={item} title={titleTip} style={{
-                                            display: 'flex', alignItems: 'center', gap: '6px',
-                                            padding: '6px 10px', background: 'rgba(255,255,255,0.04)',
-                                            borderRadius: '8px', border: '1px solid #222',
-                                        }}>
-                                            <span style={{ color: '#fff', fontSize: '13px', fontWeight: '700' }}>
-                                                {displayLabel}
-                                                {titleTip && <span style={{ color: '#555', fontWeight: 'normal', fontSize: '11px', marginLeft: '4px' }}>({titleTip})</span>}
-                                            </span>
-                                            <button
-                                                onClick={() => removeCoin(item)}
-                                                style={{ background: 'none', border: 'none', color: '#ff4d4f', cursor: 'pointer', display: 'flex', padding: '0' }}
-                                            >
-                                                <Trash2 size={12} />
-                                            </button>
-                                        </div>
-                                    );
-                                })}
+                            <motion.button
+                                whileHover={{ scale: 1.03 }}
+                                whileTap={{ scale: 0.97 }}
+                                onClick={() => saveTabConfig(activeTab)}
+                                disabled={saving === activeTab || isCustomOn}
+                                style={{
+                                    ...actionBtnStyle,
+                                    background: isCustomOn ? 'rgba(255,255,255,0.02)' : `linear-gradient(135deg, ${accentColor} 0%, rgba(${hexToRgb(accentColor)}, 0.8) 100%)`,
+                                    color: '#000',
+                                    fontWeight: '800',
+                                    boxShadow: isCustomOn ? 'none' : `0 4px 15px rgba(${hexToRgb(accentColor)}, 0.3)`,
+                                    minWidth: '90px'
+                                }}
+                            >
+                                {saving === activeTab ? <Loader2 size={15} className="animate-spin" /> : <><Save size={14} /> Save</>}
+                            </motion.button>
+                        </div>
+
+                        {/* Force Sync */}
+                        <div style={{
+                            marginTop: '20px',
+                            display: 'flex', justifyContent: 'space-between', alignItems: 'center',
+                            padding: '14px 18px',
+                            background: 'linear-gradient(135deg, rgba(255,255,255,0.02) 0%, rgba(255,255,255,0.005) 100%)',
+                            borderRadius: '12px', border: '1px solid rgba(255,255,255,0.04)',
+                        }}>
+                            <div>
+                                <div style={{ color: '#fff', fontSize: '13px', fontWeight: '800' }}>Force Sync Now</div>
+                                <div style={{ color: '#888', fontSize: '11px', marginTop: '2px' }}>
+                                    Bypass time check — immediately fetch from API &amp; store to DB
+                                </div>
+                            </div>
+                            <motion.button
+                                whileHover={{ scale: 1.03 }}
+                                whileTap={{ scale: 0.97 }}
+                                onClick={() => forceSyncNow(activeTab)}
+                                disabled={syncing === activeTab || isCustomOn}
+                                style={{ ...actionBtnStyle, background: 'rgba(255,255,255,0.04)', color: '#ccc', border: '1px solid rgba(255,255,255,0.08)' }}
+                            >
+                                {syncing === activeTab
+                                    ? <><Loader2 size={14} className="animate-spin" /> Syncing</>
+                                    : <><RefreshCw size={14} /> Sync</>
+                                }
+                            </motion.button>
+                        </div>
+                    </SectionCard>
+
+                    {/* Add Custom Asset Card */}
+                    <SectionCard title="Add Custom Asset" accentColor={accentColor}>
+                        {/* Guidance panel */}
+                        <div style={{
+                            marginBottom: '20px',
+                            padding: '16px',
+                            borderRadius: '14px',
+                            background: 'linear-gradient(135deg, rgba(255,255,255,0.02) 0%, rgba(255,255,255,0.005) 100%)',
+                            border: '1px solid rgba(255,255,255,0.04)',
+                            borderLeft: `3px solid ${accentColor}`,
+                        }}>
+                            <div style={{ color: '#fff', fontSize: '13px', fontWeight: '800', marginBottom: '8px', display: 'flex', alignItems: 'center', gap: '6px' }}>
+                                <AlertCircle size={14} color={accentColor} />
+                                {activeTab === 'crypto' && 'How to add Cryptocurrency:'}
+                                {activeTab === 'forex' && 'How to add Foreign Exchange Currency:'}
+                                {activeTab === 'metals' && 'How to add Precious Metal/Commodity:'}
+                            </div>
+                            <ul style={{ margin: 0, paddingLeft: '18px', color: '#a0a0ab', fontSize: '12px', lineHeight: '1.7' }}>
+                                {activeTab === 'crypto' && (
+                                    <>
+                                        <li>Go to <a href="https://livecoinwatch.com" target="_blank" rel="noreferrer" style={{ color: accentColor, textDecoration: 'underline', fontWeight: '700' }}>livecoinwatch.com</a>.</li>
+                                        <li>Search for your target coin (e.g. <strong>BNB</strong>, <strong>FET</strong>, <strong>RENDER</strong>).</li>
+                                        <li>Copy the bold ticker code and enter it below (e.g. <code>BNB</code>).</li>
+                                        <li style={{ color: '#777' }}>Note: System automatically fetches its live icon and rate.</li>
+                                    </>
+                                )}
+                                {activeTab === 'forex' && (
+                                    <>
+                                        <li>Use standard <strong>ISO 4217</strong> 3-letter currency codes.</li>
+                                        <li>E.g., <code>SGD</code> (Singapore Dollar), <code>MXN</code> (Mexican Peso), <code>ZAR</code> (South African Rand).</li>
+                                        <li>Check codes at <a href="https://xe.com" target="_blank" rel="noreferrer" style={{ color: accentColor, textDecoration: 'underline', fontWeight: '700' }}>xe.com</a> if needed.</li>
+                                        <li style={{ color: '#777' }}>Note: Rates are verified against the ExchangeRate API.</li>
+                                    </>
+                                )}
+                                {activeTab === 'metals' && (
+                                    <>
+                                        <li>Enter the symbol and display name separated by <code>|</code>.</li>
+                                        <li>Format: <code>SYMBOL|Full Name</code> (e.g. <code>LME_COPPER/USD|LME Copper</code> or <code>LBMA_GOLD_AM/USD|LBMA Gold AM</code>).</li>
+                                        <li>You can check supported live metal codes at <a href="https://metals.dev" target="_blank" rel="noreferrer" style={{ color: accentColor, textDecoration: 'underline', fontWeight: '700' }}>metals.dev</a>.</li>
+                                        <li>Valid auto-syncing symbols: <code>gold</code>, <code>silver</code>, <code>platinum</code>, <code>palladium</code>, <code>copper</code>, <code>aluminum</code>, <code>lead</code>, <code>nickel</code>, <code>zinc</code>, <code>lme_copper</code>, <code>lme_aluminum</code>, <code>lme_lead</code>, <code>lme_nickel</code>, <code>lme_zinc</code>, <code>lbma_gold_am</code>, <code>lbma_gold_pm</code>, etc.</li>
+                                        <li style={{ color: '#777' }}>Note: Custom commodities not supported by the API will default to 0.00 until you specify a Custom Rate.</li>
+                                    </>
+                                )}
+                            </ul>
+                        </div>
+
+                        {/* Add Input section */}
+                        <div style={{ marginBottom: '20px' }}>
+                            <label style={labelStyle}>Add New Asset</label>
+                            <div style={{ display: 'grid', gridTemplateColumns: '1fr auto', gap: '10px' }}>
+                                <input
+                                    type="text"
+                                    value={newCoinCode}
+                                    onChange={e => setNewCoinCode(e.target.value)}
+                                    onKeyDown={e => e.key === 'Enter' && addCoin()}
+                                    placeholder={
+                                        activeTab === 'crypto'
+                                            ? "e.g. BNB, FET, RENDER"
+                                            : activeTab === 'forex'
+                                            ? "e.g. SGD, MXN, ZAR"
+                                            : "e.g. IRON/USD|Iron Ore"
+                                    }
+                                    style={{
+                                        ...inputStyle,
+                                        borderColor: focusedInputId === 'add-asset' ? accentColor : 'rgba(255,255,255,0.05)',
+                                        boxShadow: focusedInputId === 'add-asset' ? `0 0 14px rgba(${hexToRgb(accentColor)}, 0.2)` : 'none',
+                                        background: focusedInputId === 'add-asset' ? 'rgba(0,0,0,0.35)' : 'rgba(0,0,0,0.20)',
+                                    }}
+                                    onFocus={() => setFocusedInputId('add-asset')}
+                                    onBlur={() => setFocusedInputId(null)}
+                                />
+                                <motion.button
+                                    whileHover={{ scale: 1.03 }}
+                                    whileTap={{ scale: 0.97 }}
+                                    onClick={addCoin}
+                                    disabled={addingCoin}
+                                    style={{
+                                        ...actionBtnStyle,
+                                        background: `linear-gradient(135deg, ${accentColor} 0%, rgba(${hexToRgb(accentColor)}, 0.8) 100%)`,
+                                        color: '#000',
+                                        fontWeight: '800',
+                                        boxShadow: `0 4px 15px rgba(${hexToRgb(accentColor)}, 0.25)`,
+                                        padding: '0 20px'
+                                    }}
+                                >
+                                    {addingCoin ? <Loader2 size={15} className="animate-spin" /> : <><Plus size={14} /> Add</>}
+                                </motion.button>
                             </div>
                         </div>
-                    );
-                })()}
 
-                {/* Show/Hide Coins */}
-                <div>
-                    <label style={labelStyle}>Show / Hide Assets on Client</label>
-                    <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', maxHeight: '420px', overflowY: 'auto', paddingRight: '4px' }}>
-                        {allCoins.map(coin => {
-                            const isVisible = visibility[coin.id] !== false;
+                        {/* Added custom assets badges list */}
+                        {(() => {
+                            const currentExtras =
+                                activeTab === 'crypto'
+                                    ? (extraCoins.crypto || [])
+                                    : activeTab === 'forex'
+                                    ? (extraCoins.forex || [])
+                                    : (extraCoins.metals || []);
+
+                            if (currentExtras.length === 0) return null;
+
                             return (
-                                <div key={coin.id} style={{
-                                    display: 'flex', justifyContent: 'space-between', alignItems: 'center',
-                                    padding: '12px 14px',
-                                    background: isVisible ? 'rgba(255,255,255,0.02)' : 'rgba(255,77,79,0.04)',
-                                    borderRadius: '12px',
-                                    border: `1px solid ${isVisible ? '#1e1e1e' : 'rgba(255,77,79,0.15)'}`,
-                                }}>
-                                    <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-                                        <img
-                                            src={coin.icon}
-                                            alt={coin.label}
-                                            style={{ width: '28px', height: '28px', borderRadius: '50%', objectFit: 'cover' }}
-                                            onError={e => { e.target.src = 'https://cdn-icons-png.flaticon.com/512/25/25254.png'; }}
-                                        />
-                                        <div>
-                                            <div style={{ color: isVisible ? '#fff' : '#555', fontSize: '13px', fontWeight: '700' }}>{coin.label}</div>
-                                            <div style={{ display: 'flex', gap: '8px', alignItems: 'center', marginTop: '1px' }}>
-                                                <span style={{ fontSize: '10px', color: isVisible ? '#00c087' : '#ff4d4f', fontWeight: '600' }}>
-                                                    {isVisible ? 'Visible to clients' : 'Hidden from clients'}
-                                                </span>
-                                                <span style={{ fontSize: '10px', color: '#555' }}>
-                                                    Rate: <strong style={{ color: '#777' }}>${getLiveRateForCoin(activeTab, coin) || 'N/A'}</strong>
-                                                </span>
-                                            </div>
-                                        </div>
+                                <div>
+                                    <div style={{ fontSize: '11px', color: '#8a8a93', marginBottom: '10px', fontWeight: '800', textTransform: 'uppercase', letterSpacing: '0.8px' }}>
+                                        Added Custom Assets ({currentExtras.length})
                                     </div>
-                                    <button
-                                        onClick={() => toggleVisibility(coin.id)}
-                                        style={{
-                                            display: 'flex', alignItems: 'center', gap: '6px',
-                                            padding: '7px 14px', borderRadius: '8px', border: 'none',
-                                            background: isVisible ? 'rgba(0,192,135,0.1)' : 'rgba(255,77,79,0.1)',
-                                            color: isVisible ? '#00c087' : '#ff4d4f',
-                                            cursor: 'pointer', fontWeight: '700', fontSize: '12px',
-                                        }}
-                                    >
-                                        {isVisible ? <><Eye size={13} /> Show</> : <><EyeOff size={13} /> Hidden</>}
-                                    </button>
+                                    <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
+                                        {currentExtras.map(item => {
+                                            const displayLabel = activeTab === 'metals' ? item.split('|')[0] : item;
+                                            const titleTip = activeTab === 'metals' ? item.split('|')[1] : '';
+                                            return (
+                                                <motion.div
+                                                    key={item}
+                                                    title={titleTip}
+                                                    whileHover={{ scale: 1.03 }}
+                                                    style={{
+                                                        display: 'flex', alignItems: 'center', gap: '8px',
+                                                        padding: '8px 14px',
+                                                        background: 'linear-gradient(135deg, rgba(255,255,255,0.03) 0%, rgba(255,255,255,0.01) 100%)',
+                                                        borderRadius: '12px',
+                                                        border: '1px solid rgba(255,255,255,0.05)',
+                                                        boxShadow: '0 2px 8px rgba(0, 0, 0, 0.15)',
+                                                        transition: 'border-color 0.2s',
+                                                    }}
+                                                    onMouseEnter={e => { e.currentTarget.style.borderColor = `rgba(${hexToRgb(accentColor)}, 0.3)`; }}
+                                                    onMouseLeave={e => { e.currentTarget.style.borderColor = 'rgba(255,255,255,0.05)'; }}
+                                                >
+                                                    <span style={{ color: '#fff', fontSize: '13px', fontWeight: '700' }}>
+                                                        {displayLabel}
+                                                        {titleTip && <span style={{ color: '#777', fontWeight: 'normal', fontSize: '11px', marginLeft: '6px' }}>({titleTip})</span>}
+                                                    </span>
+                                                    <button
+                                                        onClick={() => removeCoin(item)}
+                                                        style={{
+                                                            background: 'none', border: 'none', color: '#ff4d4f',
+                                                            cursor: 'pointer', display: 'flex', padding: '0',
+                                                            opacity: 0.7, transition: 'opacity 0.2s'
+                                                        }}
+                                                        onMouseEnter={e => { e.currentTarget.style.opacity = 1; }}
+                                                        onMouseLeave={e => { e.currentTarget.style.opacity = 0.7; }}
+                                                    >
+                                                        <Trash2 size={13} />
+                                                    </button>
+                                                </motion.div>
+                                            );
+                                        })}
+                                    </div>
                                 </div>
                             );
-                        })}
-                    </div>
+                        })()}
+                    </SectionCard>
                 </div>
-            </SectionCard>
+
+                {/* ── RIGHT COLUMN: Price Customization & Visibility Manager ── */}
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
+                    {/* Custom Rates Editor (Visible only when toggle ON) */}
+                    <AnimatePresence>
+                        {isCustomOn && (
+                            <motion.div
+                                key="custom-rates"
+                                initial={{ opacity: 0, y: 15 }}
+                                animate={{ opacity: 1, y: 0 }}
+                                exit={{ opacity: 0, y: 15 }}
+                                style={{ width: '100%' }}
+                            >
+                                <SectionCard
+                                    title={`Custom Rates (${tabInfo?.label})`}
+                                    accentColor={accentColor}
+                                    headerRight={
+                                        <button
+                                            onClick={() => setExpandRates(p => !p)}
+                                            style={{
+                                                background: 'rgba(255,255,255,0.02)',
+                                                border: '1px solid rgba(255,255,255,0.05)',
+                                                borderRadius: '8px',
+                                                padding: '6px 12px',
+                                                color: '#8a8a93',
+                                                cursor: 'pointer',
+                                                display: 'flex',
+                                                alignItems: 'center',
+                                                gap: '6px',
+                                                fontSize: '12px',
+                                                fontWeight: '700',
+                                                transition: 'all 0.2s'
+                                            }}
+                                            onMouseEnter={e => {
+                                                e.currentTarget.style.background = 'rgba(255,255,255,0.05)';
+                                                e.currentTarget.style.color = '#fff';
+                                            }}
+                                            onMouseLeave={e => {
+                                                e.currentTarget.style.background = 'rgba(255,255,255,0.02)';
+                                                e.currentTarget.style.color = '#8a8a93';
+                                            }}
+                                        >
+                                            {expandRates ? 'Collapse' : 'Expand All'}
+                                            <ChevronDown size={14} style={{ transform: expandRates ? 'rotate(180deg)' : 'none', transition: 'transform 0.2s' }} />
+                                        </button>
+                                    }
+                                >
+                                    <p style={{ fontSize: '12px', color: '#8a8a93', marginBottom: '20px', marginTop: 0, fontWeight: '500' }}>
+                                        Set custom rates for each coin. These will override API data while custom mode is ON.
+                                    </p>
+                                    <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', maxHeight: '420px', overflowY: 'auto', paddingRight: '4px' }}>
+                                        {(expandRates ? allCoins : allCoins.slice(0, 6)).map(coin => {
+                                            const savedRate = customRates[activeTab]?.[coin.id] || '';
+                                            const localRate = localRates[coin.id] !== undefined ? localRates[coin.id] : savedRate;
+                                            const isSaving = saving === coin.id;
+                                            return (
+                                                <div key={coin.id} style={{
+                                                    display: 'grid', gridTemplateColumns: '1fr 140px auto',
+                                                    gap: '12px', alignItems: 'center',
+                                                    padding: '10px 14px',
+                                                    background: 'linear-gradient(135deg, rgba(255,255,255,0.015) 0%, rgba(255,255,255,0.005) 100%)',
+                                                    border: '1px solid rgba(255,255,255,0.03)',
+                                                    borderRadius: '12px',
+                                                    transition: 'border-color 0.2s',
+                                                }}
+                                                onMouseEnter={e => { e.currentTarget.style.borderColor = 'rgba(255,255,255,0.08)'; }}
+                                                onMouseLeave={e => { e.currentTarget.style.borderColor = 'rgba(255,255,255,0.03)'; }}
+                                                >
+                                                    <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                                                        <div style={{ position: 'relative', display: 'flex' }}>
+                                                            <img
+                                                                src={coin.icon}
+                                                                alt={coin.label}
+                                                                style={{ width: '28px', height: '28px', borderRadius: '50%', objectFit: 'cover', border: '1px solid rgba(255,255,255,0.08)' }}
+                                                                onError={e => { e.target.src = 'https://cdn-icons-png.flaticon.com/512/25/25254.png'; }}
+                                                            />
+                                                        </div>
+                                                        <div>
+                                                            <div style={{ color: '#fff', fontSize: '13px', fontWeight: '800' }}>{coin.label}</div>
+                                                            <div style={{ display: 'flex', gap: '8px', fontSize: '10px', marginTop: '3px', flexWrap: 'wrap', alignItems: 'center' }}>
+                                                                {savedRate && (
+                                                                    <span style={{
+                                                                        padding: '2px 6px',
+                                                                        borderRadius: '4px',
+                                                                        background: `rgba(${hexToRgb(accentColor)}, 0.1)`,
+                                                                        border: `1px solid rgba(${hexToRgb(accentColor)}, 0.15)`,
+                                                                        color: accentColor,
+                                                                        fontWeight: '700'
+                                                                    }}>
+                                                                        Saved: {savedRate}
+                                                                    </span>
+                                                                )}
+                                                                <span style={{ color: '#666', fontWeight: '500' }}>
+                                                                    API: <strong style={{ color: '#aaa' }}>${getLiveRateForCoin(activeTab, coin) || 'N/A'}</strong>
+                                                                </span>
+                                                            </div>
+                                                        </div>
+                                                    </div>
+                                                    <div style={{ position: 'relative' }}>
+                                                        <DollarSign size={11} color="#666" style={{ position: 'absolute', left: '10px', top: '50%', transform: 'translateY(-50%)' }} />
+                                                        <input
+                                                            type="number"
+                                                            step="any"
+                                                            value={localRate}
+                                                            onChange={e => setLocalRates(prev => ({ ...prev, [coin.id]: e.target.value }))}
+                                                            placeholder="0.00"
+                                                            style={{
+                                                                ...inputStyle,
+                                                                paddingLeft: '24px',
+                                                                fontSize: '13px',
+                                                                height: '38px',
+                                                                borderColor: focusedInputId === coin.id ? accentColor : 'rgba(255,255,255,0.05)',
+                                                                boxShadow: focusedInputId === coin.id ? `0 0 10px rgba(${hexToRgb(accentColor)}, 0.15)` : 'none',
+                                                                background: focusedInputId === coin.id ? 'rgba(0,0,0,0.35)' : 'rgba(0,0,0,0.20)',
+                                                            }}
+                                                            onFocus={() => setFocusedInputId(coin.id)}
+                                                            onBlur={() => setFocusedInputId(null)}
+                                                        />
+                                                    </div>
+                                                    <motion.button
+                                                        whileHover={{ scale: 1.05 }}
+                                                        whileTap={{ scale: 0.95 }}
+                                                        onClick={() => saveCustomRate(activeTab, coin.id)}
+                                                        disabled={isSaving}
+                                                        style={{
+                                                            ...actionBtnStyle,
+                                                            background: `linear-gradient(135deg, rgba(${hexToRgb(accentColor)}, 0.15) 0%, rgba(${hexToRgb(accentColor)}, 0.05) 100%)`,
+                                                            border: `1px solid rgba(${hexToRgb(accentColor)}, 0.25)`,
+                                                            color: accentColor,
+                                                            height: '38px',
+                                                            padding: '0 14px',
+                                                            boxShadow: `0 2px 8px rgba(${hexToRgb(accentColor)}, 0.08)`
+                                                        }}
+                                                    >
+                                                        {isSaving ? <Loader2 size={13} className="animate-spin" /> : <Save size={13} />}
+                                                    </motion.button>
+                                                </div>
+                                            );
+                                        })}
+                                        {!expandRates && allCoins.length > 6 && (
+                                            <button
+                                                onClick={() => setExpandRates(true)}
+                                                style={{
+                                                    background: 'rgba(255,255,255,0.01)',
+                                                    border: '1px dashed rgba(255,255,255,0.08)',
+                                                    borderRadius: '12px',
+                                                    padding: '12px',
+                                                    color: '#8a8a93',
+                                                    cursor: 'pointer',
+                                                    fontSize: '12px',
+                                                    fontWeight: '700',
+                                                    transition: 'all 0.2s'
+                                                }}
+                                                onMouseEnter={e => {
+                                                    e.currentTarget.style.borderColor = `rgba(${hexToRgb(accentColor)}, 0.3)`;
+                                                    e.currentTarget.style.color = '#fff';
+                                                    e.currentTarget.style.background = 'rgba(255,255,255,0.02)';
+                                                }}
+                                                onMouseLeave={e => {
+                                                    e.currentTarget.style.borderColor = 'rgba(255,255,255,0.08)';
+                                                    e.currentTarget.style.color = '#8a8a93';
+                                                    e.currentTarget.style.background = 'rgba(255,255,255,0.01)';
+                                                }}
+                                            >
+                                                + Show {allCoins.length - 6} more coins
+                                            </button>
+                                        )}
+                                    </div>
+                                </SectionCard>
+                            </motion.div>
+                        )}
+                    </AnimatePresence>
+
+                    {/* Assets Visibility Manager */}
+                    <SectionCard title="Assets Visibility" accentColor={accentColor}>
+                        <label style={labelStyle}>Show / Hide Assets on Client</label>
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', maxHeight: '550px', overflowY: 'auto', paddingRight: '4px' }}>
+                            {allCoins.map(coin => {
+                                const isVisible = visibility[coin.id] !== false;
+                                return (
+                                    <div key={coin.id} style={{
+                                        display: 'flex', justifyContent: 'space-between', alignItems: 'center',
+                                        padding: '14px 18px',
+                                        background: isVisible 
+                                            ? 'linear-gradient(135deg, rgba(255,255,255,0.015) 0%, rgba(255,255,255,0.005) 100%)' 
+                                            : 'linear-gradient(135deg, rgba(255, 77, 79, 0.03) 0%, rgba(255, 77, 79, 0.008) 100%)',
+                                        borderRadius: '14px',
+                                        border: `1px solid ${isVisible ? 'rgba(255,255,255,0.03)' : 'rgba(255, 77, 79, 0.12)'}`,
+                                        transition: 'border-color 0.2s',
+                                    }}
+                                    onMouseEnter={e => { e.currentTarget.style.borderColor = isVisible ? 'rgba(255,255,255,0.08)' : 'rgba(255, 77, 79, 0.2)'; }}
+                                    onMouseLeave={e => { e.currentTarget.style.borderColor = isVisible ? 'rgba(255,255,255,0.03)' : 'rgba(255, 77, 79, 0.12)'; }}
+                                    >
+                                        <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                                            <img
+                                                src={coin.icon}
+                                                alt={coin.label}
+                                                style={{ width: '32px', height: '32px', borderRadius: '50%', objectFit: 'cover', border: '1px solid rgba(255,255,255,0.08)' }}
+                                                onError={e => { e.target.src = 'https://cdn-icons-png.flaticon.com/512/25/25254.png'; }}
+                                            />
+                                            <div>
+                                                <div style={{ color: isVisible ? '#fff' : '#666', fontSize: '13px', fontWeight: '800' }}>{coin.label}</div>
+                                                <div style={{ display: 'flex', gap: '8px', alignItems: 'center', marginTop: '3px' }}>
+                                                    <span style={{
+                                                        fontSize: '10px',
+                                                        color: isVisible ? '#00c087' : '#ff4d4f',
+                                                        fontWeight: '700',
+                                                        background: isVisible ? 'rgba(0,192,135,0.08)' : 'rgba(255,77,79,0.08)',
+                                                        padding: '1px 6px',
+                                                        borderRadius: '4px',
+                                                        border: `1px solid ${isVisible ? 'rgba(0,192,135,0.12)' : 'rgba(255,77,79,0.12)'}`
+                                                    }}>
+                                                        {isVisible ? 'Visible to clients' : 'Hidden from clients'}
+                                                    </span>
+                                                    <span style={{ fontSize: '10px', color: '#555', fontWeight: '500' }}>
+                                                        Rate: <strong style={{ color: '#aaa' }}>${getLiveRateForCoin(activeTab, coin) || 'N/A'}</strong>
+                                                    </span>
+                                                </div>
+                                            </div>
+                                        </div>
+                                        <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                                            <motion.button
+                                                whileHover={{ scale: 1.03 }}
+                                                whileTap={{ scale: 0.97 }}
+                                                onClick={() => toggleVisibility(coin.id)}
+                                                style={{
+                                                    display: 'flex', alignItems: 'center', gap: '6px',
+                                                    padding: '8px 16px', borderRadius: '10px',
+                                                    background: isVisible 
+                                                        ? 'linear-gradient(135deg, rgba(0, 192, 135, 0.15) 0%, rgba(0, 192, 135, 0.05) 100%)'
+                                                        : 'linear-gradient(135deg, rgba(255, 77, 79, 0.15) 0%, rgba(255, 77, 79, 0.05) 100%)',
+                                                    border: `1px solid ${isVisible ? 'rgba(0, 192, 135, 0.25)' : 'rgba(255, 77, 79, 0.25)'}`,
+                                                    color: isVisible ? '#00c087' : '#ff4d4f',
+                                                    cursor: 'pointer', fontWeight: '800', fontSize: '12px',
+                                                    boxShadow: `0 2px 8px ${isVisible ? 'rgba(0, 192, 135, 0.05)' : 'rgba(255, 77, 79, 0.05)'}`,
+                                                }}
+                                            >
+                                                {isVisible ? <Eye size={14} /> : <EyeOff size={14} />}
+                                                <span>{isVisible ? 'Show' : 'Hide'}</span>
+                                            </motion.button>
+
+                                            <motion.button
+                                                whileHover={{ scale: 1.05 }}
+                                                whileTap={{ scale: 0.95 }}
+                                                onClick={() => removeCoin(coin)}
+                                                style={{
+                                                    display: 'flex', alignItems: 'center', justifyContent: 'center',
+                                                    width: '34px', height: '34px', borderRadius: '10px',
+                                                    background: 'linear-gradient(135deg, rgba(255, 77, 79, 0.15) 0%, rgba(255, 77, 79, 0.05) 100%)',
+                                                    border: '1px solid rgba(255, 77, 79, 0.25)',
+                                                    color: '#ff4d4f',
+                                                    cursor: 'pointer',
+                                                    boxShadow: '0 2px 8px rgba(255, 77, 79, 0.05)',
+                                                }}
+                                                title="Delete asset"
+                                            >
+                                                <Trash2 size={14} />
+                                            </motion.button>
+                                        </div>
+                                    </div>
+                                );
+                            })}
+                        </div>
+
+                        {/* Deleted Default Assets restore section */}
+                        {extraCoins.deletedCoins && extraCoins.deletedCoins.length > 0 && (
+                            <div style={{ marginTop: '20px', paddingTop: '16px', borderTop: '1px solid rgba(255,255,255,0.05)' }}>
+                                <div style={{ fontSize: '11px', color: '#777', marginBottom: '10px', fontWeight: '800', textTransform: 'uppercase', letterSpacing: '0.8px' }}>
+                                    Deleted Default Assets ({extraCoins.deletedCoins.length})
+                                </div>
+                                <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                                    {extraCoins.deletedCoins.map(coinId => {
+                                        const allDefaultFlat = [...DEFAULT_COINS.crypto, ...DEFAULT_COINS.forex, ...DEFAULT_COINS.metals];
+                                        const found = allDefaultFlat.find(c => c.id === coinId);
+                                        const label = found ? found.label : coinId;
+                                        return (
+                                            <div key={coinId} style={{
+                                                display: 'flex', justifyContent: 'space-between', alignItems: 'center',
+                                                padding: '8px 12px', background: 'rgba(255,77,79,0.02)',
+                                                borderRadius: '10px', border: '1px dashed rgba(255,77,79,0.15)'
+                                            }}>
+                                                <span style={{ color: '#888', fontSize: '13px', fontWeight: '700' }}>{label}</span>
+                                                <motion.button
+                                                    whileHover={{ scale: 1.03 }}
+                                                    whileTap={{ scale: 0.97 }}
+                                                    onClick={() => restoreCoin(coinId)}
+                                                    style={{
+                                                        padding: '6px 12px', borderRadius: '8px', border: 'none',
+                                                        background: `linear-gradient(135deg, rgba(${hexToRgb(accentColor)}, 0.15) 0%, rgba(${hexToRgb(accentColor)}, 0.05) 100%)`,
+                                                        color: accentColor, fontWeight: '800', fontSize: '11px', cursor: 'pointer'
+                                                    }}
+                                                >
+                                                    Restore
+                                                </motion.button>
+                                            </div>
+                                        );
+                                    })}
+                                </div>
+                            </div>
+                        )}
+                    </SectionCard>
+                </div>
+            </div>
 
             {/* Toast */}
             <AnimatePresence>
                 {toast && (
                     <motion.div
                         key="toast"
-                        initial={{ y: 60, opacity: 0 }}
-                        animate={{ y: 0, opacity: 1 }}
-                        exit={{ y: 60, opacity: 0 }}
+                        initial={{ y: 60, opacity: 0, x: '-50%' }}
+                        animate={{ y: 0, opacity: 1, x: '-50%' }}
+                        exit={{ y: 60, opacity: 0, x: '-50%' }}
                         style={{
-                            position: 'fixed', bottom: '80px', left: '50%', transform: 'translateX(-50%)',
-                            background: toast.type === 'success' ? '#00c087' : '#ff4d4f',
-                            color: '#fff', padding: '12px 22px', borderRadius: '30px',
-                            fontWeight: '700', fontSize: '13px',
-                            display: 'flex', alignItems: 'center', gap: '8px',
-                            boxShadow: '0 4px 20px rgba(0,0,0,0.4)',
+                            position: 'fixed', bottom: '80px', left: '50%',
+                            background: toast.type === 'success' 
+                                ? 'linear-gradient(135deg, rgba(0, 192, 135, 0.9) 0%, rgba(0, 160, 110, 0.9) 100%)' 
+                                : 'linear-gradient(135deg, rgba(255, 77, 79, 0.9) 0%, rgba(230, 50, 50, 0.9) 100%)',
+                            border: `1px solid ${toast.type === 'success' ? 'rgba(0, 192, 135, 0.2)' : 'rgba(255, 77, 79, 0.2)'}`,
+                            color: '#fff', padding: '14px 24px', borderRadius: '30px',
+                            fontWeight: '800', fontSize: '13px',
+                            display: 'flex', alignItems: 'center', gap: '10px',
+                            boxShadow: '0 8px 32px rgba(0,0,0,0.5)',
+                            backdropFilter: 'blur(8px)',
                             zIndex: 9999, whiteSpace: 'nowrap',
                         }}
                     >
@@ -947,53 +1369,80 @@ const AdminCoinsSettings = () => {
 // ─── Section Card Wrapper ──────────────────────────────────────────────────
 const SectionCard = ({ title, children, accentColor = '#00c087', style = {}, headerRight }) => (
     <div style={{
-        background: 'rgba(255,255,255,0.02)',
-        border: '1px solid #1a1a1a',
-        borderRadius: '18px',
-        padding: '22px',
-        marginBottom: '18px',
+        background: 'linear-gradient(135deg, rgba(20, 20, 20, 0.4) 0%, rgba(10, 10, 10, 0.2) 100%)',
+        border: '1px solid rgba(255, 255, 255, 0.04)',
+        borderTop: `3px solid ${accentColor}`,
+        borderRadius: '20px',
+        padding: '24px',
+        backdropFilter: 'blur(12px)',
+        boxShadow: '0 8px 32px rgba(0,0,0,0.3)',
+        marginBottom: '20px',
+        transition: 'all 0.3s ease',
+        position: 'relative',
+        overflow: 'hidden',
         ...style,
     }}>
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '18px' }}>
+        {/* Subtle backing glow */}
+        <div style={{
+            position: 'absolute',
+            top: '-50px',
+            right: '-50px',
+            width: '100px',
+            height: '100px',
+            borderRadius: '50%',
+            background: accentColor,
+            filter: 'blur(50px)',
+            opacity: 0.08,
+            pointerEvents: 'none',
+        }} />
+        
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px', position: 'relative', zIndex: 1 }}>
             <h3 style={{
-                color: accentColor,
-                fontSize: '13px', fontWeight: '900',
+                color: '#fff',
+                fontSize: '14px', fontWeight: '800',
                 textTransform: 'uppercase', letterSpacing: '0.8px',
                 margin: 0,
+                display: 'flex',
+                alignItems: 'center',
+                gap: '8px'
             }}>
+                <span style={{ width: '6px', height: '6px', borderRadius: '50%', background: accentColor }} />
                 {title}
             </h3>
             {headerRight}
         </div>
-        {children}
+        <div style={{ position: 'relative', zIndex: 1 }}>
+            {children}
+        </div>
     </div>
 );
 
 // ─── Styles ────────────────────────────────────────────────────────────────
 const inputStyle = {
     width: '100%',
-    padding: '11px 14px',
-    backgroundColor: '#111',
-    border: '1px solid #222',
-    borderRadius: '10px',
+    padding: '12px 16px',
+    backgroundColor: 'rgba(0, 0, 0, 0.2)',
+    border: '1px solid rgba(255, 255, 255, 0.05)',
+    borderRadius: '12px',
     color: '#fff',
     outline: 'none',
     fontSize: '14px',
     boxSizing: 'border-box',
+    transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
 };
 
 const labelStyle = {
     display: 'block',
-    fontSize: '11px', color: '#555',
+    fontSize: '11px', color: '#8a8a93',
     fontWeight: '800', textTransform: 'uppercase',
-    marginBottom: '8px', letterSpacing: '0.5px',
+    marginBottom: '8px', letterSpacing: '0.8px',
 };
 
 const actionBtnStyle = {
     display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px',
-    padding: '10px 16px', border: 'none', borderRadius: '10px',
+    padding: '10px 18px', border: 'none', borderRadius: '12px',
     fontWeight: '700', fontSize: '13px', cursor: 'pointer',
-    transition: 'all 0.2s ease', whiteSpace: 'nowrap',
+    transition: 'all 0.25s cubic-bezier(0.4, 0, 0.2, 1)', whiteSpace: 'nowrap',
 };
 
 export default AdminCoinsSettings;

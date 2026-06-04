@@ -21,7 +21,7 @@ const AdminSignals = () => {
     const ALL_SYMBOLS = [
         'BTC/USDT', 'ETH/USDT', 'SOL/USDT', 'XRP/USDT',
         'EUR/USD', 'GBP/USD', 'USD/JPY', 'AUD/USD',
-        'XAU/USD', 'XAG/USD', 'WTI/USD', 'BRENT/USD', 'XPT/USD'
+        'XAU/USD', 'XAG/USD', 'XPT/USD'
     ];
 
     // affectedUsers is an object: { userId: { payoutRate, winRate, name, email } }
