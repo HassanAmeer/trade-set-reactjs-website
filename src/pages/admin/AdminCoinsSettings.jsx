@@ -5,7 +5,8 @@ import { motion, AnimatePresence } from 'framer-motion';
 import {
     RefreshCw, Save, Loader2, ToggleLeft, ToggleRight,
     Clock, DollarSign, Eye, EyeOff, Plus, Trash2,
-    CheckCircle2, AlertCircle, Bitcoin, TrendingUp, Gem, ChevronDown
+    CheckCircle2, AlertCircle, Bitcoin, TrendingUp, Gem, ChevronDown,
+    Pencil, X
 } from 'lucide-react';
 
 // ─── Constants ────────────────────────────────────────────────────────────────
@@ -140,7 +141,16 @@ const AdminCoinsSettings = () => {
     const [config, setConfig]                 = useState(DEFAULT_CONFIG);
     const [customRates, setCustomRates]       = useState({ crypto: {}, forex: {}, metals: {} });
     const [visibility, setVisibility]         = useState({});
-    const [extraCoins, setExtraCoins]         = useState({ crypto: [], forex: [], metals: [] });
+    const [extraCoins, setExtraCoins]         = useState({
+        crypto: [],
+        forex: [],
+        metals: [],
+        deletedCoins: {
+            crypto: [],
+            forex: [],
+            metals: [],
+        }
+    });
     const [liveRates, setLiveRates]           = useState({ crypto: [], forex: {}, metals: {} });
     const [loading, setLoading]               = useState(true);
     const [saving, setSaving]                 = useState('');
@@ -152,6 +162,9 @@ const AdminCoinsSettings = () => {
     const [localRates, setLocalRates]         = useState({});
     const [expandRates, setExpandRates]       = useState(false);
     const [focusedInputId, setFocusedInputId] = useState(null);
+    const [customNames, setCustomNames]       = useState({ crypto: {}, forex: {}, metals: {} });
+    const [editingNameId, setEditingNameId]   = useState(null);
+    const [tempName, setTempName]             = useState('');
 
     const tabInfo = TABS.find(t => t.id === activeTab);
     const accentColor = tabInfo?.color || '#00c087';
@@ -160,11 +173,18 @@ const AdminCoinsSettings = () => {
     const fetchAll = useCallback(async () => {
         setLoading(true);
         try {
-            const [cfgSnap, ratesSnap, visSnap, listSnap, cryptoRatesSnap, forexRatesSnap, metalsRatesSnap] = await Promise.all([
+            const [
+                cfgSnap, ratesSnap, visSnap, listSnap,
+                cryptoListSnap, forexListSnap, metalsListSnap,
+                cryptoRatesSnap, forexRatesSnap, metalsRatesSnap
+            ] = await Promise.all([
                 getDoc(doc(db, 'admin_set', 'coins_config')),
                 getDoc(doc(db, 'admin_set', 'coins_custom_rates')),
                 getDoc(doc(db, 'admin_set', 'coins_visibility')),
                 getDoc(doc(db, 'admin_set', 'coins_list')),
+                getDoc(doc(db, 'coins_list_crypto', 'latest')),
+                getDoc(doc(db, 'coins_list_forex', 'latest')),
+                getDoc(doc(db, 'coins_list_metals', 'latest')),
                 getDoc(doc(db, 'coins_rates_crypto', 'latest')),
                 getDoc(doc(db, 'coins_rates_forex', 'latest')),
                 getDoc(doc(db, 'coins_rates_metals', 'latest')),
@@ -188,21 +208,92 @@ const AdminCoinsSettings = () => {
 
             const mergedRates = {
                 crypto: cryptoRatesSnap.exists() ? cryptoRatesSnap.data().rates : [],
-                forex: forexRatesSnap.exists() ? forexRatesSnap.data().rates : {},
+                forex: forexRatesSnap.exists() ? forexRatesSnap.data() : {},
                 metals: metalsRatesSnap.exists() ? metalsRatesSnap.data().rates : {},
             };
             setLiveRates(mergedRates);
-            if (listSnap.exists()) {
-                const d = listSnap.data();
-                setExtraCoins({
-                    crypto: d.crypto || d.extraCoins || [],
-                    forex: d.forex || [],
-                    metals: d.metals || [],
-                    deletedCoins: d.deletedCoins || [],
-                });
-            } else {
-                setExtraCoins({ crypto: [], forex: [], metals: [], deletedCoins: [] });
+
+            let finalExtraCoins = {
+                crypto: [],
+                forex: [],
+                metals: [],
+                deletedCoins: {
+                    crypto: [],
+                    forex: [],
+                    metals: [],
+                }
+            };
+
+            const hasNewLists = cryptoListSnap.exists() || forexListSnap.exists() || metalsListSnap.exists();
+            const loadedCustomNames = { crypto: {}, forex: {}, metals: {} };
+
+            if (hasNewLists) {
+                if (cryptoListSnap.exists()) {
+                    const d = cryptoListSnap.data();
+                    finalExtraCoins.crypto = d.crypto || [];
+                    finalExtraCoins.deletedCoins.crypto = d.deletedCoins || [];
+                    loadedCustomNames.crypto = d.customNames || {};
+                }
+                if (forexListSnap.exists()) {
+                    const d = forexListSnap.data();
+                    finalExtraCoins.forex = d.forex || [];
+                    finalExtraCoins.deletedCoins.forex = d.deletedCoins || [];
+                    loadedCustomNames.forex = d.customNames || {};
+                }
+                if (metalsListSnap.exists()) {
+                    const d = metalsListSnap.data();
+                    finalExtraCoins.metals = d.metals || [];
+                    finalExtraCoins.deletedCoins.metals = d.deletedCoins || [];
+                    loadedCustomNames.metals = d.customNames || {};
+                }
+            } else if (listSnap.exists()) {
+                // Perform silent database migration
+                console.log('[Migration] Migrating legacy coins_list to separate collection documents...');
+                const legacy = listSnap.data();
+                const legacyCrypto = legacy.crypto || legacy.extraCoins || [];
+                const legacyForex = legacy.forex || [];
+                const legacyMetals = legacy.metals || [];
+                const legacyDeleted = legacy.deletedCoins || [];
+
+                const splitDeletedCrypto = legacyDeleted.filter(id => !id.startsWith('fx-') && !id.startsWith('metal-'));
+                const splitDeletedForex = legacyDeleted.filter(id => id.startsWith('fx-'));
+                const splitDeletedMetals = legacyDeleted.filter(id => id.startsWith('metal-'));
+
+                finalExtraCoins = {
+                    crypto: legacyCrypto,
+                    forex: legacyForex,
+                    metals: legacyMetals,
+                    deletedCoins: {
+                        crypto: splitDeletedCrypto,
+                        forex: splitDeletedForex,
+                        metals: splitDeletedMetals,
+                    }
+                };
+
+                // Write migrated documents to database in background
+                try {
+                    await Promise.all([
+                        setDoc(doc(db, 'coins_list_crypto', 'latest'), {
+                            crypto: legacyCrypto,
+                            deletedCoins: splitDeletedCrypto,
+                        }),
+                        setDoc(doc(db, 'coins_list_forex', 'latest'), {
+                            forex: legacyForex,
+                            deletedCoins: splitDeletedForex,
+                        }),
+                        setDoc(doc(db, 'coins_list_metals', 'latest'), {
+                            metals: legacyMetals,
+                            deletedCoins: splitDeletedMetals,
+                        }),
+                    ]);
+                    console.log('[Migration] Migration successful.');
+                } catch (migrationError) {
+                    console.error('[Migration] Failed to save migrated documents:', migrationError);
+                }
             }
+
+            setExtraCoins(finalExtraCoins);
+            setCustomNames(loadedCustomNames);
         } catch (err) {
             showToast('error', 'Failed to load settings: ' + err.message);
         } finally {
@@ -297,6 +388,7 @@ const AdminCoinsSettings = () => {
                 });
                 if (!res.ok) throw new Error('LiveCoinWatch API error: ' + res.status);
                 const rawData = await res.json();
+                console.log('[AdminCoins][Crypto] API response fetched from LiveCoinWatch:', rawData);
                 freshData = rawData.map(item => {
                     let rawName = item.code;
                     if (rawName === '_SUI') rawName = 'SUI';
@@ -324,42 +416,54 @@ const AdminCoinsSettings = () => {
                         isLive: true
                     };
                 });
-            } else if (tab === 'forex') {
-                const res = await fetch('https://api.exchangerate-api.com/v4/latest/USD');
-                if (!res.ok) throw new Error('ExchangeRate API error');
-                freshData = await res.json();
-            } else if (tab === 'metals') {
+            } else if (tab === 'forex' || tab === 'metals') {
                 const url = 'https://api.metals.dev/v1/latest?api_key=DCU40FCSUKCJAJ3WJVJI9823WJVJI&currency=USD&unit=toz';
                 const res = await fetch(url, {
                     headers: { 'Accept': 'application/json' }
                 });
                 if (!res.ok) throw new Error(`Metals.dev API error: ${res.status}`);
                 const result = await res.json();
-                if (result.status === 'success' && result.metals) {
-                    freshData = result.metals;
+                console.log('[AdminCoins][Forex/Metals] API response fetched from metals.dev:', result);
+                if (result.status === 'success') {
+                    let updatedForex = null;
+                    let updatedMetals = null;
+
+                    if (result.currencies) {
+                        updatedForex = {
+                            provider: 'metals.dev',
+                            rates: result.currencies,
+                            syncedAt: now,
+                        };
+                        await setDoc(doc(db, 'coins_rates_forex', 'latest'), updatedForex);
+                    }
+
+                    if (result.metals) {
+                        updatedMetals = result.metals;
+                        await setDoc(doc(db, 'coins_rates_metals', 'latest'), {
+                            rates: updatedMetals,
+                            syncedAt: now,
+                        });
+                    }
+
+                    setLiveRates(prev => ({
+                        ...prev,
+                        ...(updatedForex ? { forex: updatedForex } : {}),
+                        ...(updatedMetals ? { metals: updatedMetals } : {}),
+                    }));
+
+                    const newCfg = {
+                        ...config,
+                        forex: { ...config.forex, lastSyncedAt: now },
+                        metals: { ...config.metals, lastSyncedAt: now },
+                    };
+                    await setDoc(doc(db, 'admin_set', 'coins_config'), newCfg);
+                    setConfig(newCfg);
+
+                    showToast('success', `Forex and Metals synced successfully!`);
                 } else {
-                    throw new Error('Metals.dev API returned success: false or invalid structure');
+                    throw new Error('Metals.dev API returned invalid structure');
                 }
             }
-
-            // Store to DB
-            const collectionName = `coins_rates_${tab}`;
-            await setDoc(doc(db, collectionName, 'latest'), {
-                rates: freshData,
-                syncedAt: now,
-            });
-
-            setLiveRates(prev => ({
-                ...prev,
-                [tab]: freshData,
-            }));
-
-            // Update lastSyncedAt in config
-            const newCfg = { ...config, [tab]: { ...config[tab], lastSyncedAt: now } };
-            await setDoc(doc(db, 'admin_set', 'coins_config'), newCfg);
-            setConfig(newCfg);
-
-            showToast('success', `${tabInfo?.label} synced successfully!`);
         } catch (err) {
             showToast('error', 'Sync failed: ' + err.message);
         } finally {
@@ -404,13 +508,15 @@ const AdminCoinsSettings = () => {
                     throw new Error(`Coin "${code}" not found on LiveCoinWatch.`);
                 }
                 const updatedCrypto = [...(extraCoins.crypto || []), code];
-                const updatedList = {
-                    ...extraCoins,
+                const newDocData = {
                     crypto: updatedCrypto,
-                    extraCoins: updatedCrypto, // backward compatibility
+                    deletedCoins: extraCoins.deletedCoins.crypto || [],
                 };
-                await setDoc(doc(db, 'admin_set', 'coins_list'), updatedList);
-                setExtraCoins(updatedList);
+                await setDoc(doc(db, 'coins_list_crypto', 'latest'), newDocData);
+                setExtraCoins(prev => ({
+                    ...prev,
+                    crypto: updatedCrypto,
+                }));
                 setNewCoinCode('');
                 showToast('success', `${code} added successfully!`);
             } else if (activeTab === 'forex') {
@@ -421,20 +527,25 @@ const AdminCoinsSettings = () => {
                 if (code.length !== 3) {
                     return showToast('error', 'Forex code must be a 3-letter ISO code');
                 }
-                // Verify with ExchangeRate API
-                const res = await fetch('https://api.exchangerate-api.com/v4/latest/USD');
-                if (!res.ok) throw new Error('Failed to verify with ExchangeRate API');
+                // Verify with metals.dev API
+                const url = 'https://api.metals.dev/v1/latest?api_key=DCU40FCSUKCJAJ3WJVJI9823WJVJI&currency=USD&unit=toz';
+                const res = await fetch(url);
+                if (!res.ok) throw new Error('Failed to verify currency code with Metals API');
                 const data = await res.json();
-                if (!data.rates || !data.rates[code]) {
+                console.log('[AdminCoins][AddCoin Verification] API response fetched from metals.dev:', data);
+                if (data.status !== 'success' || !data.currencies || !data.currencies[code]) {
                     throw new Error(`Currency code "${code}" not supported by API.`);
                 }
                 const updatedForex = [...(extraCoins.forex || []), code];
-                const updatedList = {
-                    ...extraCoins,
+                const newDocData = {
                     forex: updatedForex,
+                    deletedCoins: extraCoins.deletedCoins.forex || [],
                 };
-                await setDoc(doc(db, 'admin_set', 'coins_list'), updatedList);
-                setExtraCoins(updatedList);
+                await setDoc(doc(db, 'coins_list_forex', 'latest'), newDocData);
+                setExtraCoins(prev => ({
+                    ...prev,
+                    forex: updatedForex,
+                }));
                 setNewCoinCode('');
                 showToast('success', `${code} added successfully!`);
             } else if (activeTab === 'metals') {
@@ -452,12 +563,15 @@ const AdminCoinsSettings = () => {
                     return showToast('error', 'Metal already added');
                 }
                 const updatedMetals = [...(extraCoins.metals || []), formatVal];
-                const updatedList = {
-                    ...extraCoins,
+                const newDocData = {
                     metals: updatedMetals,
+                    deletedCoins: extraCoins.deletedCoins.metals || [],
                 };
-                await setDoc(doc(db, 'admin_set', 'coins_list'), updatedList);
-                setExtraCoins(updatedList);
+                await setDoc(doc(db, 'coins_list_metals', 'latest'), newDocData);
+                setExtraCoins(prev => ({
+                    ...prev,
+                    metals: updatedMetals,
+                }));
                 setNewCoinCode('');
                 showToast('success', `${symbol} added successfully!`);
             }
@@ -470,10 +584,6 @@ const AdminCoinsSettings = () => {
 
     // ─── Remove/Delete coin ────────────────────────────────────────────────
     const removeCoin = async (itemToRemoveOrCoin) => {
-        let updatedList = { ...extraCoins };
-        const deletedList = extraCoins.deletedCoins || [];
-
-        // Check if the argument is a default coin object or its ID
         const isDefaultObject = typeof itemToRemoveOrCoin === 'object' && itemToRemoveOrCoin !== null && !itemToRemoveOrCoin.isExtra;
         const isDefaultId = typeof itemToRemoveOrCoin === 'string' && (
             itemToRemoveOrCoin.endsWith('USDT') || 
@@ -481,10 +591,13 @@ const AdminCoinsSettings = () => {
             itemToRemoveOrCoin.startsWith('metal-')
         ) && !itemToRemoveOrCoin.includes('|'); // metals extra coins contain '|'
 
+        let updatedTabExtra = [...(extraCoins[activeTab] || [])];
+        let updatedTabDeleted = [...(extraCoins.deletedCoins[activeTab] || [])];
+
         if (isDefaultObject || isDefaultId) {
             const coinId = isDefaultObject ? itemToRemoveOrCoin.id : itemToRemoveOrCoin;
-            if (!deletedList.includes(coinId)) {
-                updatedList.deletedCoins = [...deletedList, coinId];
+            if (!updatedTabDeleted.includes(coinId)) {
+                updatedTabDeleted = [...updatedTabDeleted, coinId];
             }
         } else {
             // It is an extra/custom coin identifier string
@@ -492,20 +605,26 @@ const AdminCoinsSettings = () => {
                 ? (activeTab === 'metals' ? itemToRemoveOrCoin.rawString : itemToRemoveOrCoin.code)
                 : itemToRemoveOrCoin;
 
-            if (activeTab === 'crypto') {
-                const updatedCrypto = (extraCoins.crypto || []).filter(c => c !== stringIdentifier);
-                updatedList.crypto = updatedCrypto;
-                updatedList.extraCoins = updatedCrypto; // backward compatibility
-            } else if (activeTab === 'forex') {
-                updatedList.forex = (extraCoins.forex || []).filter(c => c !== stringIdentifier);
-            } else if (activeTab === 'metals') {
-                updatedList.metals = (extraCoins.metals || []).filter(c => c !== stringIdentifier);
-            }
+            updatedTabExtra = updatedTabExtra.filter(c => c !== stringIdentifier);
         }
 
+        // Firestore updates
+        const collectionName = `coins_list_${activeTab}`;
+        const docData = {
+            [activeTab]: updatedTabExtra,
+            deletedCoins: updatedTabDeleted,
+        };
+
         try {
-            await setDoc(doc(db, 'admin_set', 'coins_list'), updatedList);
-            setExtraCoins(updatedList);
+            await setDoc(doc(db, collectionName, 'latest'), docData);
+            setExtraCoins(prev => ({
+                ...prev,
+                [activeTab]: updatedTabExtra,
+                deletedCoins: {
+                    ...prev.deletedCoins,
+                    [activeTab]: updatedTabDeleted,
+                }
+            }));
             showToast('success', 'Removed successfully');
         } catch (err) {
             showToast('error', 'Failed: ' + err.message);
@@ -514,26 +633,60 @@ const AdminCoinsSettings = () => {
 
     // ─── Restore default coin ──────────────────────────────────────────────
     const restoreCoin = async (coinId) => {
-        const currentDeleted = extraCoins.deletedCoins || [];
+        const currentDeleted = extraCoins.deletedCoins[activeTab] || [];
         const updatedDeleted = currentDeleted.filter(id => id !== coinId);
-        const updatedList = {
-            ...extraCoins,
+
+        // Firestore updates
+        const collectionName = `coins_list_${activeTab}`;
+        const docData = {
+            [activeTab]: extraCoins[activeTab] || [],
             deletedCoins: updatedDeleted,
         };
 
         try {
-            await setDoc(doc(db, 'admin_set', 'coins_list'), updatedList);
-            setExtraCoins(updatedList);
+            await setDoc(doc(db, collectionName, 'latest'), docData);
+            setExtraCoins(prev => ({
+                ...prev,
+                deletedCoins: {
+                    ...prev.deletedCoins,
+                    [activeTab]: updatedDeleted,
+                }
+            }));
             showToast('success', 'Restored successfully');
         } catch (err) {
             showToast('error', 'Restore failed: ' + err.message);
         }
     };
 
+    // ─── Save custom display name ──────────────────────────────────────────
+    const saveCustomName = async (coinId, newName, tab) => {
+        const trimmed = newName.trim();
+        const collectionName = `coins_list_${tab}`;
+
+        // Build new customNames map for this tab
+        const updatedTabNames = { ...(customNames[tab] || {}) };
+        if (trimmed) {
+            updatedTabNames[coinId] = trimmed;
+        } else {
+            delete updatedTabNames[coinId]; // Remove override → revert to default name
+        }
+
+        try {
+            // Merge into existing document (use setDoc with merge)
+            await setDoc(doc(db, collectionName, 'latest'), { customNames: updatedTabNames }, { merge: true });
+            setCustomNames(prev => ({ ...prev, [tab]: updatedTabNames }));
+            setEditingNameId(null);
+            setTempName('');
+            showToast('success', trimmed ? `Name saved: "${trimmed}"` : 'Custom name cleared — showing default');
+        } catch (err) {
+            showToast('error', 'Failed to save name: ' + err.message);
+        }
+    };
+
     // ── Get all coins for current tab ────────────────────────────────────
     const getCoinsForTab = (tab) => {
         let base = DEFAULT_COINS[tab] || [];
-        const deletedList = extraCoins.deletedCoins || [];
+        const deletedList = extraCoins.deletedCoins[tab] || [];
         base = base.filter(c => !deletedList.includes(c.id));
 
         if (tab === 'crypto') {
@@ -613,15 +766,25 @@ const AdminCoinsSettings = () => {
                 }
             }
         } else if (tab === 'forex') {
-            const ratesObj = liveRates.forex?.rates;
-            if (ratesObj) {
-                const currency = coin.code || coin.id.replace('fx-', '').toUpperCase();
-                let rate = ratesObj[currency];
-                if (rate) {
-                    if (coin.label && coin.label.endsWith('/USD')) {
-                        rate = 1 / rate;
+            const forexDoc = liveRates.forex;
+            if (forexDoc) {
+                const isMetalsApi = forexDoc.provider === 'metals.dev';
+                const ratesObj = isMetalsApi ? forexDoc.rates : forexDoc.rates?.rates;
+                if (ratesObj) {
+                    const currency = coin.code || coin.id.replace('fx-', '').toUpperCase();
+                    let rate = parseFloat(ratesObj[currency]);
+                    if (rate && !isNaN(rate)) {
+                        if (isMetalsApi) {
+                            if (!coin.label || !coin.label.endsWith('/USD')) {
+                                rate = 1 / rate;
+                            }
+                        } else {
+                            if (coin.label && coin.label.endsWith('/USD')) {
+                                rate = 1 / rate;
+                            }
+                        }
+                        return rate.toFixed(6);
                     }
-                    return rate.toFixed(6);
                 }
             }
         } else if (tab === 'metals') {
@@ -907,10 +1070,20 @@ const AdminCoinsSettings = () => {
                                 )}
                                 {activeTab === 'forex' && (
                                     <>
-                                        <li>Use standard <strong>ISO 4217</strong> 3-letter currency codes.</li>
-                                        <li>E.g., <code>SGD</code> (Singapore Dollar), <code>MXN</code> (Mexican Peso), <code>ZAR</code> (South African Rand).</li>
+                                        <li>Use standard <strong>ISO 4217</strong> 3-letter currency codes (e.g. <code>SGD</code>, <code>MXN</code>, <code>CAD</code>).</li>
                                         <li>Check codes at <a href="https://xe.com" target="_blank" rel="noreferrer" style={{ color: accentColor, textDecoration: 'underline', fontWeight: '700' }}>xe.com</a> if needed.</li>
-                                        <li style={{ color: '#777' }}>Note: Rates are verified against the ExchangeRate API.</li>
+                                        <li><strong>API &amp; Rates Documentation</strong>:
+                                            <ul style={{ paddingLeft: '15px', marginTop: '6px', color: '#888' }}>
+                                                <li>Rates are fetched and synced from the <a href="https://metals.dev" target="_blank" rel="noreferrer" style={{ color: accentColor, fontWeight: 'bold' }}>metals.dev</a> API.</li>
+                                                <li><strong>Inversion Math Rules</strong>:
+                                                    <ul style={{ paddingLeft: '12px', marginTop: '4px' }}>
+                                                        <li>For pairs ending with <code>/USD</code> (e.g., <code>GBP/USD</code>, <code>EUR/USD</code>), the API rate is used directly.</li>
+                                                        <li>For pairs starting with <code>USD/</code> (e.g., <code>USD/JPY</code>, <code>USD/CAD</code>), the system automatically uses the inverted formula: <code>1 / rate</code>.</li>
+                                                    </ul>
+                                                </li>
+                                                <li>This ensures client-side prices render exactly in standard market formats (e.g., 1 GBP = $1.34 USD, 1 USD = 159.87 JPY).</li>
+                                            </ul>
+                                        </li>
                                     </>
                                 )}
                                 {activeTab === 'metals' && (
@@ -1224,15 +1397,105 @@ const AdminCoinsSettings = () => {
                                     onMouseEnter={e => { e.currentTarget.style.borderColor = isVisible ? 'rgba(255,255,255,0.08)' : 'rgba(255, 77, 79, 0.2)'; }}
                                     onMouseLeave={e => { e.currentTarget.style.borderColor = isVisible ? 'rgba(255,255,255,0.03)' : 'rgba(255, 77, 79, 0.12)'; }}
                                     >
-                                        <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                                        <div style={{ display: 'flex', alignItems: 'center', gap: '12px', flex: 1, minWidth: 0 }}>
                                             <img
                                                 src={coin.icon}
                                                 alt={coin.label}
-                                                style={{ width: '32px', height: '32px', borderRadius: '50%', objectFit: 'cover', border: '1px solid rgba(255,255,255,0.08)' }}
+                                                style={{ width: '32px', height: '32px', borderRadius: '50%', objectFit: 'cover', border: '1px solid rgba(255,255,255,0.08)', flexShrink: 0 }}
                                                 onError={e => { e.target.src = 'https://cdn-icons-png.flaticon.com/512/25/25254.png'; }}
                                             />
-                                            <div>
-                                                <div style={{ color: isVisible ? '#fff' : '#666', fontSize: '13px', fontWeight: '800' }}>{coin.label}</div>
+                                            <div style={{ flex: 1, minWidth: 0 }}>
+                                                {editingNameId === coin.id ? (
+                                                    <div style={{ display: 'flex', gap: '6px', alignItems: 'center' }}>
+                                                        <input
+                                                            autoFocus
+                                                            type="text"
+                                                            value={tempName}
+                                                            onChange={e => setTempName(e.target.value)}
+                                                            onKeyDown={e => {
+                                                                if (e.key === 'Enter') saveCustomName(coin.id, tempName, activeTab);
+                                                                if (e.key === 'Escape') { setEditingNameId(null); setTempName(''); }
+                                                            }}
+                                                            placeholder={coin.label}
+                                                            style={{
+                                                                background: 'rgba(0,0,0,0.35)',
+                                                                border: `1px solid rgba(${hexToRgb(accentColor)},0.4)`,
+                                                                borderRadius: '8px',
+                                                                padding: '5px 10px',
+                                                                color: '#fff',
+                                                                fontSize: '13px',
+                                                                fontWeight: '700',
+                                                                outline: 'none',
+                                                                width: '160px',
+                                                                boxShadow: `0 0 8px rgba(${hexToRgb(accentColor)},0.15)`,
+                                                            }}
+                                                        />
+                                                        <motion.button
+                                                            whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }}
+                                                            onClick={() => saveCustomName(coin.id, tempName, activeTab)}
+                                                            title="Save name"
+                                                            style={{
+                                                                display: 'flex', alignItems: 'center', justifyContent: 'center',
+                                                                width: '30px', height: '30px', borderRadius: '8px',
+                                                                background: `rgba(${hexToRgb(accentColor)},0.15)`,
+                                                                border: `1px solid rgba(${hexToRgb(accentColor)},0.3)`,
+                                                                color: accentColor, cursor: 'pointer',
+                                                            }}
+                                                        ><Save size={13} /></motion.button>
+                                                        <motion.button
+                                                            whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }}
+                                                            onClick={() => { setEditingNameId(null); setTempName(''); }}
+                                                            title="Cancel"
+                                                            style={{
+                                                                display: 'flex', alignItems: 'center', justifyContent: 'center',
+                                                                width: '30px', height: '30px', borderRadius: '8px',
+                                                                background: 'rgba(255,77,79,0.1)',
+                                                                border: '1px solid rgba(255,77,79,0.2)',
+                                                                color: '#ff4d4f', cursor: 'pointer',
+                                                            }}
+                                                        ><X size={13} /></motion.button>
+                                                        {customNames[activeTab]?.[coin.id] && (
+                                                            <motion.button
+                                                                whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }}
+                                                                onClick={() => saveCustomName(coin.id, '', activeTab)}
+                                                                title="Reset to default name"
+                                                                style={{
+                                                                    fontSize: '10px', padding: '4px 8px', borderRadius: '6px',
+                                                                    background: 'rgba(255,255,255,0.04)',
+                                                                    border: '1px solid rgba(255,255,255,0.1)',
+                                                                    color: '#888', cursor: 'pointer', fontWeight: '700',
+                                                                }}
+                                                            >Reset</motion.button>
+                                                        )}
+                                                    </div>
+                                                ) : (
+                                                    <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                                                        <div style={{ color: isVisible ? '#fff' : '#666', fontSize: '13px', fontWeight: '800' }}>
+                                                            {customNames[activeTab]?.[coin.id] || coin.label}
+                                                        </div>
+                                                        {customNames[activeTab]?.[coin.id] && (
+                                                            <span style={{
+                                                                fontSize: '9px', padding: '1px 5px', borderRadius: '4px',
+                                                                background: `rgba(${hexToRgb(accentColor)},0.12)`,
+                                                                border: `1px solid rgba(${hexToRgb(accentColor)},0.2)`,
+                                                                color: accentColor, fontWeight: '700',
+                                                            }}>custom</span>
+                                                        )}
+                                                        <motion.button
+                                                            whileHover={{ scale: 1.1 }} whileTap={{ scale: 0.9 }}
+                                                            onClick={() => { setEditingNameId(coin.id); setTempName(customNames[activeTab]?.[coin.id] || ''); }}
+                                                            title="Edit display name"
+                                                            style={{
+                                                                display: 'flex', alignItems: 'center', justifyContent: 'center',
+                                                                width: '22px', height: '22px', borderRadius: '6px',
+                                                                background: 'rgba(255,255,255,0.04)',
+                                                                border: '1px solid rgba(255,255,255,0.08)',
+                                                                color: '#777', cursor: 'pointer',
+                                                                padding: 0,
+                                                            }}
+                                                        ><Pencil size={11} /></motion.button>
+                                                    </div>
+                                                )}
                                                 <div style={{ display: 'flex', gap: '8px', alignItems: 'center', marginTop: '3px' }}>
                                                     <span style={{
                                                         fontSize: '10px',
@@ -1296,41 +1559,48 @@ const AdminCoinsSettings = () => {
                         </div>
 
                         {/* Deleted Default Assets restore section */}
-                        {extraCoins.deletedCoins && extraCoins.deletedCoins.length > 0 && (
-                            <div style={{ marginTop: '20px', paddingTop: '16px', borderTop: '1px solid rgba(255,255,255,0.05)' }}>
-                                <div style={{ fontSize: '11px', color: '#777', marginBottom: '10px', fontWeight: '800', textTransform: 'uppercase', letterSpacing: '0.8px' }}>
-                                    Deleted Default Assets ({extraCoins.deletedCoins.length})
+                        {(() => {
+                            const tabDefaults = DEFAULT_COINS[activeTab] || [];
+                            const tabDeletedCoins = (extraCoins.deletedCoins[activeTab] || [])
+                                .filter(coinId => tabDefaults.some(c => c.id === coinId));
+
+                            if (tabDeletedCoins.length === 0) return null;
+
+                            return (
+                                <div style={{ marginTop: '20px', paddingTop: '16px', borderTop: '1px solid rgba(255,255,255,0.05)' }}>
+                                    <div style={{ fontSize: '11px', color: '#777', marginBottom: '10px', fontWeight: '800', textTransform: 'uppercase', letterSpacing: '0.8px' }}>
+                                        Deleted Default Assets ({tabDeletedCoins.length})
+                                    </div>
+                                    <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                                        {tabDeletedCoins.map(coinId => {
+                                            const found = tabDefaults.find(c => c.id === coinId);
+                                            const label = found ? found.label : coinId;
+                                            return (
+                                                <div key={coinId} style={{
+                                                    display: 'flex', justifyContent: 'space-between', alignItems: 'center',
+                                                    padding: '8px 12px', background: 'rgba(255,77,79,0.02)',
+                                                    borderRadius: '10px', border: '1px dashed rgba(255,77,79,0.15)'
+                                                }}>
+                                                    <span style={{ color: '#888', fontSize: '13px', fontWeight: '700' }}>{label}</span>
+                                                    <motion.button
+                                                        whileHover={{ scale: 1.03 }}
+                                                        whileTap={{ scale: 0.97 }}
+                                                        onClick={() => restoreCoin(coinId)}
+                                                        style={{
+                                                            padding: '6px 12px', borderRadius: '8px', border: 'none',
+                                                            background: `linear-gradient(135deg, rgba(${hexToRgb(accentColor)}, 0.15) 0%, rgba(${hexToRgb(accentColor)}, 0.05) 100%)`,
+                                                            color: accentColor, fontWeight: '800', fontSize: '11px', cursor: 'pointer'
+                                                        }}
+                                                    >
+                                                        Restore
+                                                    </motion.button>
+                                                </div>
+                                            );
+                                        })}
+                                    </div>
                                 </div>
-                                <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
-                                    {extraCoins.deletedCoins.map(coinId => {
-                                        const allDefaultFlat = [...DEFAULT_COINS.crypto, ...DEFAULT_COINS.forex, ...DEFAULT_COINS.metals];
-                                        const found = allDefaultFlat.find(c => c.id === coinId);
-                                        const label = found ? found.label : coinId;
-                                        return (
-                                            <div key={coinId} style={{
-                                                display: 'flex', justifyContent: 'space-between', alignItems: 'center',
-                                                padding: '8px 12px', background: 'rgba(255,77,79,0.02)',
-                                                borderRadius: '10px', border: '1px dashed rgba(255,77,79,0.15)'
-                                            }}>
-                                                <span style={{ color: '#888', fontSize: '13px', fontWeight: '700' }}>{label}</span>
-                                                <motion.button
-                                                    whileHover={{ scale: 1.03 }}
-                                                    whileTap={{ scale: 0.97 }}
-                                                    onClick={() => restoreCoin(coinId)}
-                                                    style={{
-                                                        padding: '6px 12px', borderRadius: '8px', border: 'none',
-                                                        background: `linear-gradient(135deg, rgba(${hexToRgb(accentColor)}, 0.15) 0%, rgba(${hexToRgb(accentColor)}, 0.05) 100%)`,
-                                                        color: accentColor, fontWeight: '800', fontSize: '11px', cursor: 'pointer'
-                                                    }}
-                                                >
-                                                    Restore
-                                                </motion.button>
-                                            </div>
-                                        );
-                                    })}
-                                </div>
-                            </div>
-                        )}
+                            );
+                        })()}
                     </SectionCard>
                 </div>
             </div>

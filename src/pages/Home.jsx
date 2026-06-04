@@ -268,11 +268,8 @@ const Home = () => {
                                         e.target.src = 'https://cdn-icons-png.flaticon.com/512/25/25254.png'; // Generic fallback
                                     }}
                                 />
-                                <span className="trending-symbol" style={{ display: 'flex', alignItems: 'center', gap: '4px', justifyContent: 'center' }}>
+                                <span className="trending-symbol" style={{ justifyContent: 'center' }}>
                                     {coin.symbol}
-                                    <span style={{ color: coin.isLive ? '#00c087' : 'grey', fontSize: '12px' }}>
-                                        ✓
-                                    </span>
                                 </span>
                                 <span className="trending-price" title={coin.isLive === false ? 'Static Rate' : 'Live Rate'}>
                                     ${coin.rate}
@@ -327,20 +324,15 @@ const Home = () => {
                                         }}
                                     />
                                     <div style={{ display: 'flex', flexDirection: 'column' }}>
-                                        <span className="asset-name" style={{ marginBottom: '2px', display: 'flex', alignItems: 'center', gap: '4px' }}>
+                                        <span className="asset-name" style={{ marginBottom: '2px' }}>
                                             {asset.name}
-                                            {(asset.category === 'Precious Metals' || asset.category === 'Foreign Exchange') && (
-                                                <span style={{ color: asset.isLive ? '#00c087' : 'grey', fontSize: '12px' }}>
-                                                    ✓
-                                                </span>
-                                            )}
                                         </span>
                                         {asset.fullName && (
                                             <span style={{ fontSize: '10px', color: '#666', fontWeight: '500' }}>{asset.fullName}</span>
                                         )}
                                     </div>
                                 </div>
-                                <div className={`asset-rate ${((activeTab === 'Precious Metals' || activeTab === 'Foreign Exchange') && asset.isLive === false) ? 'static-rate' : ''}`} title={asset.isLive === false ? 'Static Rate' : 'Live Rate'}>
+                                <div className="asset-rate">
                                     {asset.rate}
                                 </div>
                                 <div style={{ justifySelf: 'end' }}>

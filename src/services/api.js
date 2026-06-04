@@ -202,19 +202,7 @@ export const fetchMetalMarkets = async () => {
         const result = await response.json();
 
         if (result.status === 'success' && result.metals) {
-            const metals = result.metals;
-            return {
-                source: 'metals.dev',
-                gold: metals.gold,
-                silver: metals.silver,
-                platinum: metals.platinum,
-                palladium: metals.palladium,
-                aluminum: metals.aluminum,
-                copper: metals.copper,
-                lead: metals.lead,
-                nickel: metals.nickel,
-                zinc: metals.zinc
-            };
+            return result.metals;
         }
     } catch (error) {
         console.error('API: Failed to fetch metals data:', error);
