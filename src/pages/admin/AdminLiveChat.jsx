@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { db } from '../../firebase-setup';
 import { collection, query, orderBy, onSnapshot, doc, updateDoc, addDoc, setDoc, increment } from 'firebase/firestore';
-import { MessageSquare, Send, Paperclip, X, Image as ImageIcon, FileText, Download, Loader2, User, Mail, Search } from 'lucide-react';
+import { MessageSquare, Send, Paperclip, X, Image as ImageIcon, FileText, Download, Loader2, User, Mail, Search, CheckCheck } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { uploadFileChunks } from '../../services/dbs';
 
@@ -68,23 +68,36 @@ const AdminLiveChat = () => {
         const q = query(msgsRef, orderBy('timestamp', 'asc'));
 
         const unsubscribe = onSnapshot(q, (snapshot) => {
-            const list = snapshot.docs.map(doc => ({
-                id: doc.id,
-                ...doc.data()
+            const list = snapshot.docs.map(docSnap => ({
+                id: docSnap.id,
+                ...docSnap.data()
             }));
             setMessages(list);
             scrollToBottom();
+
+            // Mark any unread user messages as read
+            snapshot.docs.forEach(docSnap => {
+                const data = docSnap.data();
+                if (data.sender === 'user' && !data.read) {
+                    updateDoc(docSnap.ref, { read: true }).catch(err => {
+                        console.error("Error marking user message as read:", err);
+                    });
+                }
+            });
+
+            // Mark messages as read for Admin (if the session exists)
+            if (selectedSession.hasChat) {
+                const sessionRef = doc(db, 'chat_sessions', selectedSession.id);
+                updateDoc(sessionRef, {
+                    unreadAdmin: 0,
+                    lastReadByAdminAt: new Date().toISOString()
+                }).catch(err => {
+                    console.error("Error updating admin unread status:", err);
+                });
+            }
         }, (error) => {
             console.error("Error loading chat messages:", error);
         });
-
-        // Mark messages as read for Admin (if the session exists)
-        if (selectedSession.hasChat) {
-            const sessionRef = doc(db, 'chat_sessions', selectedSession.id);
-            updateDoc(sessionRef, { unreadAdmin: 0 }).catch(err => {
-                console.error("Error updating admin unread status:", err);
-            });
-        }
 
         return () => unsubscribe();
     }, [selectedSession]);
@@ -445,103 +458,113 @@ const AdminLiveChat = () => {
                                 backgroundColor: '#070707'
                             }}
                         >
-                            {messages.map((msg) => {
-                                const isAdmin = msg.sender === 'admin';
-                                return (
-                                    <div
-                                        key={msg.id}
-                                        style={{
-                                            display: 'flex',
-                                            justifyContent: isAdmin ? 'flex-end' : 'flex-start',
-                                            width: '100%'
-                                        }}
-                                    >
-                                        <div style={{
-                                            maxWidth: '75%',
-                                            display: 'flex',
-                                            flexDirection: 'column',
-                                            alignItems: isAdmin ? 'flex-end' : 'flex-start'
-                                        }}>
+                            {(() => {
+                                const liveSession = sessions.find(s => s.id === selectedSession.id) || selectedSession;
+                                return messages.map((msg) => {
+                                    const isAdmin = msg.sender === 'admin';
+                                    const isSeen = msg.read || (liveSession?.lastReadByUserAt && msg.timestamp <= liveSession.lastReadByUserAt);
+                                    return (
+                                        <div
+                                            key={msg.id}
+                                            style={{
+                                                display: 'flex',
+                                                justifyContent: isAdmin ? 'flex-end' : 'flex-start',
+                                                width: '100%'
+                                            }}
+                                        >
                                             <div style={{
-                                                padding: '12px 16px',
-                                                borderRadius: isAdmin ? '18px 18px 4px 18px' : '18px 18px 18px 4px',
-                                                backgroundColor: isAdmin ? 'rgba(0, 192, 135, 0.12)' : '#1b1b1b',
-                                                border: isAdmin ? '1px solid rgba(0, 192, 135, 0.25)' : '1px solid #222',
-                                                color: '#eee',
-                                                fontWeight: 'normal',
-                                                fontSize: '14px',
-                                                lineHeight: '1.5',
-                                                wordBreak: 'break-word',
-                                                boxShadow: '0 2px 8px rgba(0,0,0,0.1)'
+                                                maxWidth: '75%',
+                                                display: 'flex',
+                                                flexDirection: 'column',
+                                                alignItems: isAdmin ? 'flex-end' : 'flex-start'
                                             }}>
-                                                {/* Image / File display */}
-                                                {msg.fileUrl && (
-                                                    <div style={{ marginBottom: msg.text ? '10px' : 0 }}>
-                                                        {msg.fileType === 'image' ? (
-                                                            <img
-                                                                src={msg.fileUrl}
-                                                                alt={msg.fileName}
-                                                                onClick={() => window.open(msg.fileUrl, '_blank')}
-                                                                style={{
-                                                                    maxWidth: '100%',
-                                                                    maxHeight: '220px',
-                                                                    borderRadius: '8px',
-                                                                    objectFit: 'cover',
-                                                                    cursor: 'pointer',
-                                                                    display: 'block'
-                                                                }}
-                                                            />
-                                                        ) : (
-                                                            <div style={{
-                                                                display: 'flex',
-                                                                alignItems: 'center',
-                                                                gap: '10px',
-                                                                backgroundColor: 'rgba(255,255,255,0.05)',
-                                                                padding: '10px',
-                                                                borderRadius: '8px',
-                                                                border: '1px solid rgba(255,255,255,0.1)'
-                                                            }}>
-                                                                <FileText size={20} color="#ffb800" />
-                                                                <div style={{ overflow: 'hidden', textOverflow: 'ellipsis', color: '#fff' }}>
-                                                                    <div style={{ fontSize: '12px', fontWeight: 'bold', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
-                                                                        {msg.fileName}
-                                                                    </div>
-                                                                </div>
-                                                                <a
-                                                                    href={msg.fileUrl}
-                                                                    target="_blank"
-                                                                    rel="noopener noreferrer"
+                                                <div style={{
+                                                    padding: '12px 16px',
+                                                    borderRadius: isAdmin ? '18px 18px 4px 18px' : '18px 18px 18px 4px',
+                                                    backgroundColor: isAdmin ? 'rgba(0, 192, 135, 0.12)' : '#1b1b1b',
+                                                    border: isAdmin ? '1px solid rgba(0, 192, 135, 0.25)' : '1px solid #222',
+                                                    color: '#eee',
+                                                    fontWeight: 'normal',
+                                                    fontSize: '14px',
+                                                    lineHeight: '1.5',
+                                                    wordBreak: 'break-word',
+                                                    boxShadow: '0 2px 8px rgba(0,0,0,0.1)'
+                                                }}>
+                                                    {/* Image / File display */}
+                                                    {msg.fileUrl && (
+                                                        <div style={{ marginBottom: msg.text ? '10px' : 0 }}>
+                                                            {msg.fileType === 'image' ? (
+                                                                <img
+                                                                    src={msg.fileUrl}
+                                                                    alt={msg.fileName}
+                                                                    onClick={() => window.open(msg.fileUrl, '_blank')}
                                                                     style={{
-                                                                        marginLeft: 'auto',
-                                                                        color: '#ffb800',
-                                                                        padding: '4px',
-                                                                        borderRadius: '4px',
-                                                                        backgroundColor: 'rgba(240, 185, 11, 0.1)',
-                                                                        display: 'flex',
-                                                                        alignItems: 'center',
-                                                                        justifyContent: 'center'
+                                                                        maxWidth: '100%',
+                                                                        maxHeight: '220px',
+                                                                        borderRadius: '8px',
+                                                                        objectFit: 'cover',
+                                                                        cursor: 'pointer',
+                                                                        display: 'block'
                                                                     }}
-                                                                >
-                                                                    <Download size={14} />
-                                                                </a>
-                                                            </div>
-                                                        )}
-                                                    </div>
-                                                )}
-                                                {msg.text && <div>{msg.text}</div>}
+                                                                />
+                                                            ) : (
+                                                                <div style={{
+                                                                    display: 'flex',
+                                                                    alignItems: 'center',
+                                                                    gap: '10px',
+                                                                    backgroundColor: 'rgba(255,255,255,0.05)',
+                                                                    padding: '10px',
+                                                                    borderRadius: '8px',
+                                                                    border: '1px solid rgba(255,255,255,0.1)'
+                                                                }}>
+                                                                    <FileText size={20} color="#ffb800" />
+                                                                    <div style={{ overflow: 'hidden', textOverflow: 'ellipsis', color: '#fff' }}>
+                                                                        <div style={{ fontSize: '12px', fontWeight: 'bold', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                                                                            {msg.fileName}
+                                                                        </div>
+                                                                    </div>
+                                                                    <a
+                                                                        href={msg.fileUrl}
+                                                                        target="_blank"
+                                                                        rel="noopener noreferrer"
+                                                                        style={{
+                                                                            marginLeft: 'auto',
+                                                                            color: '#ffb800',
+                                                                            padding: '4px',
+                                                                            borderRadius: '4px',
+                                                                            backgroundColor: 'rgba(240, 185, 11, 0.1)',
+                                                                            display: 'flex',
+                                                                            alignItems: 'center',
+                                                                            justifyContent: 'center'
+                                                                        }}
+                                                                    >
+                                                                        <Download size={14} />
+                                                                    </a>
+                                                                </div>
+                                                            )}
+                                                        </div>
+                                                    )}
+                                                    {msg.text && <div>{msg.text}</div>}
+                                                </div>
+                                                <span style={{
+                                                    fontSize: '10px',
+                                                    color: '#444',
+                                                    marginTop: '4px',
+                                                    padding: '0 4px',
+                                                    display: 'flex',
+                                                    alignItems: 'center',
+                                                    gap: '4px'
+                                                }}>
+                                                    {msg.timestamp ? new Date(msg.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : ''}
+                                                    {isAdmin && (
+                                                        <CheckCheck size={14} color={isSeen ? '#f0b90b' : '#666'} />
+                                                    )}
+                                                </span>
                                             </div>
-                                            <span style={{
-                                                fontSize: '10px',
-                                                color: '#444',
-                                                marginTop: '4px',
-                                                padding: '0 4px'
-                                            }}>
-                                                {msg.timestamp ? new Date(msg.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : ''}
-                                            </span>
                                         </div>
-                                    </div>
-                                );
-                            })}
+                                    );
+                                });
+                            })()}
                             <div ref={messagesEndRef} />
                         </div>
 

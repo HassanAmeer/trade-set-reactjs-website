@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { ChevronLeft, Send, Paperclip, X, Image as ImageIcon, FileText, Download, Loader2 } from 'lucide-react';
+import { ChevronLeft, Send, Paperclip, X, Image as ImageIcon, FileText, Download, Loader2, CheckCheck } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { db } from '../firebase-setup';
@@ -33,21 +33,33 @@ const LiveChat = () => {
         const q = query(msgsRef, orderBy('timestamp', 'asc'));
 
         const unsubscribe = onSnapshot(q, (snapshot) => {
-            const list = snapshot.docs.map(doc => ({
-                id: doc.id,
-                ...doc.data()
+            const list = snapshot.docs.map(docSnap => ({
+                id: docSnap.id,
+                ...docSnap.data()
             }));
             setMessages(list);
             scrollToBottom();
+
+            // Mark any unread admin messages as read in message documents
+            snapshot.docs.forEach(docSnap => {
+                const data = docSnap.data();
+                if (data.sender === 'admin' && !data.read) {
+                    updateDoc(docSnap.ref, { read: true }).catch(err => {
+                        console.error("Error marking admin message as read:", err);
+                    });
+                }
+            });
+
+            // Update session root document seen status and timestamp
+            const sessionRef = doc(db, 'chat_sessions', user.id);
+            updateDoc(sessionRef, {
+                unreadUser: 0,
+                lastReadByUserAt: new Date().toISOString()
+            }).catch(err => {
+                console.log("No existing session to update unread count for:", err);
+            });
         }, (error) => {
             console.error("Error loading chat messages:", error);
-        });
-
-        // Mark messages as read for User
-        const sessionRef = doc(db, 'chat_sessions', user.id);
-        updateDoc(sessionRef, { unreadUser: 0 }).catch(err => {
-            // If the document doesn't exist yet, we don't need to update it
-            console.log("No existing session to update unread count for");
         });
 
         return () => unsubscribe();
@@ -138,26 +150,37 @@ const LiveChat = () => {
     if (!user) return null;
 
     return (
-        <motion.div
-            initial={{ opacity: 0, y: 15 }}
-            animate={{ opacity: 1, y: 0 }}
-            exit={{ opacity: 0 }}
-            style={{
-                minHeight: '100vh',
-                backgroundColor: '#0a0a0a',
-                color: '#fff',
-                fontFamily: 'system-ui, sans-serif',
-                display: 'flex',
-                flexDirection: 'column',
-                position: 'fixed',
-                top: 0,
-                left: 0,
-                right: 0,
-                bottom: 0,
-                zIndex: 1000
-            }}
-        >
-            {/* Header */}
+        <div style={{
+            position: 'fixed',
+            top: 0,
+            left: '50%',
+            transform: 'translateX(-50%)',
+            width: '100%',
+            maxWidth: '480px',
+            height: '100vh',
+            zIndex: 1000,
+            backgroundColor: '#0a0a0a',
+            boxShadow: '0 0 50px rgba(0, 0, 0, 0.8)',
+            display: 'flex',
+            flexDirection: 'column',
+            overflow: 'hidden'
+        }}>
+            <motion.div
+                initial={{ opacity: 0, y: 15 }}
+                animate={{ opacity: 1, y: 0 }}
+                exit={{ opacity: 0 }}
+                style={{
+                    display: 'flex',
+                    flexDirection: 'column',
+                    flex: 1,
+                    height: '100%',
+                    width: '100%',
+                    color: '#fff',
+                    fontFamily: 'system-ui, sans-serif',
+                    overflow: 'hidden'
+                }}
+            >
+                {/* Header */}
             <div style={{
                 background: 'rgba(17, 17, 17, 0.95)',
                 backdropFilter: 'blur(10px)',
@@ -312,9 +335,15 @@ const LiveChat = () => {
                                         fontSize: '10px',
                                         color: '#555',
                                         marginTop: '4px',
-                                        padding: '0 4px'
+                                        padding: '0 4px',
+                                        display: 'flex',
+                                        alignItems: 'center',
+                                        gap: '4px'
                                     }}>
                                         {msg.timestamp ? new Date(msg.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : ''}
+                                        {!isAdmin && (
+                                            <CheckCheck size={14} color={msg.read ? '#f0b90b' : '#555'} />
+                                        )}
                                     </span>
                                 </div>
                             </div>
@@ -461,7 +490,8 @@ const LiveChat = () => {
                     </button>
                 </form>
             </div>
-        </motion.div>
+            </motion.div>
+        </div>
     );
 };
 

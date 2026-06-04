@@ -712,3 +712,38 @@
   scrollbar-width: thin;
   scrollbar-color: rgba(255, 255, 255, 0.12) rgba(255, 255, 255, 0.02);
 }
+
+/* Responsive Floating Chat Button styling */
+.floating-chat-btn {
+  position: fixed;
+  bottom: 140px; /* Positioned above bottom-nav (65px) and potential active bottom banners (60px) */
+  right: 20px;
+  width: 56px;
+  height: 56px;
+  border-radius: 50%;
+  background-color: rgba(240, 185, 11, 0.3);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+  border: 1px solid rgba(240, 185, 11, 0.4);
+  box-shadow: 0 4px 15px rgba(240, 185, 11, 0.15);
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #f0b90b;
+  z-index: 99;
+  transition: all 0.2s ease;
+}
+
+.floating-chat-btn:hover {
+  transform: scale(1.08);
+  background-color: rgba(240, 185, 11, 0.45);
+  box-shadow: 0 6px 20px rgba(240, 185, 11, 0.3);
+}
+
+/* Center within mobile mockup area if screen is wider than layout max-width */
+@media (min-width: 480px) {
+  .floating-chat-btn {
+    right: calc(50% - 240px + 20px);
+  }
+}

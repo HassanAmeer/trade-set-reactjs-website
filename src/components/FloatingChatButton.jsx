@@ -56,32 +56,7 @@ const FloatingChatButton = () => {
     return (
         <button
             onClick={handleClick}
-            style={{
-                position: 'fixed',
-                bottom: '80px', // Sits nicely above bottom-nav (65px)
-                right: '20px',
-                width: '56px',
-                height: '56px',
-                borderRadius: '50%',
-                backgroundColor: '#f0b90b', // Accent gold/yellow
-                border: 'none',
-                boxShadow: '0 4px 15px rgba(240, 185, 11, 0.4)',
-                cursor: 'pointer',
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                color: '#000',
-                zIndex: 99,
-                transition: 'transform 0.2s ease, box-shadow 0.2s ease',
-            }}
-            onMouseEnter={(e) => {
-                e.currentTarget.style.transform = 'scale(1.08)';
-                e.currentTarget.style.boxShadow = '0 6px 20px rgba(240, 185, 11, 0.6)';
-            }}
-            onMouseLeave={(e) => {
-                e.currentTarget.style.transform = 'scale(1)';
-                e.currentTarget.style.boxShadow = '0 4px 15px rgba(240, 185, 11, 0.4)';
-            }}
+            className="floating-chat-btn"
         >
             <MessageCircle size={26} fill="transparent" strokeWidth={2.5} />
             {unreadCount > 0 && (
