@@ -406,7 +406,7 @@ const AdminLiveChat = () => {
                                 <div style={{
                                     width: '42px',
                                     height: '42px',
-                                    borderRadius: '12px',
+                                    borderRadius: '50%',
                                     background: 'rgba(0, 192, 135, 0.1)',
                                     border: '1px solid rgba(0, 192, 135, 0.2)',
                                     display: 'flex',
@@ -465,10 +465,10 @@ const AdminLiveChat = () => {
                                             <div style={{
                                                 padding: '12px 16px',
                                                 borderRadius: isAdmin ? '18px 18px 4px 18px' : '18px 18px 18px 4px',
-                                                backgroundColor: isAdmin ? '#00c087' : '#1b1b1b',
-                                                border: isAdmin ? '1px solid #00c087' : '1px solid #222',
-                                                color: isAdmin ? '#000' : '#eee',
-                                                fontWeight: isAdmin ? '600' : 'normal',
+                                                backgroundColor: isAdmin ? 'rgba(0, 192, 135, 0.12)' : '#1b1b1b',
+                                                border: isAdmin ? '1px solid rgba(0, 192, 135, 0.25)' : '1px solid #222',
+                                                color: '#eee',
+                                                fontWeight: 'normal',
                                                 fontSize: '14px',
                                                 lineHeight: '1.5',
                                                 wordBreak: 'break-word',
@@ -496,13 +496,13 @@ const AdminLiveChat = () => {
                                                                 display: 'flex',
                                                                 alignItems: 'center',
                                                                 gap: '10px',
-                                                                backgroundColor: isAdmin ? 'rgba(0,0,0,0.08)' : 'rgba(255,255,255,0.05)',
+                                                                backgroundColor: 'rgba(255,255,255,0.05)',
                                                                 padding: '10px',
                                                                 borderRadius: '8px',
                                                                 border: '1px solid rgba(255,255,255,0.1)'
                                                             }}>
-                                                                <FileText size={20} color={isAdmin ? '#000' : '#ffb800'} />
-                                                                <div style={{ overflow: 'hidden', textOverflow: 'ellipsis', color: isAdmin ? '#000' : '#fff' }}>
+                                                                <FileText size={20} color="#ffb800" />
+                                                                <div style={{ overflow: 'hidden', textOverflow: 'ellipsis', color: '#fff' }}>
                                                                     <div style={{ fontSize: '12px', fontWeight: 'bold', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
                                                                         {msg.fileName}
                                                                     </div>
@@ -513,10 +513,10 @@ const AdminLiveChat = () => {
                                                                     rel="noopener noreferrer"
                                                                     style={{
                                                                         marginLeft: 'auto',
-                                                                        color: isAdmin ? '#000' : '#ffb800',
+                                                                        color: '#ffb800',
                                                                         padding: '4px',
                                                                         borderRadius: '4px',
-                                                                        backgroundColor: isAdmin ? 'rgba(0,0,0,0.05)' : 'rgba(240, 185, 11, 0.1)',
+                                                                        backgroundColor: 'rgba(240, 185, 11, 0.1)',
                                                                         display: 'flex',
                                                                         alignItems: 'center',
                                                                         justifyContent: 'center'
