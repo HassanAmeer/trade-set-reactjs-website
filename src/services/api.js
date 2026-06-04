@@ -8,41 +8,104 @@ const CMC_BASE_URL = 'https://pro-api.coinmarketcap.com/v1';
 const METALS_DEV_KEY = 'DNOEU1OR0Q4QPTXKHGE1802XKHGE1';
 const GOLD_API_KEY = 'goldapi-cd9d69369cfe98af15d8f6fa095fb59e-io'; // Add your GoldAPI.io key here if Metals.dev fails
 
-/**
- * Fetches cryptocurrency market data from CoinMarketCap.
- * @returns {Promise<Array>} List of mapped cryptocurrency assets.
- */
 export const fetchCryptoMarkets = async () => {
     try {
-        const response = await fetch('https://api.binance.com/api/v3/ticker/24hr');
-        if (!response.ok) throw new Error('Binance response not ok');
+        const response = await fetch("https://api.livecoinwatch.com/coins/map", {
+            method: "POST",
+            headers: {
+                "content-type": "application/json",
+                "x-api-key": "20c87391-6c37-4e83-a9cb-ad52ab7a3da2",
+            },
+            body: JSON.stringify({
+                codes: ["BTC", "ETH", "SOL", "XRP", "AVAX", "LINK", "MATIC", "SHIB", "TON", "NEAR", "PEPE", "SUI", "DOGE", "TRX", "DOT", "LTC"],
+                currency: "USD",
+                sort: "rank",
+                order: "ascending",
+                offset: 0,
+                limit: 0,
+                meta: true,
+            }),
+        });
+        if (!response.ok) throw new Error('LiveCoinWatch response not ok');
         const data = await response.json();
 
-        // Define common symbols to match our context
-        const symbols = ['BTCUSDT', 'ETHUSDT', 'BNBUSDT', 'SOLUSDT', 'XRPUSDT', 'ADAUSDT', 'DOGEUSDT', 'TRXUSDT', 'DOTUSDT', 'LTCUSDT', 'MATICUSDT', 'LINKUSDT', 'AVAXUSDT', 'UNIUSDT', 'ATOMUSDT'];
-        const filtered = data.filter(item => symbols.includes(item.symbol));
-
-        return filtered.map(item => {
-            const rawName = item.symbol.replace('USDT', '');
+        return data.map(item => {
+            const rawName = item.code;
+            const pct = item.delta && item.delta.day ? (item.delta.day - 1) * 100 : 0;
+            const sign = pct >= 0 ? '+' : '';
             return {
-                id: item.symbol,
+                id: item.code + 'USDT',
                 symbol: rawName,
                 name: `${rawName}/USDT`,
-                fullName: rawName === 'BTC' ? 'Bitcoin' : rawName === 'ETH' ? 'Ethereum' : rawName,
-                rate: parseFloat(item.lastPrice) > 100 ?
-                    parseFloat(item.lastPrice).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 }) :
-                    parseFloat(item.lastPrice).toFixed(6),
-                change: (parseFloat(item.priceChangePercent) >= 0 ? '+' : '') + parseFloat(item.priceChangePercent).toFixed(2) + '%',
-                flag: `https://raw.githubusercontent.com/spothq/cryptocurrency-icons/master/128/color/${rawName.toLowerCase()}.png`,
+                fullName: item.name || rawName,
+                rate: parseFloat(item.rate) > 100 ?
+                    parseFloat(item.rate).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 }) :
+                    parseFloat(item.rate).toFixed(6),
+                change: `${sign}${pct.toFixed(2)}%`,
+                flag: item.png64 || item.png32 || `https://raw.githubusercontent.com/spothq/cryptocurrency-icons/master/128/color/${rawName.toLowerCase()}.png`,
                 category: 'Cryptocurrency',
-                volume24h: (parseFloat(item.quoteVolume) / 1000000).toFixed(1) + 'M',
-                high24h: parseFloat(item.highPrice).toLocaleString(),
-                low24h: parseFloat(item.lowPrice).toLocaleString(),
+                volume24h: item.volume ? (parseFloat(item.volume) / 1000000).toFixed(1) + 'M' : '0M',
+                high24h: 'N/A',
+                low24h: 'N/A',
                 isLive: true
             };
         });
     } catch (error) {
-        console.error('Error fetching crypto markets (Binance):', error);
+        console.error('Error fetching crypto markets (LiveCoinWatch):', error);
+        return [];
+    }
+};
+
+/**
+ * Fetches crypto markets for a dynamic set of coin codes.
+ * Used when admin adds extra coins via the Coins Management panel.
+ * @param {string[]} codes - Array of coin codes e.g. ['BTC','ETH','GRIN']
+ * @returns {Promise<Array>} List of mapped crypto assets.
+ */
+export const fetchCryptoByDynamicCodes = async (codes = []) => {
+    if (!codes.length) return [];
+    try {
+        const response = await fetch('https://api.livecoinwatch.com/coins/map', {
+            method: 'POST',
+            headers: {
+                'content-type': 'application/json',
+                'x-api-key': '20c87391-6c37-4e83-a9cb-ad52ab7a3da2',
+            },
+            body: JSON.stringify({
+                codes,
+                currency: 'USD',
+                sort: 'rank',
+                order: 'ascending',
+                offset: 0,
+                limit: 0,
+                meta: true,
+            }),
+        });
+        if (!response.ok) throw new Error('LiveCoinWatch dynamic fetch not ok');
+        const data = await response.json();
+        return data.map(item => {
+            const rawName = item.code;
+            const pct = item.delta && item.delta.day ? (item.delta.day - 1) * 100 : 0;
+            const sign = pct >= 0 ? '+' : '';
+            return {
+                id: item.code + 'USDT',
+                symbol: rawName,
+                name: `${rawName}/USDT`,
+                fullName: item.name || rawName,
+                rate: parseFloat(item.rate) > 100 ?
+                    parseFloat(item.rate).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 }) :
+                    parseFloat(item.rate).toFixed(6),
+                change: `${sign}${pct.toFixed(2)}%`,
+                flag: item.png64 || item.png32 || `https://raw.githubusercontent.com/spothq/cryptocurrency-icons/master/128/color/${rawName.toLowerCase()}.png`,
+                category: 'Cryptocurrency',
+                volume24h: item.volume ? (parseFloat(item.volume) / 1000000).toFixed(1) + 'M' : '0M',
+                high24h: 'N/A',
+                low24h: 'N/A',
+                isLive: true
+            };
+        });
+    } catch (error) {
+        console.error('Error fetching dynamic crypto markets:', error);
         return [];
     }
 };

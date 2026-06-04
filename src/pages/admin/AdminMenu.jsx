@@ -19,6 +19,7 @@ const ALL_MENU_ITEMS = [
     { id: 'signals', label: 'Market Signals', section: 'GROWTH' },
     { id: 'trades', label: 'Trades Log', section: 'RECORDS' },
     { id: 'mining', label: 'Mining Logs', section: 'RECORDS' },
+    { id: 'coins', label: 'Coins API Settings', section: 'SYSTEM' },
     { id: 'settings', label: 'Settings', section: 'SYSTEM' },
 ];
 

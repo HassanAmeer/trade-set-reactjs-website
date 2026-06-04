@@ -16,7 +16,8 @@ import AdminSignals from './AdminSignals';
 import AdminCarousel from './AdminCarousel';
 import AdminTrades from './AdminTrades';
 import AdminMining from './AdminMining';
-import { BarChart3, Presentation, Mail, LayoutList, Zap, Megaphone, Trophy, Pickaxe } from 'lucide-react';
+import AdminCoinsSettings from './AdminCoinsSettings';
+import { BarChart3, Presentation, Mail, LayoutList, Zap, Megaphone, Trophy, Pickaxe, Coins } from 'lucide-react';
 import { db } from '../../firebase-setup';
 import { doc, getDoc } from 'firebase/firestore';
 
@@ -54,6 +55,7 @@ const AdminDashboard = () => {
             case 'rewards': return <AdminRewards />;
             case 'menu': return <AdminMenu />;
             case 'signals': return <AdminSignals />;
+            case 'coins': return <AdminCoinsSettings />;
             default: return null;
         }
     };
@@ -100,6 +102,7 @@ const AdminDashboard = () => {
         { id: 'signals', label: 'Market Signals', icon: <Zap size={18} />, section: 'GROWTH' },
         { id: 'trades', label: 'Trades Log', icon: <BarChart3 size={18} />, section: 'RECORDS' },
         { id: 'mining', label: 'Mining Logs', icon: <Pickaxe size={18} />, section: 'RECORDS' },
+        { id: 'coins', label: 'Coins API Settings', icon: <Coins size={18} />, section: 'SYSTEM' },
         { id: 'settings', label: 'Settings', icon: <Settings size={18} />, section: 'SYSTEM' },
     ];
 

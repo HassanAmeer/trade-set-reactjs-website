@@ -98,7 +98,14 @@ const Market = () => {
                                 <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
                                     <img src={asset.flag} alt={asset.name} style={{ width: '28px', height: '18px', borderRadius: '1px', objectFit: 'cover' }} />
                                     <div style={{ display: 'flex', flexDirection: 'column' }}>
-                                        <span style={{ fontWeight: '700', fontSize: '13px', color: '#fff' }}>{asset.name}</span>
+                                        <span style={{ fontWeight: '700', fontSize: '13px', color: '#fff', display: 'flex', alignItems: 'center', gap: '4px' }}>
+                                            {asset.name}
+                                            {asset.category === 'Precious Metals' && (
+                                                <span style={{ color: asset.isLive ? '#00c087' : 'grey', fontSize: '12px' }}>
+                                                    ✓
+                                                </span>
+                                            )}
+                                        </span>
                                         {asset.fullName && (
                                             <span style={{ fontSize: '10px', color: '#666', fontWeight: '500', marginTop: '1px' }}>{asset.fullName}</span>
                                         )}
