@@ -5,8 +5,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import {
     RefreshCw, Save, Loader2, ToggleLeft, ToggleRight,
     Clock, DollarSign, Eye, EyeOff, Plus, Trash2,
-    CheckCircle2, AlertCircle, Bitcoin, TrendingUp, Gem, ChevronDown,
-    Pencil, X
+    CheckCircle2, AlertCircle, Bitcoin, TrendingUp, Gem, ChevronDown
 } from 'lucide-react';
 
 // ─── Constants ────────────────────────────────────────────────────────────────
@@ -163,8 +162,6 @@ const AdminCoinsSettings = () => {
     const [expandRates, setExpandRates]       = useState(false);
     const [focusedInputId, setFocusedInputId] = useState(null);
     const [customNames, setCustomNames]       = useState({ crypto: {}, forex: {}, metals: {} });
-    const [editingNameId, setEditingNameId]   = useState(null);
-    const [tempName, setTempName]             = useState('');
 
     const tabInfo = TABS.find(t => t.id === activeTab);
     const accentColor = tabInfo?.color || '#00c087';
@@ -655,31 +652,6 @@ const AdminCoinsSettings = () => {
             showToast('success', 'Restored successfully');
         } catch (err) {
             showToast('error', 'Restore failed: ' + err.message);
-        }
-    };
-
-    // ─── Save custom display name ──────────────────────────────────────────
-    const saveCustomName = async (coinId, newName, tab) => {
-        const trimmed = newName.trim();
-        const collectionName = `coins_list_${tab}`;
-
-        // Build new customNames map for this tab
-        const updatedTabNames = { ...(customNames[tab] || {}) };
-        if (trimmed) {
-            updatedTabNames[coinId] = trimmed;
-        } else {
-            delete updatedTabNames[coinId]; // Remove override → revert to default name
-        }
-
-        try {
-            // Merge into existing document (use setDoc with merge)
-            await setDoc(doc(db, collectionName, 'latest'), { customNames: updatedTabNames }, { merge: true });
-            setCustomNames(prev => ({ ...prev, [tab]: updatedTabNames }));
-            setEditingNameId(null);
-            setTempName('');
-            showToast('success', trimmed ? `Name saved: "${trimmed}"` : 'Custom name cleared — showing default');
-        } catch (err) {
-            showToast('error', 'Failed to save name: ' + err.message);
         }
     };
 
@@ -1405,97 +1377,9 @@ const AdminCoinsSettings = () => {
                                                 onError={e => { e.target.src = 'https://cdn-icons-png.flaticon.com/512/25/25254.png'; }}
                                             />
                                             <div style={{ flex: 1, minWidth: 0 }}>
-                                                {editingNameId === coin.id ? (
-                                                    <div style={{ display: 'flex', gap: '6px', alignItems: 'center' }}>
-                                                        <input
-                                                            autoFocus
-                                                            type="text"
-                                                            value={tempName}
-                                                            onChange={e => setTempName(e.target.value)}
-                                                            onKeyDown={e => {
-                                                                if (e.key === 'Enter') saveCustomName(coin.id, tempName, activeTab);
-                                                                if (e.key === 'Escape') { setEditingNameId(null); setTempName(''); }
-                                                            }}
-                                                            placeholder={coin.label}
-                                                            style={{
-                                                                background: 'rgba(0,0,0,0.35)',
-                                                                border: `1px solid rgba(${hexToRgb(accentColor)},0.4)`,
-                                                                borderRadius: '8px',
-                                                                padding: '5px 10px',
-                                                                color: '#fff',
-                                                                fontSize: '13px',
-                                                                fontWeight: '700',
-                                                                outline: 'none',
-                                                                width: '160px',
-                                                                boxShadow: `0 0 8px rgba(${hexToRgb(accentColor)},0.15)`,
-                                                            }}
-                                                        />
-                                                        <motion.button
-                                                            whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }}
-                                                            onClick={() => saveCustomName(coin.id, tempName, activeTab)}
-                                                            title="Save name"
-                                                            style={{
-                                                                display: 'flex', alignItems: 'center', justifyContent: 'center',
-                                                                width: '30px', height: '30px', borderRadius: '8px',
-                                                                background: `rgba(${hexToRgb(accentColor)},0.15)`,
-                                                                border: `1px solid rgba(${hexToRgb(accentColor)},0.3)`,
-                                                                color: accentColor, cursor: 'pointer',
-                                                            }}
-                                                        ><Save size={13} /></motion.button>
-                                                        <motion.button
-                                                            whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }}
-                                                            onClick={() => { setEditingNameId(null); setTempName(''); }}
-                                                            title="Cancel"
-                                                            style={{
-                                                                display: 'flex', alignItems: 'center', justifyContent: 'center',
-                                                                width: '30px', height: '30px', borderRadius: '8px',
-                                                                background: 'rgba(255,77,79,0.1)',
-                                                                border: '1px solid rgba(255,77,79,0.2)',
-                                                                color: '#ff4d4f', cursor: 'pointer',
-                                                            }}
-                                                        ><X size={13} /></motion.button>
-                                                        {customNames[activeTab]?.[coin.id] && (
-                                                            <motion.button
-                                                                whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }}
-                                                                onClick={() => saveCustomName(coin.id, '', activeTab)}
-                                                                title="Reset to default name"
-                                                                style={{
-                                                                    fontSize: '10px', padding: '4px 8px', borderRadius: '6px',
-                                                                    background: 'rgba(255,255,255,0.04)',
-                                                                    border: '1px solid rgba(255,255,255,0.1)',
-                                                                    color: '#888', cursor: 'pointer', fontWeight: '700',
-                                                                }}
-                                                            >Reset</motion.button>
-                                                        )}
-                                                    </div>
-                                                ) : (
-                                                    <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-                                                        <div style={{ color: isVisible ? '#fff' : '#666', fontSize: '13px', fontWeight: '800' }}>
-                                                            {customNames[activeTab]?.[coin.id] || coin.label}
-                                                        </div>
-                                                        {customNames[activeTab]?.[coin.id] && (
-                                                            <span style={{
-                                                                fontSize: '9px', padding: '1px 5px', borderRadius: '4px',
-                                                                background: `rgba(${hexToRgb(accentColor)},0.12)`,
-                                                                border: `1px solid rgba(${hexToRgb(accentColor)},0.2)`,
-                                                                color: accentColor, fontWeight: '700',
-                                                            }}>custom</span>
-                                                        )}
-                                                        <motion.button
-                                                            whileHover={{ scale: 1.1 }} whileTap={{ scale: 0.9 }}
-                                                            onClick={() => { setEditingNameId(coin.id); setTempName(customNames[activeTab]?.[coin.id] || ''); }}
-                                                            title="Edit display name"
-                                                            style={{
-                                                                display: 'flex', alignItems: 'center', justifyContent: 'center',
-                                                                width: '22px', height: '22px', borderRadius: '6px',
-                                                                background: 'rgba(255,255,255,0.04)',
-                                                                border: '1px solid rgba(255,255,255,0.08)',
-                                                                color: '#777', cursor: 'pointer',
-                                                                padding: 0,
-                                                            }}
-                                                        ><Pencil size={11} /></motion.button>
-                                                    </div>
-                                                )}
+                                                <div style={{ color: isVisible ? '#fff' : '#666', fontSize: '13px', fontWeight: '800' }}>
+                                                    {coin.label}
+                                                </div>
                                                 <div style={{ display: 'flex', gap: '8px', alignItems: 'center', marginTop: '3px' }}>
                                                     <span style={{
                                                         fontSize: '10px',

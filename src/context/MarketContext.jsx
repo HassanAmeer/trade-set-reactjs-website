@@ -132,17 +132,17 @@ function buildCryptoFromCachedRaw(rawArray) {
 // ─── Helper: build forex assets from raw exchangerate-api or metals.dev data ────────────
 function buildForexFromCachedRaw(raw, extraForex = []) {
     if (!raw) return null;
-    
+
     let rates = null;
     let isMetalsApi = false;
-    
+
     if (raw.provider === 'metals.dev') {
         rates = raw.rates;
         isMetalsApi = true;
     } else {
         rates = raw.rates?.rates || raw.rates;
     }
-    
+
     if (!rates) return null;
     const basePairs = [
         { id: 'fx-gbp', symbol: 'GBP/USD', flag: 'gb', rateKey: 'GBP' },
@@ -306,6 +306,7 @@ export const MarketProvider = ({ children }) => {
     const [loading, setLoading] = useState(true);
     const [selectedAsset, setSelectedAsset] = useState(null);
     const [isActive, setIsActive] = useState(false);
+    const [syncConfig, setSyncConfig] = useState(DEFAULT_TAB_CONFIG);
 
     // Set initial selected asset once loaded
     useEffect(() => {
@@ -339,6 +340,8 @@ export const MarketProvider = ({ children }) => {
                     metals: { ...DEFAULT_TAB_CONFIG.metals, ...(cfgSnap.data().metals || {}) },
                 }
                 : DEFAULT_TAB_CONFIG;
+
+            setSyncConfig(cfg);
 
             const cachedRates = {
                 crypto: cryptoRatesSnap.exists() ? cryptoRatesSnap.data().rates : null,
@@ -408,10 +411,23 @@ export const MarketProvider = ({ children }) => {
 
                 if (shouldSync) {
                     console.log('[Market][Crypto] Sync time elapsed — fetching from API...');
-                    const allCodes = [
-                        'BTC', 'ETH', 'SOL', 'XRP', 'AVAX', 'LINK', 'MATIC', 'SHIB', 'TON', 'NEAR', 'PEPE', 'SUI', 'DOGE', 'TRX', 'DOT', 'LTC',
-                        ...extraCrypto,
-                    ].filter((v, i, a) => a.indexOf(v) === i); // unique
+
+                    // Default crypto codes (base list)
+                    const DEFAULT_CRYPTO_CODES = [
+                        'BTC', 'ETH', 'SOL', 'XRP', 'AVAX', 'LINK', 'MATIC', 'SHIB',
+                        'TON', 'NEAR', 'PEPE', 'SUI', 'DOGE', 'TRX', 'DOT', 'LTC',
+                    ];
+
+                    // Only include defaults that admin has NOT deleted (deletedCrypto stores IDs like 'BTCUSDT')
+                    const activeDefaultCodes = DEFAULT_CRYPTO_CODES.filter(
+                        code => !deletedCrypto.includes(code + 'USDT')
+                    );
+
+                    // Merge with admin-added extra coins, remove duplicates
+                    const allCodes = [...activeDefaultCodes, ...extraCrypto]
+                        .filter((v, i, a) => a.indexOf(v) === i);
+
+                    console.log('[Market][Crypto] Fetching codes from LCW:', allCodes);
 
                     const freshData = await fetchCryptoByDynamicCodes(allCodes);
                     if (freshData && freshData.length > 0) {
@@ -662,7 +678,7 @@ export const MarketProvider = ({ children }) => {
     }, [loadMarketData, isActive]);
 
     return (
-        <MarketContext.Provider value={{ assets, loading, refreshData: loadMarketData, selectedAsset, setSelectedAsset, setIsActive }}>
+        <MarketContext.Provider value={{ assets, loading, refreshData: loadMarketData, selectedAsset, setSelectedAsset, setIsActive, syncConfig }}>
             {children}
         </MarketContext.Provider>
     );

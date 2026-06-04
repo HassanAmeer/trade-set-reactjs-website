@@ -16,7 +16,7 @@ import { LogOut, X, Info, Megaphone } from 'lucide-react';
 import { doc } from 'firebase/firestore';
 
 const Home = () => {
-    const { assets, loading: marketLoading, setIsActive } = useMarket();
+    const { assets, loading: marketLoading, setIsActive, syncConfig } = useMarket();
     const { websiteName, logoUrl } = useBranding();
 
     const renderFormattedText = (text) => {
@@ -43,6 +43,7 @@ const Home = () => {
     const [announcement, setAnnouncement] = useState(null);
     const [showPopup, setShowPopup] = useState(false);
     const [showBottom, setShowBottom] = useState(false);
+    const [remainingSecs, setRemainingSecs] = useState(null);
     const navigate = useNavigate();
 
     // Activate market data loading for Home page
@@ -50,6 +51,40 @@ const Home = () => {
         setIsActive(true);
         return () => setIsActive(false);
     }, [setIsActive]);
+
+    // Map tab label -> syncConfig key
+    const tabToKey = (tab) => {
+        if (tab === 'Cryptocurrency') return 'crypto';
+        if (tab === 'Foreign Exchange') return 'forex';
+        if (tab === 'Precious Metals') return 'metals';
+        return null;
+    };
+
+    // Live countdown: recalculate every second based on syncConfig
+    useEffect(() => {
+        const key = tabToKey(activeTab);
+        if (!key || !syncConfig) { setRemainingSecs(null); return; }
+
+        const compute = () => {
+            const cfg = syncConfig[key];
+            if (!cfg) { setRemainingSecs(null); return; }
+            const elapsed = Date.now() - (cfg.lastSyncedAt || 0);
+            const totalMs = (cfg.syncIntervalSeconds || 300) * 1000;
+            const remaining = Math.max(0, Math.ceil((totalMs - elapsed) / 1000));
+            setRemainingSecs(remaining);
+        };
+
+        compute();
+        const t = setInterval(compute, 1000);
+        return () => clearInterval(t);
+    }, [activeTab, syncConfig]);
+
+    const formatCountdown = (secs) => {
+        if (secs === null) return null;
+        const m = Math.floor(secs / 60);
+        const s = secs % 60;
+        return `${m}m ${String(s).padStart(2, '0')}s`;
+    };
 
     // Listen for unread messages
     useEffect(() => {
@@ -301,7 +336,13 @@ const Home = () => {
                     <div className="asset-header">
                         <span>Currency</span>
                         <span>Price</span>
-                        <span style={{ textAlign: 'center' }}>Change in 1m</span>
+                        <span style={{ textAlign: 'center' }}>
+                            {activeTab !== 'All' && remainingSecs !== null ? (
+                                remainingSecs === 0
+                                    ? 'Syncing…'
+                                    : `Fetching in ${formatCountdown(remainingSecs)}`
+                            ) : 'Rates'}
+                        </span>
                     </div>
 
                     {filteredAssets.length > 0 ? filteredAssets.slice(0, 30).map((asset, index) => {
