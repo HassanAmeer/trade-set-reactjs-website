@@ -386,14 +386,15 @@ const Home = () => {
 
             {marketLoading ? renderSkeleton() : (
                 <div className="asset-list" style={{ paddingBottom: '30px' }}>
-                    <div className="asset-header" style={{ display: 'flex', justifyContent: 'space-between' }}>
+                    <div className="asset-header" style={{ gridTemplateColumns: activeTab === 'Stocks' ? '2fr 1fr' : '2fr 1fr 1fr' }}>
                         <span>Currency</span>
-                        <span style={{ textAlign: 'right' }}>
+                        {activeTab !== 'Stocks' && <span>Price</span>}
+                        <span style={{ textAlign: activeTab === 'Stocks' ? 'right' : 'center' }}>
                             {activeTab !== 'All' && remainingSecs !== null ? (
                                 remainingSecs === 0
                                     ? 'Syncing…'
                                     : `Fetching in ${formatCountdown(remainingSecs)}`
-                            ) : 'Price / Change'}
+                            ) : (activeTab === 'Stocks' ? 'Price' : 'Rates')}
                         </span>
                     </div>
 
@@ -404,10 +405,13 @@ const Home = () => {
                                 layout
                                 key={asset.id}
                                 className="asset-row"
-                                style={{ '--index': index, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}
+                                style={{
+                                    '--index': index,
+                                    gridTemplateColumns: asset.category === 'Stocks' ? '2fr 1fr' : '2fr 1fr 1fr'
+                                }}
                                 onClick={() => navigate('/trade', { state: { assetId: asset.id } })}
                             >
-                                <div className="asset-info" style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                                <div className="asset-info">
                                     {asset.category === 'Stocks' ? (
                                         <StockAvatar
                                             asset={asset}
@@ -433,15 +437,21 @@ const Home = () => {
                                         )}
                                     </div>
                                 </div>
-                                <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: '4px' }}>
-                                    {asset.category !== 'Stocks' && (
-                                        <div className={`rate-btn ${isUp ? 'rate-up' : 'rate-down'}`} style={{ minWidth: '85px', padding: '6px 12px', fontSize: '12px' }}>
+                                {asset.category !== 'Stocks' && (
+                                    <div className="asset-rate">
+                                        ${asset.rate}
+                                    </div>
+                                )}
+                                <div style={{ justifySelf: 'end' }}>
+                                    {asset.category === 'Stocks' ? (
+                                        <div style={{ fontSize: '14px', fontWeight: '700', color: '#fff' }}>
+                                            ${asset.rate}
+                                        </div>
+                                    ) : (
+                                        <div className={`rate-btn ${isUp ? 'rate-up' : 'rate-down'}`}>
                                             {asset.change}
                                         </div>
                                     )}
-                                    <span style={{ fontSize: '13px', fontWeight: '600', color: '#ccc' }}>
-                                        ${asset.rate}
-                                    </span>
                                 </div>
                             </motion.div>
                         );

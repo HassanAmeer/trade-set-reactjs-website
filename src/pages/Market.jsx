@@ -94,22 +94,24 @@ const Market = () => {
             </div>
 
             {/* Table Header */}
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr auto', padding: '0 12px 8px 12px', fontSize: '12px', fontWeight: '800', color: '#666', borderBottom: '1px solid #222' }}>
+            <div style={{ display: 'grid', gridTemplateColumns: activeTab === 'Stocks' ? '1.5fr 1fr' : '1.5fr 1fr 1fr', padding: '0 12px 8px 12px', fontSize: '12px', fontWeight: '800', color: '#666', borderBottom: '1px solid #222' }}>
                 <span>Currency</span>
-                <span style={{ textAlign: 'right' }}>Price / Change</span>
+                {activeTab !== 'Stocks' && <span style={{ textAlign: 'center' }}>Price</span>}
+                <span style={{ textAlign: 'right' }}>{activeTab === 'Stocks' ? 'Price' : 'Change'}</span>
             </div>
 
             {/* Asset List */}
             <div style={{ padding: '0 10px 30px 10px' }}>
                 {loading ? (
                     [1, 2, 3, 4, 5, 6, 7, 8].map(i => (
-                        <div key={i} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '14px 2px', borderBottom: '1px solid rgba(255,255,255,0.03)' }}>
+                        <div key={i} style={{ display: 'grid', gridTemplateColumns: activeTab === 'Stocks' ? '1.5fr 1fr' : '1.5fr 1fr 1fr', alignItems: 'center', padding: '14px 2px', borderBottom: '1px solid rgba(255,255,255,0.03)' }}>
                             <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
                                 <div className="skeleton-loader" style={{ width: '28px', height: '18px', borderRadius: '1px' }}></div>
                                 <div className="skeleton-loader" style={{ width: '60px', height: '14px' }}></div>
                             </div>
+                            {activeTab !== 'Stocks' && <div className="skeleton-loader" style={{ width: '50px', height: '14px', margin: '0 auto' }}></div>}
                             <div style={{ textAlign: 'right' }}>
-                                <div className="skeleton-loader" style={{ width: '110px', height: '32px', borderRadius: '6px' }}></div>
+                                <div className="skeleton-loader" style={{ width: activeTab === 'Stocks' ? '60px' : '110px', height: activeTab === 'Stocks' ? '14px' : '32px', borderRadius: '6px', marginLeft: 'auto' }}></div>
                             </div>
                         </div>
                     ))
@@ -122,8 +124,8 @@ const Market = () => {
                                 key={asset.id}
                                 onClick={() => navigate('/trade', { state: { assetId: asset.id } })}
                                 style={{
-                                    display: 'flex',
-                                    justifyContent: 'space-between',
+                                    display: 'grid',
+                                    gridTemplateColumns: asset.category === 'Stocks' ? '1.5fr 1fr' : '1.5fr 1fr 1fr',
                                     alignItems: 'center',
                                     padding: '12px 2px',
                                     borderBottom: '1px solid rgba(255,255,255,0.03)',
@@ -150,9 +152,32 @@ const Market = () => {
                                     </div>
                                 </div>
 
-                                {/* Right: change badge + price below */}
-                                <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: '4px' }}>
-                                    {asset.category !== 'Stocks' && (
+                                {/* Middle: price (only if not stocks) */}
+                                {asset.category !== 'Stocks' && (
+                                    <div
+                                        className={`${(activeTab === 'Precious Metals' && asset.isLive === false) ? 'static-rate' : ''}`}
+                                        style={{
+                                            fontSize: '13px',
+                                            textAlign: 'center',
+                                            color: (activeTab === 'Precious Metals' && asset.isLive === false) ? '#666' : '#fff',
+                                            fontWeight: '500'
+                                        }}
+                                    >
+                                        ${asset.rate}
+                                    </div>
+                                )}
+
+                                {/* Right: change badge (for non-stocks) OR price (for stocks) */}
+                                <div style={{ textAlign: 'right' }}>
+                                    {asset.category === 'Stocks' ? (
+                                        <div style={{
+                                            fontSize: '14px',
+                                            fontWeight: '700',
+                                            color: '#fff',
+                                        }}>
+                                            ${asset.rate}
+                                        </div>
+                                    ) : (
                                         <div
                                             className={`rate-btn ${isUp ? 'rate-up' : 'rate-down'}`}
                                             style={{
@@ -168,13 +193,6 @@ const Market = () => {
                                             {asset.change}
                                         </div>
                                     )}
-                                    <span style={{
-                                        fontSize: '13px',
-                                        fontWeight: '600',
-                                        color: asset.category === 'Precious Metals' && !asset.isLive ? '#555' : '#ccc',
-                                    }}>
-                                        ${asset.rate}
-                                    </span>
                                 </div>
                             </motion.div>
                         );
