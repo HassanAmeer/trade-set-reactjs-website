@@ -1169,22 +1169,22 @@ const AdminCoinsSettings = () => {
                             <ul style={{ margin: 0, paddingLeft: '18px', color: '#a0a0ab', fontSize: '12px', lineHeight: '1.7' }}>
                                 {activeTab === 'crypto' && (
                                     <>
-                                        <li>Go to <a href="https://livecoinwatch.com" target="_blank" rel="noreferrer" style={{ color: accentColor, textDecoration: 'underline', fontWeight: '700' }}>livecoinwatch.com</a>.</li>
-                                        <li>Search for your target coin (e.g. <strong>BNB</strong>, <strong>FET</strong>, <strong>RENDER</strong>).</li>
-                                        <li>Copy the bold ticker code and enter it below (e.g. <code>BNB</code>).</li>
+                                        <li>Search on <strong>Google</strong> for the cryptocurrency symbol (e.g. "Bitcoin symbol").</li>
+                                        <li>Common examples: <strong>BTC</strong> (Bitcoin), <strong>ETH</strong> (Ethereum), <strong>SOL</strong> (Solana).</li>
+                                        <li>Enter the exact symbol code below (e.g. <code>BNB</code>).</li>
                                         <li style={{ color: '#777' }}>Note: System automatically fetches its live icon and rate.</li>
                                     </>
                                 )}
                                 {activeTab === 'forex' && (
                                     <>
+                                        <li>Search on <strong>Google</strong> for the currency code (e.g. "Singapore Dollar currency code").</li>
                                         <li>Use standard <strong>ISO 4217</strong> 3-letter currency codes (e.g. <code>SGD</code>, <code>MXN</code>, <code>CAD</code>).</li>
-                                        <li>Check codes at <a href="https://xe.com" target="_blank" rel="noreferrer" style={{ color: accentColor, textDecoration: 'underline', fontWeight: '700' }}>xe.com</a> if needed.</li>
-                                        <li><strong>API &amp; Rates Documentation</strong>:
+                                        <li>Common examples: <strong>GBP</strong> (British Pound), <strong>EUR</strong> (Euro), <strong>JPY</strong> (Japanese Yen).</li>
+                                        <li><strong>Rates Calculation Rules</strong>:
                                             <ul style={{ paddingLeft: '15px', marginTop: '6px', color: '#888' }}>
-                                                <li>Rates are fetched and synced from the <a href="https://metals.dev" target="_blank" rel="noreferrer" style={{ color: accentColor, fontWeight: 'bold' }}>metals.dev</a> API.</li>
                                                 <li><strong>Inversion Math Rules</strong>:
                                                     <ul style={{ paddingLeft: '12px', marginTop: '4px' }}>
-                                                        <li>For pairs ending with <code>/USD</code> (e.g., <code>GBP/USD</code>, <code>EUR/USD</code>), the API rate is used directly.</li>
+                                                        <li>For pairs ending with <code>/USD</code> (e.g., <code>GBP/USD</code>, <code>EUR/USD</code>), the rate is used directly.</li>
                                                         <li>For pairs starting with <code>USD/</code> (e.g., <code>USD/JPY</code>, <code>USD/CAD</code>), the system automatically uses the inverted formula: <code>1 / rate</code>.</li>
                                                     </ul>
                                                 </li>
@@ -1195,18 +1195,18 @@ const AdminCoinsSettings = () => {
                                 )}
                                 {activeTab === 'metals' && (
                                     <>
+                                        <li>Search on <strong>Google</strong> for the commodity or precious metal symbol.</li>
                                         <li>Enter the symbol and display name separated by <code>|</code>.</li>
-                                        <li>Format: <code>SYMBOL|Full Name</code> (e.g. <code>LME_COPPER/USD|LME Copper</code> or <code>LBMA_GOLD_AM/USD|LBMA Gold AM</code>).</li>
-                                        <li>You can check supported live metal codes at <a href="https://metals.dev" target="_blank" rel="noreferrer" style={{ color: accentColor, textDecoration: 'underline', fontWeight: '700' }}>metals.dev</a>.</li>
-                                        <li>Valid auto-syncing symbols: <code>gold</code>, <code>silver</code>, <code>platinum</code>, <code>palladium</code>, <code>copper</code>, <code>aluminum</code>, <code>lead</code>, <code>nickel</code>, <code>zinc</code>, <code>lme_copper</code>, <code>lme_aluminum</code>, <code>lme_lead</code>, <code>lme_nickel</code>, <code>lme_zinc</code>, <code>lbma_gold_am</code>, <code>lbma_gold_pm</code>, etc.</li>
-                                        <li style={{ color: '#777' }}>Note: Custom commodities not supported by the API will default to 0.00 until you specify a Custom Rate.</li>
+                                        <li>Format: <code>SYMBOL|Full Name</code>. Common examples: <code>gold|Gold</code>, <code>silver|Silver</code>, <code>platinum|Platinum</code>, <code>palladium|Palladium</code>.</li>
+                                        <li>Other valid symbols include: <code>copper</code>, <code>aluminum</code>, <code>lead</code>, <code>nickel</code>, <code>zinc</code>, etc.</li>
+                                        <li style={{ color: '#777' }}>Note: Custom commodities not supported by the live API will default to 0.00 until you specify a Custom Rate.</li>
                                     </>
                                 )}
                                 {activeTab === 'stocks' && (
                                     <>
-                                        <li>Enter the stock <strong>ticker symbol</strong> exactly as listed on US markets (e.g. <code>AAPL</code>, <code>MSFT</code>, <code>GOOGL</code>).</li>
-                                        <li>Rates are fetched from <a href="https://twelvedata.com" target="_blank" rel="noreferrer" style={{ color: accentColor, textDecoration: 'underline', fontWeight: '700' }}>TwelveData</a> — the same API used for live stock prices.</li>
-                                        <li>The symbol will be verified against the API before being added.</li>
+                                        <li>Search on <strong>Google</strong> for the company's US stock ticker symbol (e.g. "Apple stock symbol").</li>
+                                        <li>Common examples: <strong>AAPL</strong> (Apple), <strong>AMZN</strong> (Amazon), <strong>TSLA</strong> (Tesla), <strong>MSFT</strong> (Microsoft).</li>
+                                        <li>Enter the stock <strong>ticker symbol</strong> exactly as listed on US markets.</li>
                                         <li style={{ color: '#777' }}>Note: Only US-listed stocks are supported by default. Use the ticker code exactly (e.g. <code>AMZN</code> not <code>Amazon</code>).</li>
                                     </>
                                 )}
