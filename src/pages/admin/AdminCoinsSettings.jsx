@@ -7,6 +7,7 @@ import {
     Clock, DollarSign, Eye, EyeOff, Plus, Trash2,
     CheckCircle2, AlertCircle, Bitcoin, TrendingUp, Gem, ChevronDown, BarChart2
 } from 'lucide-react';
+import AdminCoinsAIBot from './AdminCoinsAIBot';
 
 const TWELVEDATA_API_KEY = '85011945dda54cbf8d47fe5cb19be206';
 
@@ -566,13 +567,14 @@ const AdminCoinsSettings = () => {
     };
 
     // ── Add coin ────────────────────────────────────────────────────────
-    const addCoin = async () => {
-        const inputVal = newCoinCode.trim();
+    const addCoin = async (overrideTab, overrideInputVal) => {
+        const targetTab = overrideTab || activeTab;
+        const inputVal = (overrideInputVal !== undefined ? overrideInputVal : newCoinCode).trim();
         if (!inputVal) return showToast('error', 'Please enter a value');
 
         setAddingCoin(true);
         try {
-            if (activeTab === 'stocks') {
+            if (targetTab === 'stocks') {
                 const code = inputVal.toUpperCase();
                 if ((extraCoins.stocks || []).includes(code)) {
                     return showToast('error', 'Stock already added');
@@ -599,7 +601,7 @@ const AdminCoinsSettings = () => {
                 }));
                 setNewCoinCode('');
                 showToast('success', `${code} added successfully!`);
-            } else if (activeTab === 'crypto') {
+            } else if (targetTab === 'crypto') {
                 const code = inputVal.toUpperCase();
                 if ((extraCoins.crypto || []).includes(code)) {
                     return showToast('error', 'Coin already added');
@@ -627,7 +629,7 @@ const AdminCoinsSettings = () => {
                 }));
                 setNewCoinCode('');
                 showToast('success', `${code} added successfully!`);
-            } else if (activeTab === 'forex') {
+            } else if (targetTab === 'forex') {
                 const code = inputVal.toUpperCase();
                 if ((extraCoins.forex || []).includes(code)) {
                     return showToast('error', 'Currency already added');
@@ -656,7 +658,7 @@ const AdminCoinsSettings = () => {
                 }));
                 setNewCoinCode('');
                 showToast('success', `${code} added successfully!`);
-            } else if (activeTab === 'metals') {
+            } else if (targetTab === 'metals') {
                 if (!inputVal.includes('|')) {
                     throw new Error('Metals format must be SYMBOL|Full Name (e.g., IRON/USD|Iron Ore)');
                 }
@@ -691,7 +693,8 @@ const AdminCoinsSettings = () => {
     };
 
     // ─── Remove/Delete coin ────────────────────────────────────────────────
-    const removeCoin = async (itemToRemoveOrCoin) => {
+    const removeCoin = async (itemToRemoveOrCoin, overrideTab) => {
+        const targetTab = overrideTab || activeTab;
         const isDefaultObject = typeof itemToRemoveOrCoin === 'object' && itemToRemoveOrCoin !== null && !itemToRemoveOrCoin.isExtra;
         const isDefaultId = typeof itemToRemoveOrCoin === 'string' && (
             itemToRemoveOrCoin.endsWith('USDT') || 
@@ -700,8 +703,8 @@ const AdminCoinsSettings = () => {
             itemToRemoveOrCoin.startsWith('stock-')
         ) && !itemToRemoveOrCoin.includes('|'); // metals extra coins contain '|'
 
-        let updatedTabExtra = [...(extraCoins[activeTab] || [])];
-        let updatedTabDeleted = [...(extraCoins.deletedCoins[activeTab] || [])];
+        let updatedTabExtra = [...(extraCoins[targetTab] || [])];
+        let updatedTabDeleted = [...(extraCoins.deletedCoins[targetTab] || [])];
 
         if (isDefaultObject || isDefaultId) {
             const coinId = isDefaultObject ? itemToRemoveOrCoin.id : itemToRemoveOrCoin;
@@ -711,16 +714,16 @@ const AdminCoinsSettings = () => {
         } else {
             // It is an extra/custom coin identifier string
             const stringIdentifier = typeof itemToRemoveOrCoin === 'object' 
-                ? (activeTab === 'metals' ? itemToRemoveOrCoin.rawString : itemToRemoveOrCoin.code)
+                ? (targetTab === 'metals' ? itemToRemoveOrCoin.rawString : itemToRemoveOrCoin.code)
                 : itemToRemoveOrCoin;
 
             updatedTabExtra = updatedTabExtra.filter(c => c !== stringIdentifier);
         }
 
         // Firestore updates
-        const collectionName = `coins_list_${activeTab}`;
+        const collectionName = `coins_list_${targetTab}`;
         const docData = {
-            [activeTab]: updatedTabExtra,
+            [targetTab]: updatedTabExtra,
             deletedCoins: updatedTabDeleted,
         };
 
@@ -728,10 +731,10 @@ const AdminCoinsSettings = () => {
             await setDoc(doc(db, collectionName, 'latest'), docData);
             setExtraCoins(prev => ({
                 ...prev,
-                [activeTab]: updatedTabExtra,
+                [targetTab]: updatedTabExtra,
                 deletedCoins: {
                     ...prev.deletedCoins,
-                    [activeTab]: updatedTabDeleted,
+                    [targetTab]: updatedTabDeleted,
                 }
             }));
             showToast('success', 'Removed successfully');
@@ -741,14 +744,15 @@ const AdminCoinsSettings = () => {
     };
 
     // ─── Restore default coin ──────────────────────────────────────────────
-    const restoreCoin = async (coinId) => {
-        const currentDeleted = extraCoins.deletedCoins[activeTab] || [];
+    const restoreCoin = async (coinId, overrideTab) => {
+        const targetTab = overrideTab || activeTab;
+        const currentDeleted = extraCoins.deletedCoins[targetTab] || [];
         const updatedDeleted = currentDeleted.filter(id => id !== coinId);
 
         // Firestore updates
-        const collectionName = `coins_list_${activeTab}`;
+        const collectionName = `coins_list_${targetTab}`;
         const docData = {
-            [activeTab]: extraCoins[activeTab] || [],
+            [targetTab]: extraCoins[targetTab] || [],
             deletedCoins: updatedDeleted,
         };
 
@@ -758,7 +762,7 @@ const AdminCoinsSettings = () => {
                 ...prev,
                 deletedCoins: {
                     ...prev.deletedCoins,
-                    [activeTab]: updatedDeleted,
+                    [targetTab]: updatedDeleted,
                 }
             }));
             showToast('success', 'Restored successfully');
@@ -1653,6 +1657,18 @@ const AdminCoinsSettings = () => {
                     </motion.div>
                 )}
             </AnimatePresence>
+
+            <AdminCoinsAIBot 
+                coinsContext={{
+                    extraCoins,
+                    visibility,
+                    activeTab
+                }}
+                onAddCoin={(tab, code) => addCoin(tab, code)}
+                onRemoveCoin={(tab, coinId) => removeCoin(coinId, tab)}
+                onToggleVisibility={(coinId) => toggleVisibility(coinId)}
+                onRestoreCoin={(tab, coinId) => restoreCoin(coinId, tab)}
+            />
         </motion.div>
     );
 };
