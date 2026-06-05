@@ -3,6 +3,9 @@ import { fetchCryptoMarkets, fetchMetalMarkets, fetchCryptoByDynamicCodes } from
 import { db } from '../firebase-setup';
 import { doc, getDoc, setDoc } from 'firebase/firestore';
 
+const TWELVEDATA_API_KEY = '85011945dda54cbf8d47fe5cb19be206';
+const STOCKS_SYMBOLS = ['AMZN', 'TSLA', 'NVDA', 'NDAQ'];
+
 const MarketContext = createContext();
 
 // ─── Fallback Data ─────────────────────────────────────────────────────────
@@ -52,11 +55,20 @@ const STATIC_METALS = [
     { id: 'metal-11', name: 'LD/USD', fullName: 'Lead', rate: '2,145.00', change: '-0.20%', flag: 'https://img.icons8.com/color/96/steel-ingot.png', category: 'Precious Metals', isLive: false },
 ];
 
+// ─── Fallback Stocks Data ───────────────────────────────────────────────────
+const FALLBACK_STOCKS = [
+    { id: 'stock-AMZN', symbol: 'AMZN', name: 'AMZN/USD', fullName: 'Amazon.com Inc.', rate: '253.91', change: '+0.00%', flag: 'https://logo.clearbit.com/amazon.com', category: 'Stocks', isLive: false },
+    { id: 'stock-TSLA', symbol: 'TSLA', name: 'TSLA/USD', fullName: 'Tesla Inc.', rate: '418.45', change: '+0.00%', flag: 'https://logo.clearbit.com/tesla.com', category: 'Stocks', isLive: false },
+    { id: 'stock-NVDA', symbol: 'NVDA', name: 'NVDA/USD', fullName: 'NVIDIA Corporation', rate: '218.71', change: '+0.00%', flag: 'https://logo.clearbit.com/nvidia.com', category: 'Stocks', isLive: false },
+    { id: 'stock-NDAQ', symbol: 'NDAQ', name: 'NDAQ/USD', fullName: 'Nasdaq Inc.', rate: '88.45', change: '+0.00%', flag: 'https://logo.clearbit.com/nasdaq.com', category: 'Stocks', isLive: false },
+];
+
 // ─── Default config if DB has nothing ─────────────────────────────────────
 const DEFAULT_TAB_CONFIG = {
     crypto: { useCustomPrice: false, syncIntervalSeconds: 300, lastSyncedAt: 0 },
     forex: { useCustomPrice: false, syncIntervalSeconds: 1800, lastSyncedAt: 0 },
     metals: { useCustomPrice: false, syncIntervalSeconds: 21600, lastSyncedAt: 0 },
+    stocks: { useCustomPrice: false, syncIntervalSeconds: 3600, lastSyncedAt: 0 },
 };
 
 // ─── Helper: apply custom rates onto an asset array ──────────────────────
@@ -300,9 +312,50 @@ const getCachedVisibilityAndFilter = (baseAssets) => {
     }
 };
 
+// ─── Helper: build stocks assets from raw twelvedata response ─────────────
+function buildStocksFromCachedRaw(rawRates, extraStocks = [], deletedStocks = []) {
+    const baseStocks = FALLBACK_STOCKS.filter(s => !deletedStocks.includes(s.id));
+    // Merge with extra stocks added by admin
+    const extraStockAssets = (extraStocks || []).map(symbol => ({
+        id: `stock-${symbol}`,
+        symbol,
+        name: `${symbol}/USD`,
+        fullName: symbol,
+        rate: '0.00',
+        change: '+0.00%',
+        flag: `https://logo.clearbit.com/${symbol.toLowerCase()}.com`,
+        category: 'Stocks',
+        isLive: false,
+    })).filter(s => !deletedStocks.includes(s.id));
+
+    const allStocks = [
+        ...baseStocks,
+        ...extraStockAssets.filter(e => !baseStocks.find(b => b.id === e.id)),
+    ];
+
+    if (!rawRates) return allStocks;
+
+    return allStocks.map(stock => {
+        const raw = rawRates[stock.symbol];
+        if (raw && raw.price !== undefined) {
+            const price = parseFloat(raw.price);
+            if (!isNaN(price)) {
+                return {
+                    ...stock,
+                    rate: price > 100
+                        ? price.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })
+                        : price.toFixed(2),
+                    isLive: true,
+                };
+            }
+        }
+        return stock;
+    });
+}
+
 // ─── Provider ─────────────────────────────────────────────────────────────
 export const MarketProvider = ({ children }) => {
-    const [assets, setAssets] = useState(() => getCachedVisibilityAndFilter([...FALLBACK_FOREX, ...FALLBACK_CRYPTO, ...STATIC_METALS]));
+    const [assets, setAssets] = useState(() => getCachedVisibilityAndFilter([...FALLBACK_FOREX, ...FALLBACK_CRYPTO, ...STATIC_METALS, ...FALLBACK_STOCKS]));
     const [loading, setLoading] = useState(true);
     const [selectedAsset, setSelectedAsset] = useState(null);
     const [isActive, setIsActive] = useState(false);
@@ -320,7 +373,7 @@ export const MarketProvider = ({ children }) => {
         console.log('[Market] Starting smart market data load...');
         try {
             // ── Read admin config from Firestore ──────────────────────
-            const [cfgSnap, customRatesSnap, visSnap, listSnap, cryptoListSnap, forexListSnap, metalsListSnap, cryptoRatesSnap, forexRatesSnap, metalsRatesSnap] = await Promise.all([
+            const [cfgSnap, customRatesSnap, visSnap, listSnap, cryptoListSnap, forexListSnap, metalsListSnap, cryptoRatesSnap, forexRatesSnap, metalsRatesSnap, stocksListSnap, stocksRatesSnap] = await Promise.all([
                 getDoc(doc(db, 'admin_set', 'coins_config')),
                 getDoc(doc(db, 'admin_set', 'coins_custom_rates')),
                 getDoc(doc(db, 'admin_set', 'coins_visibility')),
@@ -331,6 +384,8 @@ export const MarketProvider = ({ children }) => {
                 getDoc(doc(db, 'coins_rates_crypto', 'latest')),
                 getDoc(doc(db, 'coins_rates_forex', 'latest')),
                 getDoc(doc(db, 'coins_rates_metals', 'latest')),
+                getDoc(doc(db, 'coins_list_stocks', 'latest')),
+                getDoc(doc(db, 'coins_rates_stocks', 'latest')),
             ]);
 
             const cfg = cfgSnap.exists()
@@ -338,6 +393,7 @@ export const MarketProvider = ({ children }) => {
                     crypto: { ...DEFAULT_TAB_CONFIG.crypto, ...(cfgSnap.data().crypto || {}) },
                     forex: { ...DEFAULT_TAB_CONFIG.forex, ...(cfgSnap.data().forex || {}) },
                     metals: { ...DEFAULT_TAB_CONFIG.metals, ...(cfgSnap.data().metals || {}) },
+                    stocks: { ...DEFAULT_TAB_CONFIG.stocks, ...(cfgSnap.data().stocks || {}) },
                 }
                 : DEFAULT_TAB_CONFIG;
 
@@ -347,6 +403,7 @@ export const MarketProvider = ({ children }) => {
                 crypto: cryptoRatesSnap.exists() ? cryptoRatesSnap.data().rates : null,
                 forex: forexRatesSnap.exists() ? forexRatesSnap.data() : null,
                 metals: metalsRatesSnap.exists() ? metalsRatesSnap.data().rates : null,
+                stocks: stocksRatesSnap.exists() ? stocksRatesSnap.data().rates : null,
             };
             const customRatesAll = customRatesSnap.exists() ? customRatesSnap.data() : {};
             const visibility = visSnap.exists() ? visSnap.data() : {};
@@ -360,6 +417,9 @@ export const MarketProvider = ({ children }) => {
             let extraMetals = [];
             let deletedMetals = [];
             let customNamesMetals = {};
+            let extraStocks = [];
+            let deletedStocks = [];
+            let customNamesStocks = {};
 
             if (cryptoListSnap.exists()) {
                 const d = cryptoListSnap.data();
@@ -379,6 +439,12 @@ export const MarketProvider = ({ children }) => {
                 deletedMetals = d.deletedCoins || [];
                 customNamesMetals = d.customNames || {};
             }
+            if (stocksListSnap.exists()) {
+                const d = stocksListSnap.data();
+                extraStocks = d.stocks || [];
+                deletedStocks = d.deletedCoins || [];
+                customNamesStocks = d.customNames || {};
+            }
 
             // Fallback to legacy document if new documents don't exist yet
             if (!cryptoListSnap.exists() && !forexListSnap.exists() && !metalsListSnap.exists() && listSnap.exists()) {
@@ -388,7 +454,7 @@ export const MarketProvider = ({ children }) => {
                 extraMetals = legacyData.metals || [];
 
                 const deletedAll = legacyData.deletedCoins || [];
-                deletedCrypto = deletedAll.filter(id => !id.startsWith('fx-') && !id.startsWith('metal-'));
+                deletedCrypto = deletedAll.filter(id => !id.startsWith('fx-') && !id.startsWith('metal-') && !id.startsWith('stock-'));
                 deletedForex = deletedAll.filter(id => id.startsWith('fx-'));
                 deletedMetals = deletedAll.filter(id => id.startsWith('metal-'));
             }
@@ -574,15 +640,68 @@ export const MarketProvider = ({ children }) => {
             }
 
             // ─────────────────────────────────────────────────────────
+            // STOCKS
+            // ─────────────────────────────────────────────────────────
+            let stockAssets = buildStocksFromCachedRaw(cachedRates.stocks, extraStocks, deletedStocks);
+
+            if (cfg.stocks.useCustomPrice) {
+                console.log('[Market][Stocks] Custom price mode ON — loading from DB');
+                stockAssets = applyCustomRatesToAssets(stockAssets, customRatesAll.stocks);
+            } else {
+                const timeSince = now - (cfg.stocks.lastSyncedAt || 0);
+                const shouldSync = timeSince >= cfg.stocks.syncIntervalSeconds * 1000;
+
+                if (shouldSync) {
+                    console.log('[Market][Stocks] Sync time elapsed — fetching from TwelveData API...');
+                    try {
+                        // Collect all symbols (base + extra)
+                        const allSymbols = [
+                            ...STOCKS_SYMBOLS,
+                            ...(extraStocks || []),
+                        ].filter((v, i, a) => a.indexOf(v) === i);
+
+                        const symbolsParam = allSymbols.join(',');
+                        const response = await fetch(
+                            `https://api.twelvedata.com/price?symbol=${symbolsParam}&apikey=${TWELVEDATA_API_KEY}`
+                        );
+                        if (response.ok) {
+                            const rawData = await response.json();
+                            console.log('[MarketContext][Stocks] API response from TwelveData:', rawData);
+                            // Store raw rates to DB
+                            await setDoc(doc(db, 'coins_rates_stocks', 'latest'), {
+                                rates: rawData,
+                                syncedAt: now,
+                            });
+                            const newCfg = { ...cfg, stocks: { ...cfg.stocks, lastSyncedAt: now } };
+                            await setDoc(doc(db, 'admin_set', 'coins_config'), newCfg);
+                            console.log('[Market][Stocks] API data fetched & stored to DB');
+                            stockAssets = buildStocksFromCachedRaw(rawData, extraStocks, deletedStocks);
+                        }
+                    } catch (err) {
+                        console.error('[Market][Stocks] Failed to fetch live stocks:', err);
+                    }
+                } else {
+                    console.log('[Market][Stocks] Using cached DB data (sync not due yet)');
+                    stockAssets = buildStocksFromCachedRaw(cachedRates.stocks, extraStocks, deletedStocks);
+                }
+
+                // Apply custom overrides on top if any
+                if (customRatesAll.stocks) {
+                    stockAssets = applyCustomRatesToAssets(stockAssets, customRatesAll.stocks);
+                }
+            }
+
+            // ─────────────────────────────────────────────────────────
             // Merge + Apply visibility filter + Custom Names
             // ─────────────────────────────────────────────────────────
-            const allDeletedCoins = [...deletedCrypto, ...deletedForex, ...deletedMetals];
+            const allDeletedCoins = [...deletedCrypto, ...deletedForex, ...deletedMetals, ...deletedStocks];
             try {
                 localStorage.setItem('cached_visibility', JSON.stringify(visibility));
                 localStorage.setItem('cached_deleted_coins', JSON.stringify(allDeletedCoins));
                 localStorage.setItem('cached_custom_names_crypto', JSON.stringify(customNamesCrypto));
                 localStorage.setItem('cached_custom_names_forex', JSON.stringify(customNamesForex));
                 localStorage.setItem('cached_custom_names_metals', JSON.stringify(customNamesMetals));
+                localStorage.setItem('cached_custom_names_stocks', JSON.stringify(customNamesStocks));
             } catch (_) { }
 
             // Helper to apply custom name overrides
@@ -601,8 +720,12 @@ export const MarketProvider = ({ children }) => {
                 metalAssets.filter(m => !deletedMetals.includes(m.id)),
                 customNamesMetals
             );
+            const filteredStocks = applyCustomNames(
+                stockAssets.filter(s => !deletedStocks.includes(s.id)),
+                customNamesStocks
+            );
 
-            let allAssets = [...filteredForex, ...filteredCrypto, ...filteredMetals];
+            let allAssets = [...filteredForex, ...filteredCrypto, ...filteredMetals, ...filteredStocks];
 
             // Hide coins that admin set to false in coins_visibility
             if (Object.keys(visibility).length > 0) {

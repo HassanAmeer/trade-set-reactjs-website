@@ -5,20 +5,56 @@ import { motion, AnimatePresence } from 'framer-motion';
 import {
     RefreshCw, Save, Loader2, ToggleLeft, ToggleRight,
     Clock, DollarSign, Eye, EyeOff, Plus, Trash2,
-    CheckCircle2, AlertCircle, Bitcoin, TrendingUp, Gem, ChevronDown
+    CheckCircle2, AlertCircle, Bitcoin, TrendingUp, Gem, ChevronDown, BarChart2
 } from 'lucide-react';
+
+const TWELVEDATA_API_KEY = '85011945dda54cbf8d47fe5cb19be206';
+
+// ── Stock Avatar: first-letter circle when logo fails ───────────────────
+const AdminStockAvatar = ({ label, size = 28 }) => {
+    const letter = (label || '?')[0].toUpperCase();
+    return (
+        <div style={{
+            width: size, height: size, borderRadius: '50%', flexShrink: 0,
+            display: 'flex', alignItems: 'center', justifyContent: 'center',
+            background: '#1a1a1a',
+            border: '1px solid #3a3a3a',
+            fontWeight: '700', color: '#8a8a93', fontSize: size * 0.42, userSelect: 'none',
+        }}>
+            {letter}
+        </div>
+    );
+};
+
+// ── Coin Icon: shows AdminStockAvatar for stocks, img for others ──────────
+const CoinIcon = ({ coin, activeTab, size = 28 }) => {
+    const [failed, setFailed] = React.useState(false);
+    if (activeTab === 'stocks' || failed) {
+        return <AdminStockAvatar label={coin.label} size={size} />;
+    }
+    return (
+        <img
+            src={coin.icon}
+            alt={coin.label}
+            style={{ width: size, height: size, borderRadius: '50%', objectFit: 'cover', border: '1px solid rgba(255,255,255,0.08)', flexShrink: 0 }}
+            onError={() => setFailed(true)}
+        />
+    );
+};
 
 // ─── Constants ────────────────────────────────────────────────────────────────
 const TABS = [
     { id: 'crypto',  label: 'Cryptocurrency',   icon: Bitcoin,     color: '#f7931a' },
     { id: 'forex',   label: 'Foreign Exchange',  icon: TrendingUp,  color: '#00c087' },
     { id: 'metals',  label: 'Precious Metals',   icon: Gem,         color: '#f0b90b' },
+    { id: 'stocks',  label: 'Stocks',            icon: BarChart2,   color: '#7c6af7' },
 ];
 
 const DEFAULT_CONFIG = {
-    crypto: { useCustomPrice: false, syncIntervalSeconds: 300,   lastSyncedAt: 0 },
-    forex:  { useCustomPrice: false, syncIntervalSeconds: 1800,  lastSyncedAt: 0 },
-    metals: { useCustomPrice: false, syncIntervalSeconds: 21600, lastSyncedAt: 0 },
+    crypto:  { useCustomPrice: false, syncIntervalSeconds: 300,   lastSyncedAt: 0 },
+    forex:   { useCustomPrice: false, syncIntervalSeconds: 1800,  lastSyncedAt: 0 },
+    metals:  { useCustomPrice: false, syncIntervalSeconds: 21600, lastSyncedAt: 0 },
+    stocks:  { useCustomPrice: false, syncIntervalSeconds: 3600,  lastSyncedAt: 0 },
 };
 
 const LIVECOINWATCH_KEY = '20c87391-6c37-4e83-a9cb-ad52ab7a3da2';
@@ -67,6 +103,12 @@ const DEFAULT_COINS = {
         { id: 'metal-9',  label: 'ZNC/USD (Zinc)',     icon: 'https://img.icons8.com/color/96/steel-ingot.png' },
         { id: 'metal-10', label: 'NKL/USD (Nickel)',   icon: 'https://img.icons8.com/color/96/steel-ingot.png' },
         { id: 'metal-11', label: 'LD/USD (Lead)',      icon: 'https://img.icons8.com/color/96/steel-ingot.png' },
+    ],
+    stocks: [
+        { id: 'stock-AMZN', label: 'AMZN/USD (Amazon)',  icon: 'https://logo.clearbit.com/amazon.com' },
+        { id: 'stock-TSLA', label: 'TSLA/USD (Tesla)',   icon: 'https://logo.clearbit.com/tesla.com' },
+        { id: 'stock-NVDA', label: 'NVDA/USD (NVIDIA)',  icon: 'https://logo.clearbit.com/nvidia.com' },
+        { id: 'stock-NDAQ', label: 'NDAQ/USD (Nasdaq)',  icon: 'https://logo.clearbit.com/nasdaq.com' },
     ],
 };
 
@@ -144,13 +186,15 @@ const AdminCoinsSettings = () => {
         crypto: [],
         forex: [],
         metals: [],
+        stocks: [],
         deletedCoins: {
             crypto: [],
             forex: [],
             metals: [],
+            stocks: [],
         }
     });
-    const [liveRates, setLiveRates]           = useState({ crypto: [], forex: {}, metals: {} });
+    const [liveRates, setLiveRates]           = useState({ crypto: [], forex: {}, metals: {}, stocks: {} });
     const [loading, setLoading]               = useState(true);
     const [saving, setSaving]                 = useState('');
     const [syncing, setSyncing]               = useState('');
@@ -189,24 +233,29 @@ const AdminCoinsSettings = () => {
 
             const cfgData = cfgSnap.exists() ? cfgSnap.data() : DEFAULT_CONFIG;
             const merged = {
-                crypto: { ...DEFAULT_CONFIG.crypto, ...(cfgData.crypto || {}) },
-                forex:  { ...DEFAULT_CONFIG.forex,  ...(cfgData.forex  || {}) },
-                metals: { ...DEFAULT_CONFIG.metals, ...(cfgData.metals || {}) },
+                crypto:  { ...DEFAULT_CONFIG.crypto,  ...(cfgData.crypto  || {}) },
+                forex:   { ...DEFAULT_CONFIG.forex,   ...(cfgData.forex   || {}) },
+                metals:  { ...DEFAULT_CONFIG.metals,  ...(cfgData.metals  || {}) },
+                stocks:  { ...DEFAULT_CONFIG.stocks,  ...(cfgData.stocks  || {}) },
             };
             setConfig(merged);
             setLocalIntervals({
-                crypto: merged.crypto.syncIntervalSeconds,
-                forex:  merged.forex.syncIntervalSeconds,
-                metals: merged.metals.syncIntervalSeconds,
+                crypto:  merged.crypto.syncIntervalSeconds,
+                forex:   merged.forex.syncIntervalSeconds,
+                metals:  merged.metals.syncIntervalSeconds,
+                stocks:  merged.stocks.syncIntervalSeconds,
             });
 
             if (ratesSnap.exists()) setCustomRates(ratesSnap.data());
             if (visSnap.exists())   setVisibility(visSnap.data());
 
+            const stocksRatesSnap = await getDoc(doc(db, 'coins_rates_stocks', 'latest'));
+            const stocksListSnap  = await getDoc(doc(db, 'coins_list_stocks', 'latest'));
             const mergedRates = {
                 crypto: cryptoRatesSnap.exists() ? cryptoRatesSnap.data().rates : [],
-                forex: forexRatesSnap.exists() ? forexRatesSnap.data() : {},
+                forex:  forexRatesSnap.exists()  ? forexRatesSnap.data()        : {},
                 metals: metalsRatesSnap.exists() ? metalsRatesSnap.data().rates : {},
+                stocks: stocksRatesSnap.exists() ? stocksRatesSnap.data().rates : {},
             };
             setLiveRates(mergedRates);
 
@@ -214,10 +263,12 @@ const AdminCoinsSettings = () => {
                 crypto: [],
                 forex: [],
                 metals: [],
+                stocks: [],
                 deletedCoins: {
                     crypto: [],
                     forex: [],
                     metals: [],
+                    stocks: [],
                 }
             };
 
@@ -242,6 +293,12 @@ const AdminCoinsSettings = () => {
                     finalExtraCoins.metals = d.metals || [];
                     finalExtraCoins.deletedCoins.metals = d.deletedCoins || [];
                     loadedCustomNames.metals = d.customNames || {};
+                }
+                if (stocksListSnap.exists()) {
+                    const d = stocksListSnap.data();
+                    finalExtraCoins.stocks = d.stocks || [];
+                    finalExtraCoins.deletedCoins.stocks = d.deletedCoins || [];
+                    loadedCustomNames.stocks = d.customNames || {};
                 }
             } else if (listSnap.exists()) {
                 // Perform silent database migration
@@ -366,7 +423,34 @@ const AdminCoinsSettings = () => {
             let freshData = null;
             const now = Date.now();
 
-            if (tab === 'crypto') {
+            if (tab === 'stocks') {
+                const baseStockSymbols = ['AMZN', 'TSLA', 'NVDA', 'NDAQ'];
+                const allSymbols = [
+                    ...baseStockSymbols,
+                    ...(extraCoins.stocks || [])
+                ].filter((v, i, a) => a.indexOf(v) === i);
+                const symbolsParam = allSymbols.join(',');
+                const res = await fetch(
+                    `https://api.twelvedata.com/price?symbol=${symbolsParam}&apikey=${TWELVEDATA_API_KEY}`
+                );
+                if (!res.ok) throw new Error('TwelveData API error: ' + res.status);
+                const rawData = await res.json();
+                console.log('[AdminCoins][Stocks] API response from TwelveData:', rawData);
+                await setDoc(doc(db, 'coins_rates_stocks', 'latest'), {
+                    rates: rawData,
+                    syncedAt: now,
+                });
+                const newCfg = {
+                    ...config,
+                    stocks: { ...config.stocks, lastSyncedAt: now },
+                };
+                await setDoc(doc(db, 'admin_set', 'coins_config'), newCfg);
+                setConfig(newCfg);
+                setLiveRates(prev => ({ ...prev, stocks: rawData }));
+                showToast('success', 'Stocks synced successfully!');
+                setSyncing('');
+                return;
+            } else if (tab === 'crypto') {
                 const codes = [
                     'BTC','ETH','SOL','XRP','AVAX','LINK','MATIC','SHIB','TON','NEAR','PEPE','SUI','DOGE','TRX','DOT','LTC',
                     ...(extraCoins.crypto || [])
@@ -488,7 +572,34 @@ const AdminCoinsSettings = () => {
 
         setAddingCoin(true);
         try {
-            if (activeTab === 'crypto') {
+            if (activeTab === 'stocks') {
+                const code = inputVal.toUpperCase();
+                if ((extraCoins.stocks || []).includes(code)) {
+                    return showToast('error', 'Stock already added');
+                }
+                // Verify with TwelveData API
+                const res = await fetch(
+                    `https://api.twelvedata.com/price?symbol=${code}&apikey=${TWELVEDATA_API_KEY}`
+                );
+                if (!res.ok) throw new Error('TwelveData API error');
+                const data = await res.json();
+                // TwelveData returns { price: '...' } for valid symbols or { code: 400, ... } for invalid
+                if (data.code || data.status === 'error' || !data.price) {
+                    throw new Error(`Stock symbol "${code}" not found on TwelveData.`);
+                }
+                const updatedStocks = [...(extraCoins.stocks || []), code];
+                const newDocData = {
+                    stocks: updatedStocks,
+                    deletedCoins: extraCoins.deletedCoins.stocks || [],
+                };
+                await setDoc(doc(db, 'coins_list_stocks', 'latest'), newDocData);
+                setExtraCoins(prev => ({
+                    ...prev,
+                    stocks: updatedStocks,
+                }));
+                setNewCoinCode('');
+                showToast('success', `${code} added successfully!`);
+            } else if (activeTab === 'crypto') {
                 const code = inputVal.toUpperCase();
                 if ((extraCoins.crypto || []).includes(code)) {
                     return showToast('error', 'Coin already added');
@@ -585,7 +696,8 @@ const AdminCoinsSettings = () => {
         const isDefaultId = typeof itemToRemoveOrCoin === 'string' && (
             itemToRemoveOrCoin.endsWith('USDT') || 
             itemToRemoveOrCoin.startsWith('fx-') || 
-            itemToRemoveOrCoin.startsWith('metal-')
+            itemToRemoveOrCoin.startsWith('metal-') ||
+            itemToRemoveOrCoin.startsWith('stock-')
         ) && !itemToRemoveOrCoin.includes('|'); // metals extra coins contain '|'
 
         let updatedTabExtra = [...(extraCoins[activeTab] || [])];
@@ -693,6 +805,15 @@ const AdminCoinsSettings = () => {
                 };
             });
             return [...base, ...extra];
+        } else if (tab === 'stocks') {
+            const extra = (extraCoins.stocks || []).map(symbol => ({
+                id: `stock-${symbol}`,
+                label: `${symbol}/USD`,
+                icon: `https://logo.clearbit.com/${symbol.toLowerCase()}.com`,
+                isExtra: true,
+                code: symbol,
+            }));
+            return [...base, ...extra];
         }
         return base;
     };
@@ -785,6 +906,19 @@ const AdminCoinsSettings = () => {
                 return price > 100
                     ? price.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })
                     : price.toFixed(2);
+            }
+        } else if (tab === 'stocks') {
+            const cachedStocks = liveRates.stocks || {};
+            // coin.id is like 'stock-AMZN', symbol is uppercase after 'stock-'
+            const symbol = coin.id.replace('stock-', '').toUpperCase();
+            const raw = cachedStocks[symbol];
+            if (raw && raw.price !== undefined) {
+                const price = parseFloat(raw.price);
+                if (!isNaN(price)) {
+                    return price > 100
+                        ? price.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })
+                        : price.toFixed(2);
+                }
             }
         }
         return null;
@@ -1030,6 +1164,7 @@ const AdminCoinsSettings = () => {
                                 {activeTab === 'crypto' && 'How to add Cryptocurrency:'}
                                 {activeTab === 'forex' && 'How to add Foreign Exchange Currency:'}
                                 {activeTab === 'metals' && 'How to add Precious Metal/Commodity:'}
+                                {activeTab === 'stocks' && 'How to add Stock Symbol:'}
                             </div>
                             <ul style={{ margin: 0, paddingLeft: '18px', color: '#a0a0ab', fontSize: '12px', lineHeight: '1.7' }}>
                                 {activeTab === 'crypto' && (
@@ -1067,6 +1202,14 @@ const AdminCoinsSettings = () => {
                                         <li style={{ color: '#777' }}>Note: Custom commodities not supported by the API will default to 0.00 until you specify a Custom Rate.</li>
                                     </>
                                 )}
+                                {activeTab === 'stocks' && (
+                                    <>
+                                        <li>Enter the stock <strong>ticker symbol</strong> exactly as listed on US markets (e.g. <code>AAPL</code>, <code>MSFT</code>, <code>GOOGL</code>).</li>
+                                        <li>Rates are fetched from <a href="https://twelvedata.com" target="_blank" rel="noreferrer" style={{ color: accentColor, textDecoration: 'underline', fontWeight: '700' }}>TwelveData</a> — the same API used for live stock prices.</li>
+                                        <li>The symbol will be verified against the API before being added.</li>
+                                        <li style={{ color: '#777' }}>Note: Only US-listed stocks are supported by default. Use the ticker code exactly (e.g. <code>AMZN</code> not <code>Amazon</code>).</li>
+                                    </>
+                                )}
                             </ul>
                         </div>
 
@@ -1084,6 +1227,8 @@ const AdminCoinsSettings = () => {
                                             ? "e.g. BNB, FET, RENDER"
                                             : activeTab === 'forex'
                                             ? "e.g. SGD, MXN, ZAR"
+                                            : activeTab === 'stocks'
+                                            ? "e.g. AAPL, MSFT, GOOGL"
                                             : "e.g. IRON/USD|Iron Ore"
                                     }
                                     style={{
@@ -1121,6 +1266,8 @@ const AdminCoinsSettings = () => {
                                     ? (extraCoins.crypto || [])
                                     : activeTab === 'forex'
                                     ? (extraCoins.forex || [])
+                                    : activeTab === 'stocks'
+                                    ? (extraCoins.stocks || [])
                                     : (extraCoins.metals || []);
 
                             if (currentExtras.length === 0) return null;
@@ -1246,12 +1393,7 @@ const AdminCoinsSettings = () => {
                                                 >
                                                     <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
                                                         <div style={{ position: 'relative', display: 'flex' }}>
-                                                            <img
-                                                                src={coin.icon}
-                                                                alt={coin.label}
-                                                                style={{ width: '28px', height: '28px', borderRadius: '50%', objectFit: 'cover', border: '1px solid rgba(255,255,255,0.08)' }}
-                                                                onError={e => { e.target.src = 'https://cdn-icons-png.flaticon.com/512/25/25254.png'; }}
-                                                            />
+                                                            <CoinIcon coin={coin} activeTab={activeTab} size={28} />
                                                         </div>
                                                         <div>
                                                             <div style={{ color: '#fff', fontSize: '13px', fontWeight: '800' }}>{coin.label}</div>
@@ -1370,12 +1512,7 @@ const AdminCoinsSettings = () => {
                                     onMouseLeave={e => { e.currentTarget.style.borderColor = isVisible ? 'rgba(255,255,255,0.03)' : 'rgba(255, 77, 79, 0.12)'; }}
                                     >
                                         <div style={{ display: 'flex', alignItems: 'center', gap: '12px', flex: 1, minWidth: 0 }}>
-                                            <img
-                                                src={coin.icon}
-                                                alt={coin.label}
-                                                style={{ width: '32px', height: '32px', borderRadius: '50%', objectFit: 'cover', border: '1px solid rgba(255,255,255,0.08)', flexShrink: 0 }}
-                                                onError={e => { e.target.src = 'https://cdn-icons-png.flaticon.com/512/25/25254.png'; }}
-                                            />
+                                            <CoinIcon coin={coin} activeTab={activeTab} size={32} />
                                             <div style={{ flex: 1, minWidth: 0 }}>
                                                 <div style={{ color: isVisible ? '#fff' : '#666', fontSize: '13px', fontWeight: '800' }}>
                                                     {coin.label}

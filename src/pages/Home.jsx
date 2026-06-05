@@ -15,6 +15,39 @@ import { useBranding } from '../context/BrandingContext';
 import { LogOut, X, Info, Megaphone } from 'lucide-react';
 import { doc } from 'firebase/firestore';
 
+// ── Stock Avatar: shows logo or first-letter circle fallback ──────────────
+const StockAvatar = ({ asset, className, style }) => {
+    const [failed, setFailed] = React.useState(false);
+    const letter = (asset.symbol || asset.name || '?')[0].toUpperCase();
+
+    if (failed) {
+        return (
+            <div
+                className={className}
+                style={{
+                    display: 'flex', alignItems: 'center', justifyContent: 'center',
+                    borderRadius: '50%', flexShrink: 0, fontWeight: '700', color: '#8a8a93',
+                    background: '#1a1a1a',
+                    border: '1px solid #3a3a3a',
+                    fontSize: '13px', userSelect: 'none',
+                    ...style,
+                }}
+            >
+                {letter}
+            </div>
+        );
+    }
+    return (
+        <img
+            src={asset.flag}
+            alt={asset.name}
+            className={className}
+            style={style}
+            onError={() => setFailed(true)}
+        />
+    );
+};
+
 const Home = () => {
     const { assets, loading: marketLoading, setIsActive, syncConfig } = useMarket();
     const { websiteName, logoUrl } = useBranding();
@@ -52,11 +85,21 @@ const Home = () => {
         return () => setIsActive(false);
     }, [setIsActive]);
 
+    // Short label -> full category value
+    const TAB_MAP = {
+        'All': 'All',
+        'Cryptocurrency': 'Cryptocurrency',
+        'Exchange': 'Foreign Exchange',
+        'Metals': 'Precious Metals',
+        'Stocks': 'Stocks',
+    };
+
     // Map tab label -> syncConfig key
     const tabToKey = (tab) => {
         if (tab === 'Cryptocurrency') return 'crypto';
-        if (tab === 'Foreign Exchange') return 'forex';
-        if (tab === 'Precious Metals') return 'metals';
+        if (tab === 'Exchange') return 'forex';
+        if (tab === 'Metals') return 'metals';
+        if (tab === 'Stocks') return 'stocks';
         return null;
     };
 
@@ -120,6 +163,16 @@ const Home = () => {
         return () => unsub();
     }, []);
 
+    // Toggle global body class so FloatingChatButton can adjust position
+    useEffect(() => {
+        if (showBottom && announcement?.bottomActive) {
+            document.body.classList.add('has-bottom-banner');
+        } else {
+            document.body.classList.remove('has-bottom-banner');
+        }
+        return () => document.body.classList.remove('has-bottom-banner');
+    }, [showBottom, announcement?.bottomActive]);
+
     // Auto-cycling for banners
     useEffect(() => {
         if (banners.length <= 1) return;
@@ -131,10 +184,10 @@ const Home = () => {
 
     const filteredAssets = assets.filter(a => {
         if (activeTab === 'All') return true;
-        // Strict category match
-        if (a.category !== activeTab) return false;
+        const categoryValue = TAB_MAP[activeTab] || activeTab;
+        if (a.category !== categoryValue) return false;
         // Explicitly exclude Ethereum from Precious Metals section
-        if (activeTab === 'Precious Metals' && (a.symbol?.includes('ETH') || a.name?.includes('ETH'))) return false;
+        if (categoryValue === 'Precious Metals' && (a.symbol?.includes('ETH') || a.name?.includes('ETH'))) return false;
         return true;
     });
 
@@ -319,7 +372,7 @@ const Home = () => {
             </div>
 
             <div className="asset-tabs" style={{ overflowX: 'auto', paddingBottom: '12px', scrollbarWidth: 'none' }}>
-                {['All', 'Foreign Exchange', 'Cryptocurrency', 'Precious Metals'].map(tab => (
+                {['All', 'Cryptocurrency', 'Exchange', 'Metals', 'Stocks'].map(tab => (
                     <div
                         key={tab}
                         className={`tab ${activeTab === tab ? 'active' : ''}`}
@@ -333,15 +386,14 @@ const Home = () => {
 
             {marketLoading ? renderSkeleton() : (
                 <div className="asset-list" style={{ paddingBottom: '30px' }}>
-                    <div className="asset-header">
+                    <div className="asset-header" style={{ display: 'flex', justifyContent: 'space-between' }}>
                         <span>Currency</span>
-                        <span>Price</span>
-                        <span style={{ textAlign: 'center' }}>
+                        <span style={{ textAlign: 'right' }}>
                             {activeTab !== 'All' && remainingSecs !== null ? (
                                 remainingSecs === 0
                                     ? 'Syncing…'
                                     : `Fetching in ${formatCountdown(remainingSecs)}`
-                            ) : 'Rates'}
+                            ) : 'Price / Change'}
                         </span>
                     </div>
 
@@ -352,18 +404,26 @@ const Home = () => {
                                 layout
                                 key={asset.id}
                                 className="asset-row"
-                                style={{ '--index': index }}
+                                style={{ '--index': index, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}
                                 onClick={() => navigate('/trade', { state: { assetId: asset.id } })}
                             >
-                                <div className="asset-info">
-                                    <img
-                                        src={asset.flag}
-                                        alt={asset.name}
-                                        className="asset-flag"
-                                        onError={(e) => {
-                                            e.target.src = 'https://cdn-icons-png.flaticon.com/512/25/25254.png';
-                                        }}
-                                    />
+                                <div className="asset-info" style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                                    {asset.category === 'Stocks' ? (
+                                        <StockAvatar
+                                            asset={asset}
+                                            className="asset-flag"
+                                            style={{ width: '32px', height: '32px' }}
+                                        />
+                                    ) : (
+                                        <img
+                                            src={asset.flag}
+                                            alt={asset.name}
+                                            className="asset-flag"
+                                            onError={(e) => {
+                                                e.target.src = 'https://cdn-icons-png.flaticon.com/512/25/25254.png';
+                                            }}
+                                        />
+                                    )}
                                     <div style={{ display: 'flex', flexDirection: 'column' }}>
                                         <span className="asset-name" style={{ marginBottom: '2px' }}>
                                             {asset.name}
@@ -373,13 +433,15 @@ const Home = () => {
                                         )}
                                     </div>
                                 </div>
-                                <div className="asset-rate">
-                                    {asset.rate}
-                                </div>
-                                <div style={{ justifySelf: 'end' }}>
-                                    <div className={`rate-btn ${isUp ? 'rate-up' : 'rate-down'}`}>
-                                        {asset.change}
-                                    </div>
+                                <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: '4px' }}>
+                                    {asset.category !== 'Stocks' && (
+                                        <div className={`rate-btn ${isUp ? 'rate-up' : 'rate-down'}`} style={{ minWidth: '85px', padding: '6px 12px', fontSize: '12px' }}>
+                                            {asset.change}
+                                        </div>
+                                    )}
+                                    <span style={{ fontSize: '13px', fontWeight: '600', color: '#ccc' }}>
+                                        ${asset.rate}
+                                    </span>
                                 </div>
                             </motion.div>
                         );
