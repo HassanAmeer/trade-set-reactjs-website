@@ -1,0 +1,36 @@
+[
+  {
+    "id": "exchange-session-1",
+    "title": "Exchange Rates Price Comparison",
+    "timestamp": 1781606000000,
+    "category": "forex",
+    "messages": [
+      {
+        "role": "user",
+        "content": "Compare our database rates with the current live exchange rates.",
+        "timestamp": 1781605990000
+      },
+      {
+        "role": "assistant",
+        "content": {
+          "GBP/USD": {
+            "databaseRate": "1.2750 USD",
+            "liveGoogleRate": "1.2745 USD",
+            "difference": "-0.0005 USD"
+          },
+          "EUR/USD": {
+            "databaseRate": "1.0820 USD",
+            "liveGoogleRate": "1.0855 USD",
+            "difference": "+0.0035 USD"
+          },
+          "USD/JPY": {
+            "databaseRate": "156.40 JPY",
+            "liveGoogleRate": "157.10 JPY",
+            "difference": "+0.70 JPY"
+          }
+        },
+        "timestamp": 1781606000000
+      }
+    ]
+  }
+]

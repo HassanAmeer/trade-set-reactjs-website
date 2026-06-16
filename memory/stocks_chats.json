@@ -1,0 +1,36 @@
+[
+  {
+    "id": "stocks-session-1",
+    "title": "Stock Prices Comparison",
+    "timestamp": 1781605000000,
+    "category": "stocks",
+    "messages": [
+      {
+        "role": "user",
+        "content": "Compare our database rates with the current live rates of stocks.",
+        "timestamp": 1781604990000
+      },
+      {
+        "role": "assistant",
+        "content": {
+          "AMZN/USD": {
+            "databaseRate": "185.20 USD",
+            "liveGoogleRate": "187.50 USD",
+            "difference": "+2.30 USD"
+          },
+          "TSLA/USD": {
+            "databaseRate": "170.80 USD",
+            "liveGoogleRate": "178.45 USD",
+            "difference": "+7.65 USD"
+          },
+          "NVDA/USD": {
+            "databaseRate": "910.00 USD",
+            "liveGoogleRate": "924.80 USD",
+            "difference": "+14.80 USD"
+          }
+        },
+        "timestamp": 1781605000000
+      }
+    ]
+  }
+]

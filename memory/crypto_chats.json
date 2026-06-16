@@ -1,0 +1,41 @@
+[
+  {
+    "id": "crypto-session-1",
+    "title": "Cryptocurrency Price Comparison",
+    "timestamp": 1781607000000,
+    "category": "crypto",
+    "messages": [
+      {
+        "role": "user",
+        "content": "Compare our database rates with the current live rates of cryptocurrencies.",
+        "timestamp": 1781606990000
+      },
+      {
+        "role": "assistant",
+        "content": {
+          "BTC/USDT": {
+            "databaseRate": "67,000.00 USD",
+            "liveGoogleRate": "67,540.20 USD",
+            "difference": "+540.20 USD"
+          },
+          "ETH/USDT": {
+            "databaseRate": "3,500.00 USD",
+            "liveGoogleRate": "3,512.45 USD",
+            "difference": "+12.45 USD"
+          },
+          "SOL/USDT": {
+            "databaseRate": "145.00 USD",
+            "liveGoogleRate": "148.80 USD",
+            "difference": "+3.80 USD"
+          },
+          "XRP/USDT": {
+            "databaseRate": "0.49 USD",
+            "liveGoogleRate": "0.485 USD",
+            "difference": "-0.005 USD"
+          }
+        },
+        "timestamp": 1781607000000
+      }
+    ]
+  }
+]

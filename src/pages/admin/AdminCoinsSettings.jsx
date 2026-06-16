@@ -181,7 +181,7 @@ function hexToRgb(hex) {
 const AdminCoinsSettings = () => {
     const [activeTab, setActiveTab] = useState('crypto');
     const [config, setConfig] = useState(DEFAULT_CONFIG);
-    const [customRates, setCustomRates] = useState({ crypto: {}, forex: {}, metals: {} });
+    const [customRates, setCustomRates] = useState({ crypto: {}, forex: {}, metals: {}, stocks: {} });
     const [visibility, setVisibility] = useState({});
     const [extraCoins, setExtraCoins] = useState({
         crypto: [],
@@ -212,8 +212,8 @@ const AdminCoinsSettings = () => {
     const accentColor = tabInfo?.color || '#00c087';
 
     // ── Fetch all data ──────────────────────────────────────────────────
-    const fetchAll = useCallback(async () => {
-        setLoading(true);
+    const fetchAll = useCallback(async (isInitial = false) => {
+        if (isInitial) setLoading(true);
         try {
             const [
                 cfgSnap, ratesSnap, visSnap, listSnap,
@@ -349,6 +349,7 @@ const AdminCoinsSettings = () => {
 
             setExtraCoins(finalExtraCoins);
             setCustomNames(loadedCustomNames);
+            setLocalRates({}); // Clear temporary inputs to show newly saved rates from database
         } catch (err) {
             showToast('error', 'Failed to load settings: ' + err.message);
         } finally {
@@ -356,7 +357,7 @@ const AdminCoinsSettings = () => {
         }
     }, []);
 
-    useEffect(() => { fetchAll(); }, [fetchAll]);
+    useEffect(() => { fetchAll(true); }, [fetchAll]);
 
     // ── Toast helper ────────────────────────────────────────────────────
     const showToast = (type, msg) => {
@@ -1715,6 +1716,7 @@ const AdminCoinsSettings = () => {
                 onRemoveCoin={(tab, coinId) => removeCoin(findExactCoinId(coinId), tab)}
                 onSetVisibility={(coinId, visible) => setVisibilityExplicit(findExactCoinId(coinId), visible)}
                 onRestoreCoin={(tab, coinId) => restoreCoin(findExactCoinId(coinId), tab)}
+                onRatesUpdated={fetchAll}
             />
         </motion.div>
     );
