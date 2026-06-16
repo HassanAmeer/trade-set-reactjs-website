@@ -10,12 +10,14 @@ const AdminDeposits = () => {
     const [deposits, setDeposits] = useState([]);
     const [loading, setLoading] = useState(true);
     const [selectedVoucher, setSelectedVoucher] = useState(null);
+    const [page, setPage] = useState(1);
+    const ITEMS_PER_PAGE = 20;
 
     useEffect(() => {
         fetchAllDeposits();
     }, []);
 
-    const fetchAllDeposits = async () => {
+    const fetchAllDeposits = async (targetPage = 1) => {
         setLoading(true);
         try {
             const querySnapshot = await getDocs(collectionGroup(db, 'deposits'));
@@ -27,11 +29,136 @@ const AdminDeposits = () => {
             // Sort by timestamp desc
             list.sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp));
             setDeposits(list);
+
+            const totalPages = Math.max(1, Math.ceil(list.length / ITEMS_PER_PAGE));
+            if (targetPage > totalPages) {
+                setPage(totalPages);
+            } else {
+                setPage(targetPage);
+            }
         } catch (error) {
             console.error("Error fetching deposits:", error);
         } finally {
             setLoading(false);
         }
+    };
+
+    const totalRequests = deposits.length;
+    const totalPages = Math.max(1, Math.ceil(totalRequests / ITEMS_PER_PAGE));
+    const hasMore = page < totalPages;
+    const displayedDeposits = deposits.slice((page - 1) * ITEMS_PER_PAGE, page * ITEMS_PER_PAGE);
+
+    const handlePageChange = (newPage) => {
+        if (newPage < 1 || newPage > totalPages) return;
+        setPage(newPage);
+    };
+
+    const getPageNumbers = () => {
+        const current = page;
+        const pages = [];
+        
+        if (totalPages <= 5) {
+            for (let i = 1; i <= totalPages; i++) pages.push(i);
+        } else {
+            pages.push(1);
+            
+            if (current > 3) {
+                pages.push('...');
+            }
+            
+            const start = Math.max(2, current - 1);
+            const end = Math.min(totalPages - 1, current + 1);
+            
+            for (let i = start; i <= end; i++) {
+                if (!pages.includes(i)) pages.push(i);
+            }
+            
+            if (current < totalPages - 2) {
+                pages.push('...');
+            }
+            
+            if (!pages.includes(totalPages)) {
+                pages.push(totalPages);
+            }
+        }
+        return pages;
+    };
+
+    const renderPagination = () => {
+        const pageNumbers = getPageNumbers();
+        
+        return (
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', margin: '20px 0', padding: '10px 0', flexWrap: 'wrap', gap: '15px' }}>
+                <button
+                    disabled={page === 1}
+                    onClick={() => handlePageChange(page - 1)}
+                    style={{
+                        padding: '10px 18px',
+                        backgroundColor: (page === 1) ? 'rgba(255,255,255,0.02)' : '#1a1a1a',
+                        color: (page === 1) ? '#444' : '#fff',
+                        border: '1px solid #333',
+                        borderRadius: '10px',
+                        cursor: (page === 1) ? 'not-allowed' : 'pointer',
+                        fontWeight: '700',
+                        fontSize: '13px',
+                        transition: 'all 0.3s'
+                    }}
+                >
+                    Previous
+                </button>
+                
+                <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                    {pageNumbers.map((p, index) => {
+                        if (p === '...') {
+                            return <span key={`ellipsis-${index}`} style={{ color: '#666', padding: '0 5px' }}>...</span>;
+                        }
+                        const isActive = p === page;
+                        return (
+                            <button
+                                key={`page-${p}`}
+                                onClick={() => handlePageChange(p)}
+                                style={{
+                                    width: '36px',
+                                    height: '36px',
+                                    borderRadius: '8px',
+                                    border: isActive ? '1px solid var(--accent-gold, #f0b90b)' : '1px solid #333',
+                                    backgroundColor: isActive ? 'var(--accent-gold, #f0b90b)' : '#1a1a1a',
+                                    color: isActive ? '#000' : '#fff',
+                                    fontWeight: '800',
+                                    fontSize: '13px',
+                                    cursor: 'pointer',
+                                    display: 'flex',
+                                    alignItems: 'center',
+                                    justifyContent: 'center',
+                                    transition: 'all 0.2s',
+                                    boxShadow: isActive ? '0 0 10px rgba(240, 185, 11, 0.2)' : 'none'
+                                }}
+                            >
+                                {p}
+                            </button>
+                        );
+                    })}
+                </div>
+
+                <button
+                    disabled={!hasMore}
+                    onClick={() => handlePageChange(page + 1)}
+                    style={{
+                        padding: '10px 18px',
+                        backgroundColor: (!hasMore) ? 'rgba(255,255,255,0.02)' : '#1a1a1a',
+                        color: (!hasMore) ? '#444' : '#fff',
+                        border: '1px solid #333',
+                        borderRadius: '10px',
+                        cursor: (!hasMore) ? 'not-allowed' : 'pointer',
+                        fontWeight: '700',
+                        fontSize: '13px',
+                        transition: 'all 0.3s'
+                    }}
+                >
+                    Next
+                </button>
+            </div>
+        );
     };
 
     const handleUpdateStatus = async (item, newStatus) => {
@@ -121,7 +248,7 @@ const AdminDeposits = () => {
             }
 
             await updateDoc(item.ref, { status: newStatus });
-            fetchAllDeposits();
+            fetchAllDeposits(page);
         } catch (error) {
             console.error(error);
             alert('Error: ' + error.message);
@@ -132,7 +259,7 @@ const AdminDeposits = () => {
         if (!window.confirm("Delete this record?")) return;
         try {
             await deleteDoc(itemRef);
-            fetchAllDeposits();
+            fetchAllDeposits(page);
         } catch (error) {
             alert("Delete failed");
         }
@@ -155,6 +282,8 @@ const AdminDeposits = () => {
         <div style={{ position: 'relative' }}>
             <h2 style={{ color: '#fff', fontSize: '24px', fontWeight: '800', marginBottom: '20px' }}>Deposit Requests</h2>
 
+            {renderPagination()}
+
             <div className="admin-table-container">
                 <table style={{ width: '100%', minWidth: '800px', borderCollapse: 'collapse', color: '#fff', textAlign: 'left' }}>
                     <thead style={{ backgroundColor: '#1a1a1a', borderBottom: '1px solid #333' }}>
@@ -168,7 +297,7 @@ const AdminDeposits = () => {
                         </tr>
                     </thead>
                     <tbody>
-                        {deposits.map((item) => (
+                        {displayedDeposits.map((item) => (
                             <tr key={item.id} style={{ borderBottom: '1px solid #222' }}>
                                 <td style={{ padding: '16px', fontSize: '12px', color: '#888' }}>
                                     {new Date(item.timestamp).toLocaleString()}
@@ -231,6 +360,8 @@ const AdminDeposits = () => {
                     </tbody>
                 </table>
             </div>
+
+            {renderPagination()}
 
             {/* Voucher Modal */}
             {selectedVoucher && (

@@ -37,68 +37,93 @@ const LightweightChart = forwardRef(({ symbol, interval, currentRate, activeSign
     useEffect(() => {
         const sig = activeSignal;
         const isUserTargeted = !!(sig?.isActive &&
+            new Date(sig?.startTime || sig?.updatedAt) <= new Date() &&
             new Date(sig?.expiresAt) > new Date() &&
             sig.affectedUsersMap?.[user?.id] &&
             sig.symbol === symbol);
 
-        // CRITICAL: Only initialize when intendedOutcome is known (not null).
-        // setTrading(true) fires before the async Firestore fetch completes,
-        // so intendedOutcome arrives ~300-500ms later. We must wait for it.
-        if (isUserTargeted && isTrading && intendedOutcome !== null) {
+        if (isUserTargeted) {
+            const startTime = new Date(sig.startTime || sig.updatedAt).getTime();
+            const endTime = new Date(sig.expiresAt).getTime();
+            const targetChangeVal = parseFloat(sig.targetChange || 5);
+            const dirMultiplier = sig.direction === 'UP' ? 1 : -1;
 
-            // Re-initialize whenever intendedOutcome changes (e.g. first was null, now 'win')
-            // or when trade first starts with a valid outcome
-            const shouldInit = !signalStateRef.current.isActive ||
-                signalStateRef.current.intendedOutcomeUsed !== intendedOutcome;
+            const isTradingSignal = isTrading && intendedOutcome !== null;
 
-            if (shouldInit) {
+            // 1. Initialize or update global signal state (when not trading, or when signal ID shifts)
+            if (!signalStateRef.current.isActive || signalStateRef.current.signalStartTime !== startTime) {
                 const lastCandle = candlesDataRef.current[candlesDataRef.current.length - 1];
                 const startPrice = lastCandle?.close || parseFloat(String(currentRate || '73000').replace(/,/g, ''));
-
-                const userConfig = sig.affectedUsersMap?.[user?.id];
-                const payoutRate = parseInt(userConfig?.payoutRate ?? 85, 10);
-
-                // Direction logic:
-                // BUY + win  → price UP   (user profits from rise)
-                // BUY + loss → price DOWN  (user loses on rise)
-                // SELL + win  → price DOWN (user profits from drop)
-                // SELL + loss → price UP   (user loses on drop)
-                const isWin = intendedOutcome === 'win';
-                const moveDir = (tradeDirection === 'BUY')
-                    ? (isWin ? 1 : -1)
-                    : (isWin ? -1 : 1);
-
-                // Visual move magnitude: proportional to payout %
-                // e.g. 85% payout → ~1.3% visible price move in 2 seconds
-                const moveRatio = (payoutRate / 100) * 0.015;
-                const targetPrice = startPrice * (1 + moveRatio * moveDir);
+                const targetPrice = startPrice * (1 + (targetChangeVal / 100) * dirMultiplier);
 
                 signalStateRef.current = {
                     isActive: true,
-                    startTime: Date.now(),
-                    endTime: Date.now() + (tradeDuration || 10) * 1000, // Sync with dynamic trade duration
+                    isTradingSignal,
+                    signalStartTime: startTime,
+                    signalEndTime: endTime,
+                    startPrice,
                     targetPrice,
-                    intendedOutcomeUsed: intendedOutcome,
                     pushStarted: false,
                     lastPriceAtPushStart: null
                 };
 
-                console.log('[Chart] Signal INIT →', {
-                    tradeDirection, intendedOutcome, isWin, moveDir,
+                console.log('[Chart] Global Signal INIT →', {
+                    direction: sig.direction,
+                    targetChange: targetChangeVal,
                     startPrice: startPrice.toFixed(4),
                     targetPrice: targetPrice.toFixed(4)
                 });
             }
 
-        } else if (!isTrading) {
-            // Trade ended - deactivate
+            // 2. If user starts trading, calculate trade-specific outcome override target
+            if (isTradingSignal) {
+                const userConfig = sig.affectedUsersMap?.[user?.id];
+                const payoutRate = parseInt(userConfig?.payoutRate ?? 85, 10);
+                const isWin = intendedOutcome === 'win';
+                const moveDir = (tradeDirection === 'BUY')
+                    ? (isWin ? 1 : -1)
+                    : (isWin ? -1 : 1);
+
+                const moveRatio = (payoutRate / 100) * 0.015;
+                const startPrice = signalStateRef.current.startPrice;
+                const tradeTargetPrice = startPrice * (1 + moveRatio * moveDir);
+
+                // Re-initialize trade outcome target if it changes (e.g. first was null, now 'win')
+                if (!signalStateRef.current.isTradingSignal || signalStateRef.current.intendedOutcomeUsed !== intendedOutcome) {
+                    signalStateRef.current.isTradingSignal = true;
+                    signalStateRef.current.intendedOutcomeUsed = intendedOutcome;
+                    signalStateRef.current.targetPrice = tradeTargetPrice;
+                    signalStateRef.current.endTime = Date.now() + (tradeDuration || 10) * 1000;
+                    signalStateRef.current.pushStarted = false;
+                    signalStateRef.current.lastPriceAtPushStart = null;
+
+                    console.log('[Chart] Trade Outcome Override Activated →', {
+                        tradeDirection, intendedOutcome, isWin, moveDir,
+                        tradeTargetPrice: tradeTargetPrice.toFixed(4)
+                    });
+                }
+            } else if (!isTrading) {
+                // If trade ended but signal is still active, reset back to overall signal target price
+                if (signalStateRef.current.isTradingSignal) {
+                    const startPrice = signalStateRef.current.startPrice;
+                    const targetPrice = startPrice * (1 + (targetChangeVal / 100) * dirMultiplier);
+
+                    signalStateRef.current.isTradingSignal = false;
+                    signalStateRef.current.targetPrice = targetPrice;
+                    signalStateRef.current.pushStarted = false;
+                    signalStateRef.current.lastPriceAtPushStart = null;
+                    console.log('[Chart] Trade ended, reverting to overall signal target price:', targetPrice.toFixed(4));
+                }
+            }
+
+        } else {
+            // Signal is not active
             if (signalStateRef.current.isActive) {
                 signalStateRef.current.isActive = false;
+                signalStateRef.current.isTradingSignal = false;
                 signalStateRef.current.pushStarted = false;
-                console.log('[Chart] Signal DEACTIVATED (trade ended)');
+                console.log('[Chart] Signal DEACTIVATED');
             }
-        } else if (!isUserTargeted) {
-            signalStateRef.current.isActive = false;
         }
     }, [activeSignal, isTrading, tradeDirection, intendedOutcome, symbol, user?.id]);
 
@@ -220,45 +245,46 @@ const LightweightChart = forwardRef(({ symbol, interval, currentRate, activeSign
             let newClose;
 
             if (sigState.isActive) {
-                const remaining = sigState.endTime - nowMs;
-                const PUSH_THRESHOLD = 5000; // Last 5 seconds (manipulation phase)
+                const totalDur = sigState.signalEndTime - sigState.signalStartTime;
+                const elapsed = nowMs - sigState.signalStartTime;
+                const progress = Math.min(1, Math.max(0, elapsed / totalDur));
 
-                if (remaining <= PUSH_THRESHOLD && remaining > -500) {
-                    // ─── FINAL PUSH PHASE (Last 2 Seconds) ───
-                    // Record the price at which push started (no jump)
-                    if (!sigState.pushStarted) {
-                        signalStateRef.current.lastPriceAtPushStart = lastPrice;
-                        signalStateRef.current.pushStarted = true;
-                        console.log('[Chart] Push phase started at price:', lastPrice.toFixed(4), '→ target:', sigState.targetPrice.toFixed(4));
+                if (sigState.isTradingSignal) {
+                    // ─── TRADE ACTIVE MANIPULATION ───
+                    const remaining = (sigState.endTime || sigState.signalEndTime) - nowMs;
+                    const PUSH_THRESHOLD = 5000; // Last 5 seconds
+
+                    if (remaining <= PUSH_THRESHOLD && remaining > -500) {
+                        if (!sigState.pushStarted) {
+                            signalStateRef.current.lastPriceAtPushStart = lastPrice;
+                            signalStateRef.current.pushStarted = true;
+                        }
+                        const moveSpeed = 0.82;
+                        const gap = sigState.targetPrice - lastPrice;
+                        newClose = lastPrice + gap * moveSpeed;
+                    } else {
+                        // Drift towards trade target
+                        const followSpeed = 0.08;
+                        const expectedPrice = sigState.startPrice + (sigState.targetPrice - sigState.startPrice) * progress;
+                        const gap = expectedPrice - lastPrice;
+                        const volatility = lastPrice * 0.00012;
+                        newClose = lastPrice + gap * followSpeed + (Math.random() - 0.5) * volatility;
                     }
-
-                    // Strong pull toward target — must reach it in 2 ticks (2 seconds)
-                    // With moveSpeed=0.8: tick1 = 80% of gap closed, tick2 = 96% closed
-                    const moveSpeed = 0.82;
-                    const gap = sigState.targetPrice - lastPrice;
-                    newClose = lastPrice + gap * moveSpeed;
-
-                } else if (remaining > PUSH_THRESHOLD) {
-                    // ─── ORGANIC WAITING PHASE (First 8 Seconds) ───
-                    // Follow real market smoothly, no manipulation yet
-                    const followSpeed = 0.08;
-                    const drift = isNaN(realPrice - lastPrice) ? 0 : (realPrice - lastPrice) * followSpeed;
-                    const volatility = lastPrice * 0.00012;
-                    newClose = lastPrice + drift + (Math.random() - 0.5) * volatility;
-
                 } else {
-                    // ─── POST-TRADE RECOVERY ───
-                    // Gently drift back to real market price
-                    signalStateRef.current.isActive = false;
-                    const followSpeed = 0.12;
-                    newClose = lastPrice + (realPrice - lastPrice) * followSpeed;
+                    // ─── NO TRADE ACTIVE (DRIFT TOWARDS SIGNAL TARGET) ───
+                    const expectedPrice = sigState.startPrice + (sigState.targetPrice - sigState.startPrice) * progress;
+                    const followSpeed = 0.06;
+                    const gap = expectedPrice - lastPrice;
+                    const volatility = lastPrice * 0.00015;
+                    newClose = lastPrice + gap * followSpeed + (Math.random() - 0.5) * volatility;
                 }
             } else {
-                // ─── NORMAL MARKET MODE ───
-                const followSpeed = 0.15;
+                // ─── NORMAL MARKET MODE or POST-TRADE/SIGNAL RECOVERY ───
+                // Gently drift back to real market price
+                const followSpeed = 0.08;
                 const diff = isNaN(realPrice - lastPrice) ? 0 : realPrice - lastPrice;
                 const drift = diff * followSpeed;
-                const volatility = lastPrice * (0.0003 + Math.random() * 0.0002);
+                const volatility = lastPrice * (0.0002 + Math.random() * 0.0001);
                 newClose = lastPrice + drift + (Math.random() - 0.5) * volatility;
             }
 

