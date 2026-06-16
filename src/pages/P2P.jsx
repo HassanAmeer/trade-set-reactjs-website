@@ -1,14 +1,28 @@
 import React, { useState, useEffect } from 'react';
 import { db } from '../firebase-setup';
-import { collection, onSnapshot, query, where } from 'firebase/firestore';
+import { collection, onSnapshot, query, where, doc } from 'firebase/firestore';
 import { motion, AnimatePresence } from 'framer-motion';
-import { ChevronLeft, ShieldCheck, Mail, MessageSquare, Phone, ExternalLink, Zap, Star } from 'lucide-react';
+import { ChevronLeft, ShieldCheck, Mail, MessageSquare, Phone, ExternalLink, Zap, Star, Megaphone } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 
 const P2P = () => {
     const navigate = useNavigate();
     const [exchangers, setExchangers] = useState([]);
     const [loading, setLoading] = useState(true);
+    const [announceText, setAnnounceText] = useState('');
+    const [announceActive, setAnnounceActive] = useState(false);
+
+    useEffect(() => {
+        const unsubscribe = onSnapshot(doc(db, 'admin_set', 'p2p_config'), (docSnap) => {
+            if (docSnap.exists()) {
+                setAnnounceText(docSnap.data().announcementText || '');
+                setAnnounceActive(docSnap.data().announcementActive || false);
+            }
+        }, (error) => {
+            console.error("Error loading announcement banner:", error);
+        });
+        return () => unsubscribe();
+    }, []);
 
     useEffect(() => {
         // Query to only fetch visible exchangers
@@ -101,22 +115,64 @@ const P2P = () => {
                 </h1>
             </div>
 
+            {/* Announcement Banner */}
+            <AnimatePresence>
+                {announceActive && announceText && (
+                    <motion.div
+                        initial={{ opacity: 0, y: -10 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        exit={{ opacity: 0, y: -10 }}
+                        transition={{ duration: 0.3 }}
+                        style={{ padding: '16px 16px 0 16px' }}
+                    >
+                        <motion.div
+                            animate={{
+                                borderColor: [
+                                    'rgba(240, 185, 11, 0.25)',
+                                    'rgba(240, 185, 11, 0.6)',
+                                    'rgba(240, 185, 11, 0.25)'
+                                ],
+                                boxShadow: [
+                                    '0 4px 12px rgba(240, 185, 11, 0.15)',
+                                    '0 4px 22px rgba(240, 185, 11, 0.35)',
+                                    '0 4px 12px rgba(240, 185, 11, 0.15)'
+                                ]
+                            }}
+                            transition={{
+                                duration: 3,
+                                repeat: Infinity,
+                                ease: "easeInOut"
+                            }}
+                            style={{
+                                padding: '14px 16px',
+                                borderRadius: '14px',
+                                background: 'linear-gradient(135deg, rgba(240, 185, 11, 0.12) 0%, rgba(240, 185, 11, 0.03) 100%)',
+                                border: '1px solid rgba(240, 185, 11, 0.3)',
+                                display: 'flex',
+                                alignItems: 'flex-start',
+                                gap: '12px',
+                                backdropFilter: 'blur(8px)'
+                            }}
+                        >
+                            <Megaphone size={18} color="#f0b90b" style={{ marginTop: '2px', flexShrink: 0 }} />
+                            <div style={{ flex: 1 }}>
+                                <div style={{ fontSize: '10px', color: '#f0b90b', fontWeight: '900', textTransform: 'uppercase', letterSpacing: '0.8px' }}>
+                                    Notice / Announcement
+                                </div>
+                                <p style={{ margin: '4px 0 0 0', fontSize: '12.5px', color: '#fff', fontWeight: '500', lineHeight: '1.4' }}>
+                                    {announceText}
+                                </p>
+                            </div>
+                        </motion.div>
+                    </motion.div>
+                )}
+            </AnimatePresence>
+
             {/* Sub-Header Notice */}
-            <div style={{ padding: '16px 16px 8px 16px' }}>
-                <div style={{
-                    padding: '12px 16px',
-                    borderRadius: '12px',
-                    background: 'linear-gradient(135deg, rgba(240,185,11,0.08) 0%, rgba(240,185,11,0.02) 100%)',
-                    border: '1px solid rgba(240, 185, 11, 0.15)',
-                    display: 'flex',
-                    alignItems: 'flex-start',
-                    gap: '10px'
-                }}>
-                    <Zap size={16} color="var(--accent-gold, #f0b90b)" style={{ marginTop: '2px', flexShrink: 0 }} />
-                    <p style={{ margin: 0, fontSize: '11px', color: '#aaa', lineHeight: '1.5' }}>
-                        Deal with trusted exchangers for deposits and withdrawals. Contact them directly via Email, WhatsApp, or Telegram. Always check trust ratios before initiating a trade.
-                    </p>
-                </div>
+            <div style={{ padding: '12px 16px 4px 16px' }}>
+                <p style={{ margin: 0, fontSize: '11px', color: '#777', lineHeight: '1.6', textAlign: 'center' }}>
+                    Deal with trusted exchangers for deposits and withdrawals. Contact them directly via Email, WhatsApp, or Telegram. Always check trust ratios before initiating a trade.
+                </p>
             </div>
 
             {/* Exchangers List */}

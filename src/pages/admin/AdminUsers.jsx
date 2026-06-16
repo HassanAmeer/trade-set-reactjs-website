@@ -1,40 +1,236 @@
 import React, { useState, useEffect } from 'react';
 import { db } from '../../firebase-setup';
-import { collection, getDocs, doc, updateDoc, query, orderBy, deleteDoc } from 'firebase/firestore';
+import { collection, getDocs, doc, updateDoc, query, orderBy, deleteDoc, limit, startAfter, getCountFromServer } from 'firebase/firestore';
 import { CheckCircle2, XCircle, Settings2, Save, Trash2, X, User as UserIcon, Phone, Mail, Wallet, TrendingUp, Users } from 'lucide-react';
 
 const AdminUsers = () => {
     const [users, setUsers] = useState([]);
     const [loading, setLoading] = useState(true);
+    const [loadingData, setLoadingData] = useState(false);
     const [selectedUser, setSelectedUser] = useState(null);
     const [editForm, setEditForm] = useState({});
+    
+    // Pagination state
+    const [page, setPage] = useState(1);
+    const [cursors, setCursors] = useState([null]);
+    const [hasMore, setHasMore] = useState(true);
+    const [totalUsersCount, setTotalUsersCount] = useState(0);
 
     useEffect(() => {
-        fetchAllUsers();
+        fetchTotalCount();
+        fetchUsersPage(1);
     }, []);
 
-    const fetchAllUsers = async () => {
-        setLoading(true);
+    const fetchTotalCount = async () => {
         try {
-            const q = query(collection(db, 'users'), orderBy('createdAt', 'desc'));
-            const querySnapshot = await getDocs(q);
-            const list = querySnapshot.docs.map(doc => ({
-                id: doc.id,
-                ...doc.data()
-            }));
-            setUsers(list);
+            const coll = collection(db, 'users');
+            const snapshot = await getCountFromServer(coll);
+            setTotalUsersCount(snapshot.data().count);
+        } catch (e) {
+            console.error("Error getting count:", e);
+        }
+    };
+
+    const fetchUsersPage = async (pageNumber, isFirstLoad = true) => {
+        if (isFirstLoad) {
+            setLoading(true);
+        } else {
+            setLoadingData(true);
+        }
+
+        try {
+            const startCursor = cursors[pageNumber - 1];
+            let q;
+
+            // Check if cursor for the start of requested page is already cached
+            if (startCursor !== undefined) {
+                if (startCursor) {
+                    q = query(collection(db, 'users'), orderBy('createdAt', 'desc'), startAfter(startCursor), limit(20));
+                } else {
+                    q = query(collection(db, 'users'), orderBy('createdAt', 'desc'), limit(20));
+                }
+                const querySnapshot = await getDocs(q);
+                const list = querySnapshot.docs.map(doc => ({
+                    id: doc.id,
+                    ...doc.data()
+                }));
+                
+                setUsers(list);
+
+                // Cache next cursor
+                if (querySnapshot.docs.length > 0) {
+                    const nextCursor = querySnapshot.docs[querySnapshot.docs.length - 1];
+                    setCursors(prev => {
+                        const next = [...prev];
+                        next[pageNumber] = nextCursor;
+                        return next;
+                    });
+                }
+                setHasMore(querySnapshot.docs.length === 20);
+                setPage(pageNumber);
+            } else {
+                // If cursor is not cached, query up to required limit
+                q = query(collection(db, 'users'), orderBy('createdAt', 'desc'), limit(pageNumber * 20));
+                const querySnapshot = await getDocs(q);
+                const allDocs = querySnapshot.docs;
+                const startIndex = (pageNumber - 1) * 20;
+                const pageDocs = allDocs.slice(startIndex, startIndex + 20);
+                const list = pageDocs.map(doc => ({
+                    id: doc.id,
+                    ...doc.data()
+                }));
+                
+                setUsers(list);
+
+                // Populate intermediate cursors
+                setCursors(prev => {
+                    const next = [...prev];
+                    for (let i = 1; i <= pageNumber; i++) {
+                        const docIndex = (i * 20) - 1;
+                        if (allDocs[docIndex]) {
+                            next[i] = allDocs[docIndex];
+                        }
+                    }
+                    return next;
+                });
+                setHasMore(pageDocs.length === 20);
+                setPage(pageNumber);
+            }
         } catch (error) {
-            console.error("Error fetching users:", error);
-            // Fallback if index not ready
-            const querySnapshot = await getDocs(collection(db, 'users'));
-            const list = querySnapshot.docs.map(doc => ({
-                id: doc.id,
-                ...doc.data()
-            }));
-            setUsers(list);
+            console.error("Error fetching users page:", error);
+            // Fallback client-side pagination
+            try {
+                const querySnapshot = await getDocs(collection(db, 'users'));
+                const list = querySnapshot.docs.map(doc => ({
+                    id: doc.id,
+                    ...doc.data()
+                }));
+                setUsers(list.slice((pageNumber - 1) * 20, pageNumber * 20));
+                setHasMore(list.length > pageNumber * 20);
+                setPage(pageNumber);
+            } catch (fallbackError) {
+                console.error("Fallback failed:", fallbackError);
+            }
         } finally {
             setLoading(false);
+            setLoadingData(false);
         }
+    };
+
+    const handlePageChange = async (newPage) => {
+        const totalPages = Math.max(1, Math.ceil(totalUsersCount / 20));
+        if (newPage < 1 || newPage > totalPages) return;
+        await fetchUsersPage(newPage, false);
+    };
+
+    const getPageNumbers = () => {
+        const totalPages = Math.max(1, Math.ceil(totalUsersCount / 20));
+        const current = page;
+        const pages = [];
+        
+        if (totalPages <= 5) {
+            for (let i = 1; i <= totalPages; i++) pages.push(i);
+        } else {
+            pages.push(1);
+            
+            if (current > 3) {
+                pages.push('...');
+            }
+            
+            const start = Math.max(2, current - 1);
+            const end = Math.min(totalPages - 1, current + 1);
+            
+            for (let i = start; i <= end; i++) {
+                if (!pages.includes(i)) pages.push(i);
+            }
+            
+            if (current < totalPages - 2) {
+                pages.push('...');
+            }
+            
+            if (!pages.includes(totalPages)) {
+                pages.push(totalPages);
+            }
+        }
+        return pages;
+    };
+
+    const renderPagination = () => {
+        const pageNumbers = getPageNumbers();
+        
+        return (
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', margin: '20px 0', padding: '10px 0', flexWrap: 'wrap', gap: '15px' }}>
+                <button
+                    disabled={page === 1 || loadingData}
+                    onClick={() => handlePageChange(page - 1)}
+                    style={{
+                        padding: '10px 18px',
+                        backgroundColor: (page === 1 || loadingData) ? 'rgba(255,255,255,0.02)' : '#1a1a1a',
+                        color: (page === 1 || loadingData) ? '#444' : '#fff',
+                        border: '1px solid #333',
+                        borderRadius: '10px',
+                        cursor: (page === 1 || loadingData) ? 'not-allowed' : 'pointer',
+                        fontWeight: '700',
+                        fontSize: '13px',
+                        transition: 'all 0.3s'
+                    }}
+                >
+                    Previous
+                </button>
+                
+                <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                    {pageNumbers.map((p, index) => {
+                        if (p === '...') {
+                            return <span key={`ellipsis-${index}`} style={{ color: '#666', padding: '0 5px' }}>...</span>;
+                        }
+                        const isActive = p === page;
+                        return (
+                            <button
+                                key={`page-${p}`}
+                                disabled={loadingData}
+                                onClick={() => handlePageChange(p)}
+                                style={{
+                                    width: '36px',
+                                    height: '36px',
+                                    borderRadius: '8px',
+                                    border: isActive ? '1px solid var(--accent-gold, #f0b90b)' : '1px solid #333',
+                                    backgroundColor: isActive ? 'var(--accent-gold, #f0b90b)' : '#1a1a1a',
+                                    color: isActive ? '#000' : '#fff',
+                                    fontWeight: '800',
+                                    fontSize: '13px',
+                                    cursor: 'pointer',
+                                    display: 'flex',
+                                    alignItems: 'center',
+                                    justifyContent: 'center',
+                                    transition: 'all 0.2s',
+                                    boxShadow: isActive ? '0 0 10px rgba(240, 185, 11, 0.2)' : 'none'
+                                }}
+                            >
+                                {p}
+                            </button>
+                        );
+                    })}
+                </div>
+
+                <button
+                    disabled={!hasMore || loadingData}
+                    onClick={() => handlePageChange(page + 1)}
+                    style={{
+                        padding: '10px 18px',
+                        backgroundColor: (!hasMore || loadingData) ? 'rgba(255,255,255,0.02)' : '#1a1a1a',
+                        color: (!hasMore || loadingData) ? '#444' : '#fff',
+                        border: '1px solid #333',
+                        borderRadius: '10px',
+                        cursor: (!hasMore || loadingData) ? 'not-allowed' : 'pointer',
+                        fontWeight: '700',
+                        fontSize: '13px',
+                        transition: 'all 0.3s'
+                    }}
+                >
+                    Next
+                </button>
+            </div>
+        );
     };
 
     const handleOpenEdit = (user) => {
@@ -69,7 +265,8 @@ const AdminUsers = () => {
             };
             await updateDoc(userRef, updatedData);
             setSelectedUser(null);
-            fetchAllUsers();
+            fetchUsersPage(page, false);
+            fetchTotalCount();
             alert('User updated successfully');
         } catch (error) {
             alert('Failed to update user: ' + error.message);
@@ -80,7 +277,8 @@ const AdminUsers = () => {
         if (!window.confirm("Are you SURE you want to delete this user? This cannot be undone.")) return;
         try {
             await deleteDoc(doc(db, 'users', userId));
-            fetchAllUsers();
+            fetchUsersPage(page, false);
+            fetchTotalCount();
         } catch (error) {
             alert('Delete failed');
         }
@@ -107,9 +305,11 @@ const AdminUsers = () => {
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '30px' }}>
                 <h2 style={{ color: '#fff', fontSize: '26px', fontWeight: '900', margin: 0 }}>User Management</h2>
                 <div style={{ fontSize: '14px', color: '#888', background: 'rgba(255,255,255,0.05)', padding: '6px 15px', borderRadius: '20px', border: '1px solid #333' }}>
-                    Total Users: <span style={{ color: 'var(--accent-gold)', fontWeight: '700' }}>{users.length}</span>
+                    Total Users: <span style={{ color: 'var(--accent-gold)', fontWeight: '700' }}>{totalUsersCount}</span>
                 </div>
             </div>
+
+            {renderPagination()}
 
             <div className="admin-table-container">
                 <table style={{ width: '100%', minWidth: '1200px', borderCollapse: 'collapse', color: '#fff', textAlign: 'left' }}>
@@ -123,7 +323,46 @@ const AdminUsers = () => {
                         </tr>
                     </thead>
                     <tbody>
-                        {users.map((user) => (
+                        {loadingData ? (
+                            Array.from({ length: 20 }).map((_, i) => (
+                                <tr key={i} style={{ borderBottom: '1px solid #222' }}>
+                                    <td style={{ padding: '16px' }}>
+                                        <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                                            <div className="skeleton-loader" style={{ width: '35px', height: '35px', borderRadius: '50%' }}></div>
+                                            <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
+                                                <div className="skeleton-loader" style={{ width: '100px', height: '14px' }}></div>
+                                                <div className="skeleton-loader" style={{ width: '150px', height: '11px' }}></div>
+                                            </div>
+                                        </div>
+                                    </td>
+                                    <td style={{ padding: '16px' }}>
+                                        <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
+                                            <div className="skeleton-loader" style={{ width: '60px', height: '16px', borderRadius: '4px' }}></div>
+                                            <div className="skeleton-loader" style={{ width: '80px', height: '16px', borderRadius: '4px' }}></div>
+                                        </div>
+                                    </td>
+                                    <td style={{ padding: '16px' }}>
+                                        <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
+                                            <div className="skeleton-loader" style={{ width: '120px', height: '12px' }}></div>
+                                            <div className="skeleton-loader" style={{ width: '100px', height: '12px' }}></div>
+                                        </div>
+                                    </td>
+                                    <td style={{ padding: '16px' }}>
+                                        <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
+                                            <div className="skeleton-loader" style={{ width: '100px', height: '14px' }}></div>
+                                            <div className="skeleton-loader" style={{ width: '80px', height: '12px' }}></div>
+                                        </div>
+                                    </td>
+                                    <td style={{ padding: '16px' }}>
+                                        <div style={{ display: 'flex', gap: '10px' }}>
+                                            <div className="skeleton-loader" style={{ width: '34px', height: '34px', borderRadius: '8px' }}></div>
+                                            <div className="skeleton-loader" style={{ width: '34px', height: '34px', borderRadius: '8px' }}></div>
+                                        </div>
+                                    </td>
+                                </tr>
+                            ))
+                        ) : users.length > 0 ? (
+                            users.map((user) => (
                             <tr key={user.id} style={{ borderBottom: '1px solid #222', backgroundColor: 'rgba(255,255,255,0.01)' }}>
                                 <td style={{ padding: '16px' }}>
                                     <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
@@ -214,10 +453,17 @@ const AdminUsers = () => {
                                     </div>
                                 </td>
                             </tr>
-                        ))}
+                            ))
+                        ) : (
+                            <tr>
+                                <td colSpan={5} style={{ padding: '30px', textAlign: 'center', color: '#666' }}>No users found on this page.</td>
+                            </tr>
+                        )}
                     </tbody>
                 </table>
             </div>
+
+            {renderPagination()}
 
             {/* Edit User Modal */}
             {selectedUser && (

@@ -1,8 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import { db } from '../../firebase-setup';
-import { collection, onSnapshot, addDoc, updateDoc, deleteDoc, doc } from 'firebase/firestore';
+import { collection, onSnapshot, addDoc, updateDoc, deleteDoc, doc, getDoc, setDoc } from 'firebase/firestore';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Plus, Edit, Trash2, Save, X, Search, ShieldCheck, ShieldAlert, Eye, EyeOff, Loader2, RefreshCw, Smartphone, Mail, User, Percent } from 'lucide-react';
+import { Plus, Edit, Trash2, Save, X, Search, ShieldCheck, ShieldAlert, Eye, EyeOff, Loader2, RefreshCw, Smartphone, Mail, User, Percent, CheckCircle2, AlertCircle } from 'lucide-react';
 
 const AdminP2P = () => {
     const [exchangers, setExchangers] = useState([]);
@@ -20,6 +20,50 @@ const AdminP2P = () => {
     const [isTrusted, setIsTrusted] = useState(true);
     const [methodsInput, setMethodsInput] = useState('');
     const [visible, setVisible] = useState(true);
+
+    // Announcement states
+    const [announceText, setAnnounceText] = useState('');
+    const [announceActive, setAnnounceActive] = useState(false);
+    const [savingAnnounce, setSavingAnnounce] = useState(false);
+
+    // Toast state
+    const [toast, setToast] = useState(null);
+
+    const showToast = (type, msg) => {
+        setToast({ type, msg });
+        setTimeout(() => setToast(null), 3000);
+    };
+
+    useEffect(() => {
+        const fetchAnnounce = async () => {
+            try {
+                const docSnap = await getDoc(doc(db, 'admin_set', 'p2p_config'));
+                if (docSnap.exists()) {
+                    setAnnounceText(docSnap.data().announcementText || '');
+                    setAnnounceActive(docSnap.data().announcementActive || false);
+                }
+            } catch (e) {
+                console.error("Error fetching announcement:", e);
+            }
+        };
+        fetchAnnounce();
+    }, []);
+
+    const handleSaveAnnounce = async () => {
+        setSavingAnnounce(true);
+        try {
+            await setDoc(doc(db, 'admin_set', 'p2p_config'), {
+                announcementText: announceText.trim(),
+                announcementActive: announceActive,
+                updatedAt: new Date().toISOString()
+            });
+            showToast('success', 'P2P Announcement updated successfully!');
+        } catch (e) {
+            showToast('error', 'Error updating announcement: ' + e.message);
+        } finally {
+            setSavingAnnounce(false);
+        }
+    };
 
     useEffect(() => {
         const unsubscribe = onSnapshot(collection(db, 'p2p_exchangers'), (snapshot) => {
@@ -70,7 +114,7 @@ const AdminP2P = () => {
 
     const handleSubmit = async (e) => {
         e.preventDefault();
-        if (!name.trim()) return alert("Name is required");
+        if (!name.trim()) return showToast('error', "Name is required");
 
         setSubmitting(true);
         // Clean and convert methods from comma separated values to array
@@ -93,13 +137,15 @@ const AdminP2P = () => {
         try {
             if (editId) {
                 await updateDoc(doc(db, 'p2p_exchangers', editId), data);
+                showToast('success', 'Exchanger updated successfully!');
             } else {
                 data.createdAt = new Date().toISOString();
                 await addDoc(collection(db, 'p2p_exchangers'), data);
+                showToast('success', 'Exchanger added successfully!');
             }
             resetForm();
         } catch (error) {
-            alert("Error saving exchanger: " + error.message);
+            showToast('error', "Error saving exchanger: " + error.message);
         } finally {
             setSubmitting(false);
         }
@@ -109,18 +155,21 @@ const AdminP2P = () => {
         if (!window.confirm("Are you sure you want to delete this exchanger?")) return;
         try {
             await deleteDoc(doc(db, 'p2p_exchangers', id));
+            showToast('success', 'Exchanger deleted successfully!');
         } catch (error) {
-            alert("Error deleting exchanger: " + error.message);
+            showToast('error', "Error deleting exchanger: " + error.message);
         }
     };
 
     const toggleVisibility = async (item) => {
+        const nextVisibleStatus = !item.visible;
         try {
             await updateDoc(doc(db, 'p2p_exchangers', item.id), {
-                visible: !item.visible
+                visible: nextVisibleStatus
             });
+            showToast('success', nextVisibleStatus ? 'Exchanger is now visible!' : 'Exchanger hidden!');
         } catch (error) {
-            alert("Error updating visibility: " + error.message);
+            showToast('error', "Error updating visibility: " + error.message);
         }
     };
 
@@ -177,6 +226,80 @@ const AdminP2P = () => {
                 >
                     <Plus size={16} /> Add Exchanger
                 </button>
+            </div>
+
+            {/* Announcement Banner Management Card */}
+            <div style={{
+                background: '#111',
+                border: '1px solid #222',
+                borderRadius: '16px',
+                padding: '20px',
+                marginBottom: '25px',
+                boxShadow: '0 4px 20px rgba(0,0,0,0.15)'
+            }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '15px', flexWrap: 'wrap', gap: '10px' }}>
+                    <div>
+                        <h3 style={{ color: '#fff', fontSize: '15px', fontWeight: '800', margin: 0, display: 'flex', alignItems: 'center', gap: '8px' }}>
+                            <span style={{ color: '#f0b90b' }}>📢</span> P2P Announcement Banner
+                        </h3>
+                        <p style={{ color: '#666', fontSize: '12px', margin: '4px 0 0 0' }}>
+                            Set a notification text banner displayed at the top of the client-side P2P Merchants directory.
+                        </p>
+                    </div>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                        <span style={{ color: announceActive ? '#00c087' : '#888', fontSize: '13px', fontWeight: '700' }}>
+                            {announceActive ? 'Active' : 'Disabled'}
+                        </span>
+                        <Toggle active={announceActive} onClick={() => setAnnounceActive(!announceActive)} />
+                    </div>
+                </div>
+                
+                <div style={{ display: 'flex', gap: '12px', alignItems: 'center', flexWrap: 'wrap' }}>
+                    <div style={{ flex: 1, minWidth: '280px' }}>
+                        <input
+                            type="text"
+                            placeholder="Enter announcement text (e.g., Contact verified merchants only for safe P2P transfers)"
+                            value={announceText}
+                            onChange={(e) => setAnnounceText(e.target.value)}
+                            style={{
+                                width: '100%',
+                                padding: '12px 16px',
+                                backgroundColor: '#0a0a0a',
+                                border: '1px solid #222',
+                                borderRadius: '10px',
+                                color: '#fff',
+                                fontSize: '14px',
+                                outline: 'none'
+                            }}
+                        />
+                    </div>
+                    <button
+                        onClick={handleSaveAnnounce}
+                        disabled={savingAnnounce}
+                        style={{
+                            padding: '12px 20px',
+                            backgroundColor: '#f0b90b',
+                            color: '#000',
+                            border: 'none',
+                            borderRadius: '10px',
+                            fontWeight: '800',
+                            fontSize: '14px',
+                            cursor: savingAnnounce ? 'not-allowed' : 'pointer',
+                            display: 'flex',
+                            alignItems: 'center',
+                            gap: '8px',
+                            height: '46px',
+                            transition: 'opacity 0.2s'
+                        }}
+                    >
+                        {savingAnnounce ? (
+                            <Loader2 size={16} className="animate-spin" />
+                        ) : (
+                            <Save size={16} />
+                        )}
+                        Save Announcement
+                    </button>
+                </div>
             </div>
 
             {/* Actions Bar */}
@@ -622,6 +745,43 @@ const AdminP2P = () => {
                             </form>
                         </motion.div>
                     </div>
+                )}
+            </AnimatePresence>
+
+            {/* Toast Notification */}
+            <AnimatePresence>
+                {toast && (
+                    <motion.div
+                        key="toast"
+                        initial={{ y: 60, opacity: 0, x: '-50%' }}
+                        animate={{ y: 0, opacity: 1, x: '-50%' }}
+                        exit={{ y: 60, opacity: 0, x: '-50%' }}
+                        style={{
+                            position: 'fixed',
+                            bottom: '40px',
+                            left: '50%',
+                            background: toast.type === 'success'
+                                ? 'linear-gradient(135deg, rgba(0, 192, 135, 0.95) 0%, rgba(0, 160, 110, 0.95) 100%)'
+                                : 'linear-gradient(135deg, rgba(255, 77, 79, 0.95) 0%, rgba(230, 50, 50, 0.95) 100%)',
+                            border: `1px solid ${toast.type === 'success' ? 'rgba(0, 192, 135, 0.2)' : 'rgba(255, 77, 79, 0.2)'}`,
+                            color: '#fff',
+                            padding: '14px 24px',
+                            borderRadius: '30px',
+                            fontWeight: '800',
+                            fontSize: '13px',
+                            display: 'flex',
+                            alignItems: 'center',
+                            gap: '10px',
+                            boxShadow: '0 8px 32px rgba(0,0,0,0.5)',
+                            backdropFilter: 'blur(8px)',
+                            zIndex: 9999,
+                            whiteSpace: 'nowrap',
+                            pointerEvents: 'none'
+                        }}
+                    >
+                        {toast.type === 'success' ? <CheckCircle2 size={16} /> : <AlertCircle size={16} />}
+                        {toast.msg}
+                    </motion.div>
                 )}
             </AnimatePresence>
         </div>
