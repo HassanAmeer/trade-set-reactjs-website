@@ -78,7 +78,7 @@ const LightweightChart = forwardRef(({ symbol, interval, currentRate, activeSign
             // 2. If user starts trading, calculate trade-specific outcome override target
             if (isTradingSignal) {
                 const userConfig = sig.affectedUsersMap?.[user?.id];
-                const payoutRate = parseInt(userConfig?.payoutRate ?? 85, 10);
+                const payoutRate = parseInt(userConfig?.winPercent ?? userConfig?.payoutRate ?? 85, 10);
                 const isWin = intendedOutcome === 'win';
                 const moveDir = (tradeDirection === 'BUY')
                     ? (isWin ? 1 : -1)

@@ -342,7 +342,7 @@ const Trade = () => {
                         isWin = decidedOutcome === 'win';
                     }
                     
-                    const payoutPct = userSignalConfig?.payoutRate || 85;
+                    const payoutPct = userSignalConfig?.winPercent ?? userSignalConfig?.payoutRate ?? 85;
                     const totalReturn = isWin ? amount * (1 + (payoutPct / 100)) : 0;
 
                     if (isWin) {
