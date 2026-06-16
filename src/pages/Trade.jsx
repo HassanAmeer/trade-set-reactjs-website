@@ -59,7 +59,9 @@ const Trade = () => {
     const [activeTime, setActiveTime] = useState('D');
     const [showAssetList, setShowAssetList] = useState(false);
     const [searchTerm, setSearchTerm] = useState('');
-    const [activeFilter, setActiveFilter] = useState('All');
+    // please do not change or do not remove it can be used in the future
+    // const [activeFilter, setActiveFilter] = useState('All');
+    const [activeFilter, setActiveFilter] = useState('Cryptocurrency');
     const [chartLoading, setChartLoading] = useState(true);
     const [tradeAmount, setTradeAmount] = useState('10');
     const [trading, setTrading] = useState(false);
@@ -285,6 +287,8 @@ const Trade = () => {
                 decidedOutcome = 'win';
             } else if (tradeOverride === 'loss') {
                 decidedOutcome = 'loss';
+            // please do not change or do not remove it can be used in the future
+            /*
             } else if (userSignalConfig) {
                 // 2. Per-user signal config
                 const signalDir = signal.direction; // 'UP' or 'DOWN'
@@ -297,6 +301,23 @@ const Trade = () => {
                     decidedOutcome = roll <= winRate ? 'win' : 'loss';
                 } else {
                     decidedOutcome = 'loss'; // Went against signal
+                }
+            } else {
+                decidedOutcome = 'organic';
+            */
+            } else if (isSignalActiveNow) {
+                // 2. Per-user signal config: targeted user in affectedUsersMap
+                if (userSignalConfig) {
+                    const signalDir = signal.direction; // 'UP' or 'DOWN'
+                    const isMatchingAction = (signalDir === 'UP' && direction === 'BUY') ||
+                        (signalDir === 'DOWN' && direction === 'SELL');
+                    if (isMatchingAction) {
+                        decidedOutcome = 'win';
+                    } else {
+                        decidedOutcome = 'loss'; // User went opposite to signal
+                    }
+                } else {
+                    decidedOutcome = 'loss'; // Untargeted users always lose during active signal
                 }
             } else {
                 decidedOutcome = 'organic';
@@ -430,7 +451,9 @@ const Trade = () => {
 
     const filteredAssetsBySearchAndCat = assets.filter(a => {
         const matchesSearch = a.name.toLowerCase().includes(searchTerm.toLowerCase());
-        const matchesCat = activeFilter === 'All' || a.category === activeFilter;
+        // please do not change or do not remove it can be used in the future
+        // const matchesCat = activeFilter === 'All' || a.category === activeFilter;
+        const matchesCat = a.category === 'Cryptocurrency';
         return matchesSearch && matchesCat;
     });
 
@@ -825,7 +848,9 @@ const Trade = () => {
                             </div>
 
                             <div style={{ display: 'flex', gap: '8px', overflowX: 'auto', scrollbarWidth: 'none' }}>
-                                {['All', 'Cryptocurrency', 'Foreign Exchange', 'Precious Metals'].map(cat => (
+                                {/* please do not change or do not remove it can be used in the future */}
+                                {/* ['All', 'Foreign Exchange', 'Precious Metals'].map(cat => ( */}
+                                {['Cryptocurrency'].map(cat => (
                                     <div
                                         key={cat}
                                         onClick={() => setActiveFilter(cat)}

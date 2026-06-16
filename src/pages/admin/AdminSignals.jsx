@@ -99,7 +99,7 @@ const AdminSignals = () => {
     const [signalDuration, setSignalDuration] = useState(30);
     const [startDelay, setStartDelay] = useState('now');
     const [customStartTime, setCustomStartTime] = useState('');
-    const [globalWinPercent, setGlobalWinPercent] = useState(85);
+    const [globalWinPercent, setGlobalWinPercent] = useState(5);
     const [selectedSymbol, setSelectedSymbol] = useState('BTC/USDT');
     const [targetChange, setTargetChange] = useState(5);
     const [affectedUsers, setAffectedUsers] = useState({});
@@ -157,7 +157,7 @@ const AdminSignals = () => {
         const parsed = parseInt(val);
         setAffectedUsers(prev => ({ ...prev, [uid]: { ...prev[uid], [field]: isNaN(parsed) ? '' : parsed } }));
     };
-    const applyGlobalToAll = () => { const next = {}; Object.keys(affectedUsers).forEach(id => { next[id] = { ...affectedUsers[id], winPercent: parseInt(globalWinPercent) || 85 }; }); setAffectedUsers(next); };
+    const applyGlobalToAll = () => { const next = {}; Object.keys(affectedUsers).forEach(id => { next[id] = { ...affectedUsers[id], winPercent: parseInt(globalWinPercent) || 5 }; }); setAffectedUsers(next); };
 
     const setSignal = async direction => {
         setLoading(true);
@@ -415,9 +415,9 @@ const AdminSignals = () => {
                                             <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '2px' }}>
                                                 <span style={{ fontSize: '8px', color: '#666', textTransform: 'uppercase', letterSpacing: '0.5px' }}>Win Prize%</span>
                                                 <div style={{ display: 'flex', alignItems: 'center', gap: '2px', background: '#000', border: '1px solid #1a1a1a', borderRadius: '8px', padding: '3px 6px' }}>
-                                                    <button type="button" onClick={() => updateUserRate(id, 'winPercent', Math.max(1, (parseInt(u.winPercent) || 85) - 1))} style={{ background: 'none', border: 'none', color: '#666', cursor: 'pointer', padding: 0 }}><ChevronDown size={11} /></button>
-                                                    <input type="number" value={u.winPercent ?? ''} onChange={e => updateUserRate(id, 'winPercent', e.target.value)} style={{ width: '32px', background: 'none', border: 'none', outline: 'none', color: '#f0b90b', fontSize: '12px', fontWeight: '800', textAlign: 'center' }} />
-                                                    <button type="button" onClick={() => updateUserRate(id, 'winPercent', Math.min(500, (parseInt(u.winPercent) || 85) + 1))} style={{ background: 'none', border: 'none', color: '#666', cursor: 'pointer', padding: 0 }}><ChevronUp size={11} /></button>
+                                                    <button type="button" onClick={() => updateUserRate(id, 'winPercent', Math.max(1, (parseInt(u.winPercent) || 5) - 1))} style={{ background: 'none', border: 'none', color: '#666', cursor: 'pointer', padding: 0 }}><ChevronDown size={11} /></button>
+                                                    <input type="number" value={u.winPercent || 5} onChange={e => updateUserRate(id, 'winPercent', e.target.value)} style={{ width: '32px', background: 'none', border: 'none', outline: 'none', color: '#f0b90b', fontSize: '12px', fontWeight: '800', textAlign: 'center' }} />
+                                                    <button type="button" onClick={() => updateUserRate(id, 'winPercent', Math.min(500, (parseInt(u.winPercent) || 5) + 1))} style={{ background: 'none', border: 'none', color: '#666', cursor: 'pointer', padding: 0 }}><ChevronUp size={11} /></button>
                                                 </div>
                                             </div>
                                             <button onClick={() => removeUserFromSignal(id)} style={{ padding: '7px', background: 'rgba(255,77,79,0.07)', border: '1px solid rgba(255,77,79,0.15)', borderRadius: '9px', color: '#ff4d4f', cursor: 'pointer', display: 'flex', alignItems: 'center' }}>

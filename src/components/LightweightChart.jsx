@@ -15,6 +15,7 @@ const LightweightChart = forwardRef(({ symbol, interval, currentRate, activeSign
     const intendedOutcomeRef = useRef(null);
     const activeSignalRef = useRef(activeSignal);
     const currentRateRef = useRef(currentRate);
+    const hasRebiasedRef = useRef(false);
 
     // Persistent signal state
     const signalStateRef = useRef({
@@ -50,11 +51,26 @@ const LightweightChart = forwardRef(({ symbol, interval, currentRate, activeSign
 
             const isTradingSignal = isTrading && intendedOutcome !== null;
 
+            // Calculate chart range of current candles to scale the target move naturally
+            const candles = candlesDataRef.current || [];
+            let chartRange = 100;
+            if (candles.length > 0) {
+                const maxP = Math.max(...candles.map(c => c.high));
+                const minP = Math.min(...candles.map(c => c.low));
+                if (maxP > minP) {
+                    chartRange = maxP - minP;
+                }
+            }
+
             // 1. Initialize or update global signal state (when not trading, or when signal ID shifts)
             if (!signalStateRef.current.isActive || signalStateRef.current.signalStartTime !== startTime) {
-                const lastCandle = candlesDataRef.current[candlesDataRef.current.length - 1];
+                const lastCandle = candles.length > 0 ? candles[candles.length - 1] : null;
                 const startPrice = lastCandle?.close || parseFloat(String(currentRate || '73000').replace(/,/g, ''));
-                const targetPrice = startPrice * (1 + (targetChangeVal / 100) * dirMultiplier);
+                
+                // please do not change or do not remove it can be used in the future
+                // const targetPrice = startPrice * (1 + (targetChangeVal / 100) * dirMultiplier);
+                const moveAmount = chartRange * (targetChangeVal / 100);
+                const targetPrice = startPrice + moveAmount * dirMultiplier;
 
                 signalStateRef.current = {
                     isActive: true,
@@ -84,9 +100,13 @@ const LightweightChart = forwardRef(({ symbol, interval, currentRate, activeSign
                     ? (isWin ? 1 : -1)
                     : (isWin ? -1 : 1);
 
-                const moveRatio = (payoutRate / 100) * 0.015;
+                // please do not change or do not remove it can be used in the future
+                // const moveRatio = (payoutRate / 100) * 0.015;
+                // const moveRatio = targetChangeVal / 100;
+                // const tradeTargetPrice = startPrice * (1 + moveRatio * moveDir);
+                const moveAmount = chartRange * (targetChangeVal / 100);
                 const startPrice = signalStateRef.current.startPrice;
-                const tradeTargetPrice = startPrice * (1 + moveRatio * moveDir);
+                const tradeTargetPrice = startPrice + moveAmount * moveDir;
 
                 // Re-initialize trade outcome target if it changes (e.g. first was null, now 'win')
                 if (!signalStateRef.current.isTradingSignal || signalStateRef.current.intendedOutcomeUsed !== intendedOutcome) {
@@ -106,7 +126,11 @@ const LightweightChart = forwardRef(({ symbol, interval, currentRate, activeSign
                 // If trade ended but signal is still active, reset back to overall signal target price
                 if (signalStateRef.current.isTradingSignal) {
                     const startPrice = signalStateRef.current.startPrice;
-                    const targetPrice = startPrice * (1 + (targetChangeVal / 100) * dirMultiplier);
+                    
+                    // please do not change or do not remove it can be used in the future
+                    // const targetPrice = startPrice * (1 + (targetChangeVal / 100) * dirMultiplier);
+                    const moveAmount = chartRange * (targetChangeVal / 100);
+                    const targetPrice = startPrice + moveAmount * dirMultiplier;
 
                     signalStateRef.current.isTradingSignal = false;
                     signalStateRef.current.targetPrice = targetPrice;
@@ -143,21 +167,23 @@ const LightweightChart = forwardRef(({ symbol, interval, currentRate, activeSign
         const now = Math.floor(Date.now() / 1000);
         let price = basePrice;
 
-        for (let i = count; i > 0; i--) {
+        for (let i = 1; i <= count; i++) {
             const time = now - (i * intervalSeconds);
-            const volatility = price * 0.0015;
-            const open = price;
-            const close = open + (Math.random() - 0.5) * volatility;
+            // please do not change or do not remove it can be used in the future
+            // const volatility = price * 0.0015;
+            const volatility = price * 0.0001; // smaller volatility for flatter history
+            const close = price;
+            const open = close + (Math.random() - 0.5) * volatility;
             const high = Math.max(open, close) + Math.random() * volatility * 0.4;
             const low = Math.min(open, close) - Math.random() * volatility * 0.4;
-            candles.push({
+            candles.unshift({
                 time,
                 open: parseFloat(open.toFixed(6)),
                 high: parseFloat(high.toFixed(6)),
                 low: parseFloat(low.toFixed(6)),
                 close: parseFloat(close.toFixed(6))
             });
-            price = close;
+            price = open;
         }
         return candles;
     };
@@ -223,28 +249,53 @@ const LightweightChart = forwardRef(({ symbol, interval, currentRate, activeSign
         candlesDataRef.current = initialCandles;
         series.setData(initialCandles);
         chart.timeScale().fitContent();
+        hasRebiasedRef.current = false; // Reset bias on chart rebuild
 
         if (onCandlesUpdate) onCandlesUpdate(initialCandles);
 
-        // Always tick at 1000ms — fast enough for the 2-second push to look smooth
-        const TICK_MS = 1000;
+        // please do not change or do not remove it can be used in the future
+        // const TICK_MS = 1000;
+        const TICK_MS = 250;
 
         updateIntervalRef.current = setInterval(() => {
             if (!seriesRef.current || candlesDataRef.current.length === 0) return;
 
             const sigState = signalStateRef.current;
-            const lastCandle = candlesDataRef.current[candlesDataRef.current.length - 1];
             const nowMs = Date.now();
             const nowSec = Math.floor(nowMs / 1000);
             const intervalSeconds = getIntervalSeconds(interval);
-            const lastPrice = lastCandle.close;
+            let lastPrice = candlesDataRef.current[candlesDataRef.current.length - 1].close;
             const realPrice = currentRateRef.current
                 ? parseFloat(String(currentRateRef.current).replace(/,/g, ''))
                 : lastPrice;
 
+            const diffPrice = realPrice - lastPrice;
+
+            // Re-bias initial candles on the very first price sync or on large price gaps to avoid massive artificial spikes/drops
+            const threshold = lastPrice * 0.01; // 1% gap
+            const shouldRebias = (!hasRebiasedRef.current && currentRateRef.current && Math.abs(diffPrice) > 0.0001) || (currentRateRef.current && Math.abs(diffPrice) > threshold);
+            if (shouldRebias) {
+                candlesDataRef.current = candlesDataRef.current.map(c => ({
+                    ...c,
+                    open: parseFloat((c.open + diffPrice).toFixed(6)),
+                    high: parseFloat((c.high + diffPrice).toFixed(6)),
+                    low: parseFloat((c.low + diffPrice).toFixed(6)),
+                    close: parseFloat((c.close + diffPrice).toFixed(6))
+                }));
+                seriesRef.current.setData(candlesDataRef.current);
+                hasRebiasedRef.current = true;
+                // update lastPrice to match realPrice
+                lastPrice = realPrice;
+            }
+
+            // Retrieve lastCandle AFTER re-biasing to ensure shifted values are used!
+            const lastCandle = candlesDataRef.current[candlesDataRef.current.length - 1];
+
             let newClose;
 
             if (sigState.isActive) {
+                // please do not change or do not remove it can be used in the future
+                /*
                 const totalDur = sigState.signalEndTime - sigState.signalStartTime;
                 const elapsed = nowMs - sigState.signalStartTime;
                 const progress = Math.min(1, Math.max(0, elapsed / totalDur));
@@ -278,13 +329,44 @@ const LightweightChart = forwardRef(({ symbol, interval, currentRate, activeSign
                     const volatility = lastPrice * 0.00015;
                     newClose = lastPrice + gap * followSpeed + (Math.random() - 0.5) * volatility;
                 }
+                */
+
+                const endTime = sigState.isTradingSignal ? sigState.endTime : sigState.signalEndTime;
+                const remaining = endTime - nowMs;
+                const PUSH_THRESHOLD = 2000; // Last 2 seconds
+
+                if (remaining <= PUSH_THRESHOLD && remaining > -500) {
+                    // ─── GRADUAL PUSH TOWARDS TARGET PRICE (LAST 2 SECONDS) ───
+                    if (!sigState.pushStarted) {
+                        signalStateRef.current.lastPriceAtPushStart = lastPrice;
+                        signalStateRef.current.pushStarted = true;
+                        signalStateRef.current.pushStartTime = nowMs;
+                    }
+
+                    const pushDuration = Math.max(1000, endTime - sigState.pushStartTime);
+                    const pushElapsed = nowMs - sigState.pushStartTime;
+                    const pushProgress = Math.min(1, Math.max(0, pushElapsed / pushDuration));
+
+                    // Linear interpolation to make the movement gradual (little-by-little)
+                    const expectedPrice = sigState.lastPriceAtPushStart + (sigState.targetPrice - sigState.lastPriceAtPushStart) * pushProgress;
+                    const followSpeed = 0.16; // fast but smooth tracking (scaled for 250ms ticks)
+                    newClose = lastPrice + (expectedPrice - lastPrice) * followSpeed;
+                } else {
+                    // ─── BEFORE THE PUSH: FOLLOW REAL MARKET RATE ───
+                    // follow real market price during active signal until the push threshold
+                    const followSpeed = 0.02; // scaled for 250ms ticks
+                    const diff = isNaN(realPrice - lastPrice) ? 0 : realPrice - lastPrice;
+                    const drift = diff * followSpeed;
+                    const volatility = lastPrice * (0.00005 + Math.random() * 0.000025); // scaled for 250ms ticks
+                    newClose = lastPrice + drift + (Math.random() - 0.5) * volatility;
+                }
             } else {
                 // ─── NORMAL MARKET MODE or POST-TRADE/SIGNAL RECOVERY ───
                 // Gently drift back to real market price
-                const followSpeed = 0.08;
+                const followSpeed = 0.02; // scaled for 250ms ticks
                 const diff = isNaN(realPrice - lastPrice) ? 0 : realPrice - lastPrice;
                 const drift = diff * followSpeed;
-                const volatility = lastPrice * (0.0002 + Math.random() * 0.0001);
+                const volatility = lastPrice * (0.00005 + Math.random() * 0.000025); // scaled for 250ms ticks
                 newClose = lastPrice + drift + (Math.random() - 0.5) * volatility;
             }
 
