@@ -13,6 +13,7 @@ const ALL_MENU_ITEMS = [
     { id: 'livechat', label: 'Live Chat', section: 'MANAGEMENT' },
     { id: 'blogs', label: 'News & Blogs', section: 'CONTENT' },
     { id: 'kyc', label: 'KYC Approvals', section: 'MANAGEMENT' },
+    { id: 'p2p', label: 'P2P Settings', section: 'MANAGEMENT' },
     { id: 'carousel', label: 'Home Banners', section: 'CONTENT' },
     { id: 'email', label: 'Email Campaign', section: 'CONTENT' },
     { id: 'announcements', label: 'Announcements', section: 'CONTENT' },

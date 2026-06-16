@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useMarket } from '../context/MarketContext';
 import { motion } from 'framer-motion';
 import { useNavigate } from 'react-router-dom';
+import defaultMetalIcon from '../assets/default_metal.png';
 
 // ── Stock Avatar: shows logo or first-letter circle fallback ──────────────
 const StockAvatar = ({ asset, size = 28 }) => {
@@ -137,7 +138,14 @@ const Market = () => {
                                     {asset.category === 'Stocks' ? (
                                         <StockAvatar asset={asset} size={32} />
                                     ) : (
-                                        <img src={asset.flag} alt={asset.name} style={{ width: '28px', height: '18px', borderRadius: '1px', objectFit: 'cover' }} />
+                                        <img 
+                                            src={(asset.category === 'Precious Metals' && !asset.flag) ? defaultMetalIcon : (asset.flag || defaultMetalIcon)} 
+                                            alt={asset.name} 
+                                            style={{ width: '28px', height: '18px', borderRadius: '1px', objectFit: 'cover' }} 
+                                            onError={(e) => {
+                                                e.target.src = asset.category === 'Precious Metals' ? defaultMetalIcon : 'https://cdn-icons-png.flaticon.com/512/25/25254.png';
+                                            }}
+                                        />
                                     )}
                                     <div style={{ display: 'flex', flexDirection: 'column' }}>
                                         <span style={{ fontWeight: '700', fontSize: '13px', color: '#fff', display: 'flex', alignItems: 'center', gap: '4px' }}>

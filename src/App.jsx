@@ -29,6 +29,7 @@ const AdminDashboard = lazy(() => import('./pages/admin/AdminDashboard'));
 const TradesRecord = lazy(() => import('./pages/TradesRecord'));
 const BinaryHistory = lazy(() => import('./pages/BinaryHistory'));
 const LiveChat = lazy(() => import('./pages/LiveChat'));
+const P2P = lazy(() => import('./pages/P2P'));
 
 import FloatingChatButton from './components/FloatingChatButton';
 import { Home as HomeIcon, BarChart2, Activity, Pickaxe, User } from 'lucide-react';
@@ -108,6 +109,7 @@ const AppContent = () => {
           <Route path="/news" element={<NewsAndBlog />} />
           <Route path="/news/:id" element={<BlogDetail />} />
           <Route path="/chat" element={<LiveChat />} />
+          <Route path="/p2p" element={<P2P />} />
 
           {/* Admin Routes */}
           <Route path="/set" element={<AdminLogin />} />

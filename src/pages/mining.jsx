@@ -22,6 +22,7 @@ import { useMarket } from '../context/MarketContext';
 
 import btcBg from '../assets/btc-bg.jpg';
 import minerBot from '../assets/btc-mining.webp';
+import defaultMetalIcon from '../assets/default_metal.png';
 import { db } from '../firebase-setup';
 import { collection, addDoc, increment } from 'firebase/firestore';
 
@@ -436,7 +437,14 @@ const Mining = () => {
                     <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
                         {selectedAssetForExchange ? (
                             <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-                                <img src={selectedAssetForExchange.flag} alt="" style={{ width: '32px', height: '32px', borderRadius: '50%' }} />
+                                 <img 
+                                     src={(selectedAssetForExchange.category === 'Precious Metals' && !selectedAssetForExchange.flag) ? defaultMetalIcon : (selectedAssetForExchange.flag || defaultMetalIcon)} 
+                                     alt="" 
+                                     style={{ width: '32px', height: '32px', borderRadius: '50%', objectFit: 'cover' }} 
+                                     onError={(e) => {
+                                         e.target.src = selectedAssetForExchange.category === 'Precious Metals' ? defaultMetalIcon : 'https://cdn-icons-png.flaticon.com/512/25/25254.png';
+                                     }}
+                                 />
                                 <div>
                                     <div style={{ fontSize: '20px', fontWeight: '900' }}>
                                         {exchangeAmount ? (parseFloat(exchangeAmount) / parseFloat(String(selectedAssetForExchange.rate).replace(/,/g, ''))).toFixed(6) : '0.000'}
@@ -524,8 +532,14 @@ const Mining = () => {
                     </div>
                 ) : (
                     <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
-                        {userHoldingsArray.map((holding, idx) => (
-                            <motion.div
+                        {userHoldingsArray.map((holding, idx) => {
+                            const isMetal = assets.find(a => a.id === holding.id)?.category === 'Precious Metals' || 
+                                            holding.symbol?.toLowerCase().includes('xau') || 
+                                            holding.symbol?.toLowerCase().includes('xag') || 
+                                            holding.name?.toLowerCase().includes('gold') || 
+                                            holding.name?.toLowerCase().includes('silver');
+                            return (
+                                <motion.div
                                 key={holding.id}
                                 initial={{ opacity: 0, y: 20 }}
                                 animate={{ opacity: 1, y: 0 }}
@@ -558,7 +572,14 @@ const Mining = () => {
                                             background: 'rgba(255,255,255,0.03)', display: 'flex',
                                             alignItems: 'center', justifyContent: 'center', border: '1px solid rgba(255,255,255,0.05)'
                                         }}>
-                                            <img src={holding.icon} alt="" style={{ width: '28px', height: '28px' }} />
+                                            <img 
+                                                src={(isMetal && !holding.icon) ? defaultMetalIcon : (holding.icon || defaultMetalIcon)} 
+                                                alt="" 
+                                                style={{ width: '28px', height: '28px', borderRadius: '50%', objectFit: 'cover' }} 
+                                                onError={(e) => {
+                                                    e.target.src = isMetal ? defaultMetalIcon : 'https://cdn-icons-png.flaticon.com/512/25/25254.png';
+                                                }}
+                                            />
                                         </div>
                                         <div>
                                             <div style={{ fontWeight: '900', fontSize: '17px' }}>{holding.symbol}</div>
@@ -621,9 +642,10 @@ const Mining = () => {
                                         <ArrowRightLeft size={14} />
                                         LIQUIDATE TO USDT
                                     </motion.button>
-                                </div>
-                            </motion.div>
-                        ))}
+                                 </div>
+                             </motion.div>
+                            );
+                        })}
                     </div>
                 )}
             </div>
@@ -742,7 +764,14 @@ const Mining = () => {
                                 >
                                     <div style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
                                         <div style={{ width: '42px', height: '42px', borderRadius: '14px', background: '#111', display: 'flex', alignItems: 'center', justifyContent: 'center', border: '1px solid #1a1a1a' }}>
-                                            <img src={asset.flag} alt="" style={{ width: '26px', height: '26px' }} />
+                                            <img 
+                                                src={(asset.category === 'Precious Metals' && !asset.flag) ? defaultMetalIcon : (asset.flag || defaultMetalIcon)} 
+                                                alt="" 
+                                                style={{ width: '26px', height: '26px', borderRadius: '50%', objectFit: 'cover' }} 
+                                                onError={(e) => {
+                                                    e.target.src = asset.category === 'Precious Metals' ? defaultMetalIcon : 'https://cdn-icons-png.flaticon.com/512/25/25254.png';
+                                                }}
+                                            />
                                         </div>
                                         <div>
                                             <div style={{ fontWeight: '900', fontSize: '16px', color: '#fff' }}>{asset.symbol || asset.name.split('/')[0]}</div>

@@ -8,6 +8,7 @@ import { useAuth } from '../context/AuthContext';
 import { collection, addDoc, updateDoc, doc, increment, onSnapshot, getDoc } from 'firebase/firestore';
 import LightweightChart from '../components/LightweightChart';
 import { Trophy, CircleAlert, Sparkles, History as HistoryIcon } from 'lucide-react';
+import defaultMetalIcon from '../assets/default_metal.png';
 
 const Trade = () => {
     const { assets, selectedAsset, setSelectedAsset, setIsActive } = useMarket();
@@ -780,7 +781,14 @@ const Trade = () => {
                                     }}
                                 >
                                     <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-                                        <img src={asset.flag} alt="" style={{ width: '28px', height: '28px', borderRadius: '50%', objectFit: 'cover' }} />
+                                        <img 
+                                            src={(asset.category === 'Precious Metals' && !asset.flag) ? defaultMetalIcon : (asset.flag || defaultMetalIcon)} 
+                                            alt="" 
+                                            style={{ width: '28px', height: '28px', borderRadius: '50%', objectFit: 'cover' }} 
+                                            onError={(e) => {
+                                                e.target.src = asset.category === 'Precious Metals' ? defaultMetalIcon : 'https://cdn-icons-png.flaticon.com/512/25/25254.png';
+                                            }}
+                                        />
                                         <div>
                                             <div style={{ fontWeight: '700' }}>{asset.name}</div>
                                             <div style={{ fontSize: '11px', color: '#555' }}>{asset.fullName || asset.category}</div>

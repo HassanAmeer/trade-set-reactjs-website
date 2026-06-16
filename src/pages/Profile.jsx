@@ -582,6 +582,7 @@ const Profile = () => {
                     { icon: FileText, label: 'Trade Record', path: '/trade-history' },
                     { icon: FileText, label: 'Recharge Record', path: '/deposit-history' },
                     { icon: FileText, label: 'Withdrawal Record', path: '/withdrawal-history' },
+                    { icon: Users, label: 'P2P Merchants', path: '/p2p' },
                 ].map((item, i) => (
                     <div
                         key={i}

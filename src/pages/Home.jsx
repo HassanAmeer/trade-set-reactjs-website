@@ -8,6 +8,7 @@ import {
     BellIcon
 } from 'lucide-react';
 import heroImage from '../assets/hero.png';
+import defaultMetalIcon from '../assets/default_metal.png';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
@@ -420,11 +421,11 @@ const Home = () => {
                                         />
                                     ) : (
                                         <img
-                                            src={asset.flag}
+                                            src={(asset.category === 'Precious Metals' && !asset.flag) ? defaultMetalIcon : (asset.flag || defaultMetalIcon)}
                                             alt={asset.name}
                                             className="asset-flag"
                                             onError={(e) => {
-                                                e.target.src = 'https://cdn-icons-png.flaticon.com/512/25/25254.png';
+                                                e.target.src = asset.category === 'Precious Metals' ? defaultMetalIcon : 'https://cdn-icons-png.flaticon.com/512/25/25254.png';
                                             }}
                                         />
                                     )}
