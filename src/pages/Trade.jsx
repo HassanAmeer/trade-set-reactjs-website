@@ -706,14 +706,22 @@ const Trade = () => {
                         transition={{ type: 'spring', damping: 25, stiffness: 200 }}
                         style={{
                             position: 'fixed',
-                            top: 0,
-                            left: 0,
-                            right: 0,
-                            bottom: 0,
+                            top: '5vh',
+                            left: '5vw',
+                            right: '5vw',
+                            bottom: '5vh',
+                            height: '90vh',
+                            width: '90vw',
+                            margin: 'auto',
                             backgroundColor: '#0a0a0a',
                             zIndex: 1000,
                             display: 'flex',
-                            flexDirection: 'column'
+                            flexDirection: 'column',
+                            borderRadius: '16px',
+                            border: '1px solid #333',
+                            resize: 'both',
+                            overflow: 'hidden',
+                            boxShadow: '0 10px 40px rgba(0,0,0,0.8)'
                         }}
                     >
                         <div style={{ padding: '20px', borderBottom: '1px solid #222' }}>

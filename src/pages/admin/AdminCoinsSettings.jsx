@@ -45,17 +45,17 @@ const CoinIcon = ({ coin, activeTab, size = 28 }) => {
 
 // ─── Constants ────────────────────────────────────────────────────────────────
 const TABS = [
-    { id: 'crypto',  label: 'Cryptocurrency',   icon: Bitcoin,     color: '#f7931a' },
-    { id: 'forex',   label: 'Foreign Exchange',  icon: TrendingUp,  color: '#00c087' },
-    { id: 'metals',  label: 'Precious Metals',   icon: Gem,         color: '#f0b90b' },
-    { id: 'stocks',  label: 'Stocks',            icon: BarChart2,   color: '#7c6af7' },
+    { id: 'crypto', label: 'Cryptocurrency', icon: Bitcoin, color: '#f7931a' },
+    { id: 'forex', label: 'Foreign Exchange', icon: TrendingUp, color: '#00c087' },
+    { id: 'metals', label: 'Precious Metals', icon: Gem, color: '#f0b90b' },
+    { id: 'stocks', label: 'Stocks', icon: BarChart2, color: '#7c6af7' },
 ];
 
 const DEFAULT_CONFIG = {
-    crypto:  { useCustomPrice: false, syncIntervalSeconds: 300,   lastSyncedAt: 0 },
-    forex:   { useCustomPrice: false, syncIntervalSeconds: 1800,  lastSyncedAt: 0 },
-    metals:  { useCustomPrice: false, syncIntervalSeconds: 21600, lastSyncedAt: 0 },
-    stocks:  { useCustomPrice: false, syncIntervalSeconds: 3600,  lastSyncedAt: 0 },
+    crypto: { useCustomPrice: false, syncIntervalSeconds: 300, lastSyncedAt: 0 },
+    forex: { useCustomPrice: false, syncIntervalSeconds: 1800, lastSyncedAt: 0 },
+    metals: { useCustomPrice: false, syncIntervalSeconds: 21600, lastSyncedAt: 0 },
+    stocks: { useCustomPrice: false, syncIntervalSeconds: 3600, lastSyncedAt: 0 },
 };
 
 const LIVECOINWATCH_KEY = '20c87391-6c37-4e83-a9cb-ad52ab7a3da2';
@@ -63,22 +63,22 @@ const LIVECOINWATCH_KEY = '20c87391-6c37-4e83-a9cb-ad52ab7a3da2';
 // Default coins per tab (used for custom rate rows)
 const DEFAULT_COINS = {
     crypto: [
-        { id: 'BTCUSDT',  label: 'BTC/USDT',  icon: 'https://assets.coingecko.com/coins/images/1/small/bitcoin.png' },
-        { id: 'ETHUSDT',  label: 'ETH/USDT',  icon: 'https://assets.coingecko.com/coins/images/279/small/ethereum.png' },
-        { id: 'SOLUSDT',  label: 'SOL/USDT',  icon: 'https://assets.coingecko.com/coins/images/4128/small/solana.png' },
-        { id: 'XRPUSDT',  label: 'XRP/USDT',  icon: 'https://assets.coingecko.com/coins/images/44/small/xrp-symbol-white-128.png' },
+        { id: 'BTCUSDT', label: 'BTC/USDT', icon: 'https://assets.coingecko.com/coins/images/1/small/bitcoin.png' },
+        { id: 'ETHUSDT', label: 'ETH/USDT', icon: 'https://assets.coingecko.com/coins/images/279/small/ethereum.png' },
+        { id: 'SOLUSDT', label: 'SOL/USDT', icon: 'https://assets.coingecko.com/coins/images/4128/small/solana.png' },
+        { id: 'XRPUSDT', label: 'XRP/USDT', icon: 'https://assets.coingecko.com/coins/images/44/small/xrp-symbol-white-128.png' },
         { id: 'AVAXUSDT', label: 'AVAX/USDT', icon: 'https://assets.coingecko.com/coins/images/12559/small/Avalanche_Circle_RedWhite_Trans.png' },
         { id: 'LINKUSDT', label: 'LINK/USDT', icon: 'https://assets.coingecko.com/coins/images/877/small/chainlink-new-logo.png' },
-        { id: 'MATICUSDT',label: 'MATIC/USDT',icon: 'https://assets.coingecko.com/coins/images/4713/small/matic-token-icon.png' },
+        { id: 'MATICUSDT', label: 'MATIC/USDT', icon: 'https://assets.coingecko.com/coins/images/4713/small/matic-token-icon.png' },
         { id: 'SHIBUSDT', label: 'SHIB/USDT', icon: 'https://assets.coingecko.com/coins/images/11939/small/shiba.png' },
-        { id: 'TONUSDT',  label: 'TON/USDT',  icon: 'https://assets.coingecko.com/coins/images/17980/small/ton_symbol.png' },
+        { id: 'TONUSDT', label: 'TON/USDT', icon: 'https://assets.coingecko.com/coins/images/17980/small/ton_symbol.png' },
         { id: 'NEARUSDT', label: 'NEAR/USDT', icon: 'https://assets.coingecko.com/coins/images/10365/small/near_icon.png' },
         { id: 'PEPEUSDT', label: 'PEPE/USDT', icon: 'https://assets.coingecko.com/coins/images/29850/small/pepe-token-icon.png' },
-        { id: 'SUIUSDT',  label: 'SUI/USDT',  icon: 'https://assets.coingecko.com/coins/images/26375/small/sui_logo.png' },
+        { id: 'SUIUSDT', label: 'SUI/USDT', icon: 'https://assets.coingecko.com/coins/images/26375/small/sui_logo.png' },
         { id: 'DOGEUSDT', label: 'DOGE/USDT', icon: 'https://assets.coingecko.com/coins/images/5/small/dogecoin.png' },
-        { id: 'TRXUSDT',  label: 'TRX/USDT',  icon: 'https://assets.coingecko.com/coins/images/1094/small/tron-logo.png' },
-        { id: 'DOTUSDT',  label: 'DOT/USDT',  icon: 'https://assets.coingecko.com/coins/images/12171/small/polkadot.png' },
-        { id: 'LTCUSDT',  label: 'LTC/USDT',  icon: 'https://assets.coingecko.com/coins/images/2/small/litecoin.png' },
+        { id: 'TRXUSDT', label: 'TRX/USDT', icon: 'https://assets.coingecko.com/coins/images/1094/small/tron-logo.png' },
+        { id: 'DOTUSDT', label: 'DOT/USDT', icon: 'https://assets.coingecko.com/coins/images/12171/small/polkadot.png' },
+        { id: 'LTCUSDT', label: 'LTC/USDT', icon: 'https://assets.coingecko.com/coins/images/2/small/litecoin.png' },
     ],
     forex: [
         { id: 'fx-gbp', label: 'GBP/USD', icon: 'https://flagcdn.com/w40/gb.png' },
@@ -95,21 +95,21 @@ const DEFAULT_COINS = {
         { id: 'fx-aed', label: 'AED/USD', icon: 'https://flagcdn.com/w40/ae.png' },
     ],
     metals: [
-        { id: 'metal-1',  label: 'XAU/USD (Gold)',     icon: 'https://img.icons8.com/color/96/gold-bars.png' },
-        { id: 'metal-2',  label: 'XAG/USD (Silver)',   icon: 'https://img.icons8.com/color/96/silver-bars.png' },
-        { id: 'metal-4',  label: 'XPT/USD (Platinum)', icon: 'https://img.icons8.com/color/96/silver-bars.png' },
-        { id: 'metal-5',  label: 'XPD/USD (Palladium)',icon: 'https://img.icons8.com/color/96/silver-bars.png' },
-        { id: 'metal-6',  label: 'XCU/USD (Copper)',   icon: 'https://img.icons8.com/color/96/copper-ingot.png' },
-        { id: 'metal-7',  label: 'ALU/USD (Aluminum)', icon: 'https://img.icons8.com/color/96/aluminum-ingot.png' },
-        { id: 'metal-9',  label: 'ZNC/USD (Zinc)',     icon: 'https://img.icons8.com/color/96/steel-ingot.png' },
-        { id: 'metal-10', label: 'NKL/USD (Nickel)',   icon: 'https://img.icons8.com/color/96/steel-ingot.png' },
-        { id: 'metal-11', label: 'LD/USD (Lead)',      icon: 'https://img.icons8.com/color/96/steel-ingot.png' },
+        { id: 'metal-1', label: 'XAU/USD (Gold)', icon: 'https://img.icons8.com/color/96/gold-bars.png' },
+        { id: 'metal-2', label: 'XAG/USD (Silver)', icon: 'https://img.icons8.com/color/96/silver-bars.png' },
+        { id: 'metal-4', label: 'XPT/USD (Platinum)', icon: 'https://img.icons8.com/color/96/silver-bars.png' },
+        { id: 'metal-5', label: 'XPD/USD (Palladium)', icon: 'https://img.icons8.com/color/96/silver-bars.png' },
+        { id: 'metal-6', label: 'XCU/USD (Copper)', icon: 'https://img.icons8.com/color/96/copper-ingot.png' },
+        { id: 'metal-7', label: 'ALU/USD (Aluminum)', icon: 'https://img.icons8.com/color/96/aluminum-ingot.png' },
+        { id: 'metal-9', label: 'ZNC/USD (Zinc)', icon: 'https://img.icons8.com/color/96/steel-ingot.png' },
+        { id: 'metal-10', label: 'NKL/USD (Nickel)', icon: 'https://img.icons8.com/color/96/steel-ingot.png' },
+        { id: 'metal-11', label: 'LD/USD (Lead)', icon: 'https://img.icons8.com/color/96/steel-ingot.png' },
     ],
     stocks: [
-        { id: 'stock-AMZN', label: 'AMZN/USD (Amazon)',  icon: 'https://logo.clearbit.com/amazon.com' },
-        { id: 'stock-TSLA', label: 'TSLA/USD (Tesla)',   icon: 'https://logo.clearbit.com/tesla.com' },
-        { id: 'stock-NVDA', label: 'NVDA/USD (NVIDIA)',  icon: 'https://logo.clearbit.com/nvidia.com' },
-        { id: 'stock-NDAQ', label: 'NDAQ/USD (Nasdaq)',  icon: 'https://logo.clearbit.com/nasdaq.com' },
+        { id: 'stock-AMZN', label: 'AMZN/USD (Amazon)', icon: 'https://logo.clearbit.com/amazon.com' },
+        { id: 'stock-TSLA', label: 'TSLA/USD (Tesla)', icon: 'https://logo.clearbit.com/tesla.com' },
+        { id: 'stock-NVDA', label: 'NVDA/USD (NVIDIA)', icon: 'https://logo.clearbit.com/nvidia.com' },
+        { id: 'stock-NDAQ', label: 'NDAQ/USD (Nasdaq)', icon: 'https://logo.clearbit.com/nasdaq.com' },
     ],
 };
 
@@ -127,9 +127,9 @@ function timeAgo(ms) {
 }
 
 function secondsToHuman(sec) {
-    if (sec < 60)   return `${sec}s`;
+    if (sec < 60) return `${sec}s`;
     if (sec < 3600) return `${Math.round(sec / 60)}m`;
-    if (sec < 86400)return `${(sec / 3600).toFixed(1)}h`;
+    if (sec < 86400) return `${(sec / 3600).toFixed(1)}h`;
     return `${(sec / 86400).toFixed(1)}d`;
 }
 
@@ -157,7 +157,7 @@ const Toggle = ({ checked, onChange, label, description, accentColor = '#00c087'
             flexShrink: 0, border: `1px solid ${checked ? accentColor : 'rgba(255,255,255,0.1)'}`,
             boxShadow: checked ? `0 0 10px rgba(${hexToRgb(accentColor)}, 0.3)` : 'none',
         }}>
-            <motion.div 
+            <motion.div
                 layout
                 transition={{ type: 'spring', stiffness: 500, damping: 30 }}
                 style={{
@@ -166,7 +166,7 @@ const Toggle = ({ checked, onChange, label, description, accentColor = '#00c087'
                     width: '20px', height: '20px', borderRadius: '50%',
                     background: '#fff',
                     boxShadow: '0 2px 4px rgba(0,0,0,0.4)',
-                }} 
+                }}
             />
         </div>
     </div>
@@ -179,11 +179,11 @@ function hexToRgb(hex) {
 
 // ─── Main Component ───────────────────────────────────────────────────────
 const AdminCoinsSettings = () => {
-    const [activeTab, setActiveTab]           = useState('crypto');
-    const [config, setConfig]                 = useState(DEFAULT_CONFIG);
-    const [customRates, setCustomRates]       = useState({ crypto: {}, forex: {}, metals: {} });
-    const [visibility, setVisibility]         = useState({});
-    const [extraCoins, setExtraCoins]         = useState({
+    const [activeTab, setActiveTab] = useState('crypto');
+    const [config, setConfig] = useState(DEFAULT_CONFIG);
+    const [customRates, setCustomRates] = useState({ crypto: {}, forex: {}, metals: {} });
+    const [visibility, setVisibility] = useState({});
+    const [extraCoins, setExtraCoins] = useState({
         crypto: [],
         forex: [],
         metals: [],
@@ -195,18 +195,18 @@ const AdminCoinsSettings = () => {
             stocks: [],
         }
     });
-    const [liveRates, setLiveRates]           = useState({ crypto: [], forex: {}, metals: {}, stocks: {} });
-    const [loading, setLoading]               = useState(true);
-    const [saving, setSaving]                 = useState('');
-    const [syncing, setSyncing]               = useState('');
-    const [toast, setToast]                   = useState(null);
-    const [newCoinCode, setNewCoinCode]       = useState('');
-    const [addingCoin, setAddingCoin]         = useState(false);
+    const [liveRates, setLiveRates] = useState({ crypto: [], forex: {}, metals: {}, stocks: {} });
+    const [loading, setLoading] = useState(true);
+    const [saving, setSaving] = useState('');
+    const [syncing, setSyncing] = useState('');
+    const [toast, setToast] = useState(null);
+    const [newCoinCode, setNewCoinCode] = useState('');
+    const [addingCoin, setAddingCoin] = useState(false);
     const [localIntervals, setLocalIntervals] = useState({});
-    const [localRates, setLocalRates]         = useState({});
-    const [expandRates, setExpandRates]       = useState(false);
+    const [localRates, setLocalRates] = useState({});
+    const [expandRates, setExpandRates] = useState(false);
     const [focusedInputId, setFocusedInputId] = useState(null);
-    const [customNames, setCustomNames]       = useState({ crypto: {}, forex: {}, metals: {} });
+    const [customNames, setCustomNames] = useState({ crypto: {}, forex: {}, metals: {} });
 
     const tabInfo = TABS.find(t => t.id === activeTab);
     const accentColor = tabInfo?.color || '#00c087';
@@ -234,27 +234,27 @@ const AdminCoinsSettings = () => {
 
             const cfgData = cfgSnap.exists() ? cfgSnap.data() : DEFAULT_CONFIG;
             const merged = {
-                crypto:  { ...DEFAULT_CONFIG.crypto,  ...(cfgData.crypto  || {}) },
-                forex:   { ...DEFAULT_CONFIG.forex,   ...(cfgData.forex   || {}) },
-                metals:  { ...DEFAULT_CONFIG.metals,  ...(cfgData.metals  || {}) },
-                stocks:  { ...DEFAULT_CONFIG.stocks,  ...(cfgData.stocks  || {}) },
+                crypto: { ...DEFAULT_CONFIG.crypto, ...(cfgData.crypto || {}) },
+                forex: { ...DEFAULT_CONFIG.forex, ...(cfgData.forex || {}) },
+                metals: { ...DEFAULT_CONFIG.metals, ...(cfgData.metals || {}) },
+                stocks: { ...DEFAULT_CONFIG.stocks, ...(cfgData.stocks || {}) },
             };
             setConfig(merged);
             setLocalIntervals({
-                crypto:  merged.crypto.syncIntervalSeconds,
-                forex:   merged.forex.syncIntervalSeconds,
-                metals:  merged.metals.syncIntervalSeconds,
-                stocks:  merged.stocks.syncIntervalSeconds,
+                crypto: merged.crypto.syncIntervalSeconds,
+                forex: merged.forex.syncIntervalSeconds,
+                metals: merged.metals.syncIntervalSeconds,
+                stocks: merged.stocks.syncIntervalSeconds,
             });
 
             if (ratesSnap.exists()) setCustomRates(ratesSnap.data());
-            if (visSnap.exists())   setVisibility(visSnap.data());
+            if (visSnap.exists()) setVisibility(visSnap.data());
 
             const stocksRatesSnap = await getDoc(doc(db, 'coins_rates_stocks', 'latest'));
-            const stocksListSnap  = await getDoc(doc(db, 'coins_list_stocks', 'latest'));
+            const stocksListSnap = await getDoc(doc(db, 'coins_list_stocks', 'latest'));
             const mergedRates = {
                 crypto: cryptoRatesSnap.exists() ? cryptoRatesSnap.data().rates : [],
-                forex:  forexRatesSnap.exists()  ? forexRatesSnap.data()        : {},
+                forex: forexRatesSnap.exists() ? forexRatesSnap.data() : {},
                 metals: metalsRatesSnap.exists() ? metalsRatesSnap.data().rates : {},
                 stocks: stocksRatesSnap.exists() ? stocksRatesSnap.data().rates : {},
             };
@@ -453,7 +453,7 @@ const AdminCoinsSettings = () => {
                 return;
             } else if (tab === 'crypto') {
                 const codes = [
-                    'BTC','ETH','SOL','XRP','AVAX','LINK','MATIC','SHIB','TON','NEAR','PEPE','SUI','DOGE','TRX','DOT','LTC',
+                    'BTC', 'ETH', 'SOL', 'XRP', 'AVAX', 'LINK', 'MATIC', 'SHIB', 'TON', 'NEAR', 'PEPE', 'SUI', 'DOGE', 'TRX', 'DOT', 'LTC',
                     ...(extraCoins.crypto || [])
                 ].filter(Boolean);
                 const mappedCodes = codes.map(c => {
@@ -697,8 +697,8 @@ const AdminCoinsSettings = () => {
         const targetTab = overrideTab || activeTab;
         const isDefaultObject = typeof itemToRemoveOrCoin === 'object' && itemToRemoveOrCoin !== null && !itemToRemoveOrCoin.isExtra;
         const isDefaultId = typeof itemToRemoveOrCoin === 'string' && (
-            itemToRemoveOrCoin.endsWith('USDT') || 
-            itemToRemoveOrCoin.startsWith('fx-') || 
+            itemToRemoveOrCoin.endsWith('USDT') ||
+            itemToRemoveOrCoin.startsWith('fx-') ||
             itemToRemoveOrCoin.startsWith('metal-') ||
             itemToRemoveOrCoin.startsWith('stock-')
         ) && !itemToRemoveOrCoin.includes('|'); // metals extra coins contain '|'
@@ -713,7 +713,7 @@ const AdminCoinsSettings = () => {
             }
         } else {
             // It is an extra/custom coin identifier string
-            const stringIdentifier = typeof itemToRemoveOrCoin === 'object' 
+            const stringIdentifier = typeof itemToRemoveOrCoin === 'object'
                 ? (targetTab === 'metals' ? itemToRemoveOrCoin.rawString : itemToRemoveOrCoin.code)
                 : itemToRemoveOrCoin;
 
@@ -833,13 +833,13 @@ const AdminCoinsSettings = () => {
                 if (!c) return false;
                 const cId = (c.id || '').toUpperCase();
                 const cCode = (c.code || c.symbol || '').toUpperCase();
-                
+
                 if (cId && cId === coin.id.toUpperCase()) return true;
                 if (cCode && cCode === coinCode) return true;
-                
+
                 const normLcwCode = cCode === '_SUI' ? 'SUI' : (cCode === '____PEPE' ? 'PEPE' : (cCode === 'TONCOIN' ? 'TON' : cCode));
                 if (normLcwCode === coinCode) return true;
-                
+
                 return false;
             });
 
@@ -933,15 +933,56 @@ const AdminCoinsSettings = () => {
         <div style={{ padding: '0 20px' }}>
             <div className="skeleton-loader" style={{ width: '280px', height: '35px', marginBottom: '30px' }} />
             <div style={{ display: 'flex', gap: '12px', marginBottom: '30px' }}>
-                {[1,2,3].map(i => <div key={i} className="skeleton-loader" style={{ width: '140px', height: '44px', borderRadius: '12px' }} />)}
+                {[1, 2, 3].map(i => <div key={i} className="skeleton-loader" style={{ width: '140px', height: '44px', borderRadius: '12px' }} />)}
             </div>
-            {[1,2,3].map(i => <div key={i} className="skeleton-loader" style={{ width: '100%', height: '80px', borderRadius: '14px', marginBottom: '14px' }} />)}
+            {[1, 2, 3].map(i => <div key={i} className="skeleton-loader" style={{ width: '100%', height: '80px', borderRadius: '14px', marginBottom: '14px' }} />)}
         </div>
     );
 
     const tabConfig = config[activeTab];
     const allCoins = getCoinsForTab(activeTab);
     const isCustomOn = tabConfig.useCustomPrice;
+
+    const findExactCoinId = (query) => {
+        if (!query) return query;
+        let upq = String(query).toUpperCase();
+
+        // Remove common extraneous words the AI might include
+        upq = upq.replace(/\s*(COIN|CRYPTO|TOKEN|CURRENCY|STOCK|METAL)\s*/g, ' ').trim();
+
+        // Search DEFAULT_COINS
+        for (const tab of Object.keys(DEFAULT_COINS)) {
+            const match = DEFAULT_COINS[tab].find(c => {
+                const idUp = c.id.toUpperCase();
+                const labelUp = c.label.toUpperCase();
+                return idUp === upq ||
+                    idUp === `${upq}USDT` ||
+                    labelUp.includes(upq) ||
+                    upq.includes(idUp.replace('USDT', '')) ||
+                    upq.includes(labelUp.split('/')[0]);
+            });
+            if (match) return match.id;
+        }
+
+        // Search extraCoins
+        for (const tab of Object.keys(extraCoins)) {
+            if (tab === 'deletedCoins') continue;
+            const match = (extraCoins[tab] || []).find(c => {
+                if (typeof c === 'string') {
+                    return c.toUpperCase() === upq || c.toUpperCase() === `${upq}USDT` || c.toUpperCase().includes(upq);
+                }
+                if (typeof c === 'object' && c !== null) {
+                    return (c.code && c.code.toUpperCase() === upq) ||
+                        (c.rawString && c.rawString.toUpperCase().includes(upq));
+                }
+                return false;
+            });
+            if (match) {
+                return typeof match === 'string' ? match : (match.id || match.code || match.rawString);
+            }
+        }
+        return query; // Fallback to what was passed
+    };
 
     return (
         <motion.div
@@ -1230,10 +1271,10 @@ const AdminCoinsSettings = () => {
                                         activeTab === 'crypto'
                                             ? "e.g. BNB, FET, RENDER"
                                             : activeTab === 'forex'
-                                            ? "e.g. SGD, MXN, ZAR"
-                                            : activeTab === 'stocks'
-                                            ? "e.g. AAPL, MSFT, GOOGL"
-                                            : "e.g. IRON/USD|Iron Ore"
+                                                ? "e.g. SGD, MXN, ZAR"
+                                                : activeTab === 'stocks'
+                                                    ? "e.g. AAPL, MSFT, GOOGL"
+                                                    : "e.g. IRON/USD|Iron Ore"
                                     }
                                     style={{
                                         ...inputStyle,
@@ -1269,10 +1310,10 @@ const AdminCoinsSettings = () => {
                                 activeTab === 'crypto'
                                     ? (extraCoins.crypto || [])
                                     : activeTab === 'forex'
-                                    ? (extraCoins.forex || [])
-                                    : activeTab === 'stocks'
-                                    ? (extraCoins.stocks || [])
-                                    : (extraCoins.metals || []);
+                                        ? (extraCoins.forex || [])
+                                        : activeTab === 'stocks'
+                                            ? (extraCoins.stocks || [])
+                                            : (extraCoins.metals || []);
 
                             if (currentExtras.length === 0) return null;
 
@@ -1392,8 +1433,8 @@ const AdminCoinsSettings = () => {
                                                     borderRadius: '12px',
                                                     transition: 'border-color 0.2s',
                                                 }}
-                                                onMouseEnter={e => { e.currentTarget.style.borderColor = 'rgba(255,255,255,0.08)'; }}
-                                                onMouseLeave={e => { e.currentTarget.style.borderColor = 'rgba(255,255,255,0.03)'; }}
+                                                    onMouseEnter={e => { e.currentTarget.style.borderColor = 'rgba(255,255,255,0.08)'; }}
+                                                    onMouseLeave={e => { e.currentTarget.style.borderColor = 'rgba(255,255,255,0.03)'; }}
                                                 >
                                                     <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
                                                         <div style={{ position: 'relative', display: 'flex' }}>
@@ -1505,15 +1546,15 @@ const AdminCoinsSettings = () => {
                                     <div key={coin.id} style={{
                                         display: 'flex', justifyContent: 'space-between', alignItems: 'center',
                                         padding: '14px 18px',
-                                        background: isVisible 
-                                            ? 'linear-gradient(135deg, rgba(255,255,255,0.015) 0%, rgba(255,255,255,0.005) 100%)' 
+                                        background: isVisible
+                                            ? 'linear-gradient(135deg, rgba(255,255,255,0.015) 0%, rgba(255,255,255,0.005) 100%)'
                                             : 'linear-gradient(135deg, rgba(255, 77, 79, 0.03) 0%, rgba(255, 77, 79, 0.008) 100%)',
                                         borderRadius: '14px',
                                         border: `1px solid ${isVisible ? 'rgba(255,255,255,0.03)' : 'rgba(255, 77, 79, 0.12)'}`,
                                         transition: 'border-color 0.2s',
                                     }}
-                                    onMouseEnter={e => { e.currentTarget.style.borderColor = isVisible ? 'rgba(255,255,255,0.08)' : 'rgba(255, 77, 79, 0.2)'; }}
-                                    onMouseLeave={e => { e.currentTarget.style.borderColor = isVisible ? 'rgba(255,255,255,0.03)' : 'rgba(255, 77, 79, 0.12)'; }}
+                                        onMouseEnter={e => { e.currentTarget.style.borderColor = isVisible ? 'rgba(255,255,255,0.08)' : 'rgba(255, 77, 79, 0.2)'; }}
+                                        onMouseLeave={e => { e.currentTarget.style.borderColor = isVisible ? 'rgba(255,255,255,0.03)' : 'rgba(255, 77, 79, 0.12)'; }}
                                     >
                                         <div style={{ display: 'flex', alignItems: 'center', gap: '12px', flex: 1, minWidth: 0 }}>
                                             <CoinIcon coin={coin} activeTab={activeTab} size={32} />
@@ -1547,7 +1588,7 @@ const AdminCoinsSettings = () => {
                                                 style={{
                                                     display: 'flex', alignItems: 'center', gap: '6px',
                                                     padding: '8px 16px', borderRadius: '10px',
-                                                    background: isVisible 
+                                                    background: isVisible
                                                         ? 'linear-gradient(135deg, rgba(0, 192, 135, 0.15) 0%, rgba(0, 192, 135, 0.05) 100%)'
                                                         : 'linear-gradient(135deg, rgba(255, 77, 79, 0.15) 0%, rgba(255, 77, 79, 0.05) 100%)',
                                                     border: `1px solid ${isVisible ? 'rgba(0, 192, 135, 0.25)' : 'rgba(255, 77, 79, 0.25)'}`,
@@ -1640,8 +1681,8 @@ const AdminCoinsSettings = () => {
                         exit={{ y: 60, opacity: 0, x: '-50%' }}
                         style={{
                             position: 'fixed', bottom: '80px', left: '50%',
-                            background: toast.type === 'success' 
-                                ? 'linear-gradient(135deg, rgba(0, 192, 135, 0.9) 0%, rgba(0, 160, 110, 0.9) 100%)' 
+                            background: toast.type === 'success'
+                                ? 'linear-gradient(135deg, rgba(0, 192, 135, 0.9) 0%, rgba(0, 160, 110, 0.9) 100%)'
                                 : 'linear-gradient(135deg, rgba(255, 77, 79, 0.9) 0%, rgba(230, 50, 50, 0.9) 100%)',
                             border: `1px solid ${toast.type === 'success' ? 'rgba(0, 192, 135, 0.2)' : 'rgba(255, 77, 79, 0.2)'}`,
                             color: '#fff', padding: '14px 24px', borderRadius: '30px',
@@ -1658,16 +1699,22 @@ const AdminCoinsSettings = () => {
                 )}
             </AnimatePresence>
 
-            <AdminCoinsAIBot 
+            <AdminCoinsAIBot
                 coinsContext={{
                     extraCoins,
                     visibility,
-                    activeTab
+                    activeTab,
+                    cryptoCoins: getCoinsForTab('crypto'),
+                    forexCoins: getCoinsForTab('forex'),
+                    metalsCoins: getCoinsForTab('metals'),
+                    stocksCoins: getCoinsForTab('stocks'),
+                    getLiveRateForCoin: (tab, coin) => getLiveRateForCoin(tab, coin),
+                    currentRates: allCoins.map(c => `${c.label || c.id}: ${getLiveRateForCoin(activeTab, c) || '0'}`).join(', ')
                 }}
                 onAddCoin={(tab, code) => addCoin(tab, code)}
-                onRemoveCoin={(tab, coinId) => removeCoin(coinId, tab)}
-                onToggleVisibility={(coinId) => toggleVisibility(coinId)}
-                onRestoreCoin={(tab, coinId) => restoreCoin(coinId, tab)}
+                onRemoveCoin={(tab, coinId) => removeCoin(findExactCoinId(coinId), tab)}
+                onSetVisibility={(coinId, visible) => setVisibilityExplicit(findExactCoinId(coinId), visible)}
+                onRestoreCoin={(tab, coinId) => restoreCoin(findExactCoinId(coinId), tab)}
             />
         </motion.div>
     );
@@ -1702,7 +1749,7 @@ const SectionCard = ({ title, children, accentColor = '#00c087', style = {}, hea
             opacity: 0.08,
             pointerEvents: 'none',
         }} />
-        
+
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px', position: 'relative', zIndex: 1 }}>
             <h3 style={{
                 color: '#fff',

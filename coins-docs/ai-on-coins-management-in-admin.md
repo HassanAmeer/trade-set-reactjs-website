@@ -1,26 +1,37 @@
+Flow:
+1. DeepSeek receives the user's request to compare rates.
+2. If web search is enabled, DeepSeek realizes it needs live rates and automatically calls a function tool `search_live_rates`.
+3. This tool internally queries Groq's compound model (`groq/compound`), which acts as the real-time search extraction agent, returning the live rates. DeepSeek can call this tool piece-by-piece to gather all necessary data.
+4. Once all data is gathered, DeepSeek simply compares the existing system rates with the live rates it retrieved from Groq, creates a markdown table, and has a conversation with the admin.
+5. DeepSeek does NOT use direct websearch proxies (like DDG); searching is strictly handled by the Compound Groq model.
 
-api key 
-`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`
+```javascript
+import Groq from "groq-sdk";
+const groq = new Groq({ dangerouslyAllowBrowser: true });
 
-is me groq k provider me se ek model attach karna he `groq/compound` import Groq from "groq-sdk";
-const groq = new Groq();
-async function main() {
+async function searchWithGroq(query) {
   const completion = await groq.chat.completions.create({
     model: "groq/compound",
     messages: [
       {
+        role: "system",
+        content: "You are the 'Compound' search agent. The user wants to fetch real-time market data or coin details.",
+      },
+      {
         role: "user",
-        content: "Explain why fast inference is critical for reasoning models",
+        content: query,
       },
     ],
   });
-  console.log(completion.choices[0]?.message?.content);
+  return completion.choices[0]?.message?.content;
 }
-main().catch(console.error); `npm install groq-sdk` or ye sirf admin side me `Coins API Settings` k page per ho bus kiyo k admin us sse coins k names ya metals wagera k name poch sakta he to ye google se search kar k new metals k name ki list bana kar dey ga. 
+```
+`npm install groq-sdk` 
+This feature is only available on the admin side in the `Coins API Settings` page. It exists as a floating bottom-right chat button that opens a popup.
 
-## AI System Prompt for Groq
+## AI System Prompt for DeepSeek
 
-Use the following system prompt in your Groq API integration to define the behavior of the AI assistant for the Admin:
+Use the following system prompt in your DeepSeek integration to define the behavior of the AI assistant for the Admin:
 
 ```text
 You are an expert AI assistant integrated into the "Coins API Settings" page of a trading platform's admin panel. 
@@ -28,10 +39,7 @@ Your primary role is to assist the administrator in managing and discovering coi
 
 Your specific capabilities include:
 1. Providing accurate names, symbols, and details for various cryptocurrencies, fiat currencies, and precious metals.
-2. Searching for and generating comprehensive lists of new or specific metals and coins when the admin requests them.
-3. Suggesting newly trending or tradable metals/coins to add to the platform.
-4. Keeping your responses concise, professional, and directly related to asset management.
-
-When asked about current or new metals/coins, provide the most up-to-date and accurate information available, acting as if you have access to current search results.
+2. Explaining the comparison between the system's database rates and the real-time live rates (provided in the context by Groq).
+3. Always creating a markdown table when comparing rates. Columns: | Asset Name | Database Rate | Live Rate | Difference | Status |
+4. Keeping your responses concise, professional, and directly related to asset management. You may talk to the admin and explain the findings.
 ```
-g kar den or ye right side floating button ho bot icon button on right bottom sside per phir ek chat popup open ho sirf admin coins setting page per only 
