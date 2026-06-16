@@ -632,11 +632,6 @@ export const MarketProvider = ({ children }) => {
                     console.log('[Market][Metals] Using cached DB data (sync not due yet)');
                     metalAssets = buildMetalsFromCachedRaw(cachedRates.metals, extraMetals);
                 }
-
-                // Apply custom overrides on top if any
-                if (customRatesAll.metals) {
-                    metalAssets = applyCustomRatesToAssets(metalAssets, customRatesAll.metals);
-                }
             }
 
             // ─────────────────────────────────────────────────────────
@@ -683,11 +678,6 @@ export const MarketProvider = ({ children }) => {
                 } else {
                     console.log('[Market][Stocks] Using cached DB data (sync not due yet)');
                     stockAssets = buildStocksFromCachedRaw(cachedRates.stocks, extraStocks, deletedStocks);
-                }
-
-                // Apply custom overrides on top if any
-                if (customRatesAll.stocks) {
-                    stockAssets = applyCustomRatesToAssets(stockAssets, customRatesAll.stocks);
                 }
             }
 
@@ -752,51 +742,8 @@ export const MarketProvider = ({ children }) => {
         // Check and refresh market data according to sync intervals every 30 seconds
         const apiInterval = setInterval(() => loadMarketData(false), 30_000);
 
-        // Price simulation for live non-crypto assets (only when NOT in custom price mode)
-        const simInterval = setInterval(async () => {
-            // Check if metals custom mode is on before simulating
-            let metalsCustom = false;
-            let forexCustom = false;
-            try {
-                const cfgSnap = await getDoc(doc(db, 'admin_set', 'coins_config'));
-                if (cfgSnap.exists()) {
-                    metalsCustom = !!cfgSnap.data()?.metals?.useCustomPrice;
-                    forexCustom = !!cfgSnap.data()?.forex?.useCustomPrice;
-                }
-            } catch (_) { /* ignore */ }
-
-            setAssets(prev => {
-                const newAssets = prev.map(asset => {
-                    if (asset.isLive === false) return asset;
-                    if (asset.category === 'Cryptocurrency') return asset;
-                    if (asset.category === 'Precious Metals') return asset;
-                    if (asset.category === 'Foreign Exchange' && forexCustom) return asset;
-
-                    const currentPrice = parseFloat(asset.rate.replace(/,/g, ''));
-                    if (isNaN(currentPrice)) return asset;
-                    const change = (Math.random() * 0.0004 - 0.0002) * currentPrice;
-                    const newPrice = currentPrice + change;
-                    return {
-                        ...asset,
-                        rate: newPrice > 100
-                            ? newPrice.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })
-                            : newPrice.toLocaleString(undefined, { minimumFractionDigits: 6, maximumFractionDigits: 6 }),
-                    };
-                });
-
-                setSelectedAsset(current => {
-                    if (!current || current.category === 'Cryptocurrency') return current;
-                    const updated = newAssets.find(a => a.id === current.id);
-                    return updated || current;
-                });
-
-                return newAssets;
-            });
-        }, 3000);
-
         return () => {
             clearInterval(apiInterval);
-            clearInterval(simInterval);
         };
     }, [loadMarketData, isActive]);
 

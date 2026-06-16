@@ -499,6 +499,20 @@ const AdminCoinsSettings = () => {
                         isLive: true
                     };
                 });
+                await setDoc(doc(db, 'coins_rates_crypto', 'latest'), {
+                    rates: freshData,
+                    syncedAt: now,
+                });
+                const newCfg = {
+                    ...config,
+                    crypto: { ...config.crypto, lastSyncedAt: now },
+                };
+                await setDoc(doc(db, 'admin_set', 'coins_config'), newCfg);
+                setConfig(newCfg);
+                setLiveRates(prev => ({ ...prev, crypto: freshData }));
+                showToast('success', 'Cryptocurrency synced successfully!');
+                setSyncing('');
+                return;
             } else if (tab === 'forex' || tab === 'metals') {
                 const url = 'https://api.metals.dev/v1/latest?api_key=DCU40FCSUKCJAJ3WJVJI9823WJVJI&currency=USD&unit=toz';
                 const res = await fetch(url, {
@@ -927,6 +941,24 @@ const AdminCoinsSettings = () => {
             }
         }
         return null;
+    };
+
+    // ── Get active rate for coin/asset (handles custom rates if enabled) ──
+    const getActiveRateForCoin = (tab, coin) => {
+        const isCustomOn = config[tab]?.useCustomPrice;
+        if (isCustomOn) {
+            const savedRate = customRates[tab]?.[coin.id];
+            if (savedRate !== undefined && savedRate !== '') {
+                const parsed = parseFloat(savedRate);
+                if (!isNaN(parsed)) {
+                    return parsed > 100
+                        ? parsed.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })
+                        : parsed.toFixed(6);
+                }
+                return savedRate;
+            }
+        }
+        return getLiveRateForCoin(tab, coin);
     };
 
     // ── Render ──────────────────────────────────────────────────────────
@@ -1576,7 +1608,7 @@ const AdminCoinsSettings = () => {
                                                         {isVisible ? 'Visible to clients' : 'Hidden from clients'}
                                                     </span>
                                                     <span style={{ fontSize: '10px', color: '#555', fontWeight: '500' }}>
-                                                        Rate: <strong style={{ color: '#aaa' }}>${getLiveRateForCoin(activeTab, coin) || 'N/A'}</strong>
+                                                        Rate: <strong style={{ color: '#aaa' }}>${getActiveRateForCoin(activeTab, coin) || 'N/A'}</strong>
                                                     </span>
                                                 </div>
                                             </div>
