@@ -19,7 +19,7 @@ Please help me fix a conflict in my React Vite application between the Admin Sig
 make sure after time period end of signal then again behave like normal live markete signals not by admin seted custom signal.
 
 **behave like**
-ager admin nne force win button press kar k specific curency or specific users ki list k sath to last 2 seconds me signal jub end hony waly ho 2 seconds k liye green candle up ho jaey.
+ager admin nne force win button press kar k specific curency or specific users ki list k sath to last 2 seconds me signal jub end hony waly ho 2 seconds k liye green candle up ho jaey. phir signal end hony. per ssame makte k signal k mutabik chaly rreset ho jaey sai candle ki valeus wahi se jaha se signal end howa he us k agly candle se markete. k mutabik signal chaly
 **kitna up ho ga**
 jitna chart ki value. nazar a rahi ho gi like 580 total chart jo selected he 580 se 700 tak ja raha he to 580 or 700 k darmyan 4% chart kka movement up decide kiya ho ga admin ne to 4% tak bus up ho ga .orr ager loss wala signal he to loss red candle down ho. ga 4% tak maximum and achanak se ni thora thora kar k ho. cadle movement achanak koi line ni bany.
 **kon kon win kar sakta he**

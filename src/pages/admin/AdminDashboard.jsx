@@ -105,7 +105,7 @@ const AdminDashboard = () => {
         { id: 'email', label: 'Email Campaign', icon: <Mail size={18} />, section: 'CONTENT' },
         { id: 'announcements', label: 'Announcements', icon: <Megaphone size={18} />, section: 'CONTENT' },
         { id: 'rewards', label: 'Deposit Rewards', icon: <Trophy size={18} />, section: 'GROWTH' },
-        { id: 'signals', label: 'Market Signals', icon: <Zap size={18} />, section: 'GROWTH' },
+        { id: 'signals', label: 'Trade Control', icon: <Zap size={18} />, section: 'GROWTH' },
         { id: 'trades', label: 'Trades Log', icon: <BarChart3 size={18} />, section: 'RECORDS' },
         { id: 'mining', label: 'Mining Logs', icon: <Pickaxe size={18} />, section: 'RECORDS' },
         { id: 'coins', label: 'Coins API Settings', icon: <Coins size={18} />, section: 'SYSTEM' },

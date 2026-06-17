@@ -66,9 +66,11 @@ const Trade = () => {
     const [tradeAmount, setTradeAmount] = useState('10');
     const [trading, setTrading] = useState(false);
     const [activeSignal, setActiveSignal] = useState(null);
+    const [globalTradeConfig, setGlobalTradeConfig] = useState(null);
+    const [userSelectedDuration, setUserSelectedDuration] = useState(30);
     const [showResult, setShowResult] = useState(null); // { status: 'win' | 'loss', amount: number }
     const [tradeCountdown, setTradeCountdown] = useState(0);
-    const [initialTradeDuration, setInitialTradeDuration] = useState(10);
+    const [initialTradeDuration, setInitialTradeDuration] = useState(30);
     const [tradeDirection, setTradeDirection] = useState(null);
     const [intendedOutcome, setIntendedOutcome] = useState(null); // 'win' or 'loss'
     const [capturedCandles, setCapturedCandles] = useState(null);
@@ -77,41 +79,6 @@ const Trade = () => {
     const realTimeChartRef = useRef();
     const customChartRef = useRef();
     const lightweightChartRef = useRef();
-    const [signalNotification, setSignalNotification] = useState(null);
-    const lastSignalState = useRef(null);
-    const [tradeOverride, setTradeOverride] = useState('random'); // 'win' | 'loss' | 'random'
-    const [signalTimeRemaining, setSignalTimeRemaining] = useState(0);
-
-    // Listen to global admin trade override in real-time
-    useEffect(() => {
-        const unsub = onSnapshot(doc(db, 'admin_set', 'trade_override'), (snap) => {
-            if (snap.exists()) {
-                setTradeOverride(snap.data().outcome || 'random');
-            } else {
-                setTradeOverride('random');
-            }
-        });
-        return () => unsub();
-    }, []);
-
-    // Sync and tick down the remaining time of the signal
-    useEffect(() => {
-        if (!activeSignal) {
-            setSignalTimeRemaining(0);
-            return;
-        }
-
-        const tick = () => {
-            const now = new Date().getTime();
-            const expires = new Date(activeSignal.expiresAt).getTime();
-            const diff = Math.max(0, Math.floor((expires - now) / 1000));
-            setSignalTimeRemaining(diff);
-        };
-
-        tick();
-        const timer = setInterval(tick, 1000);
-        return () => clearInterval(timer);
-    }, [activeSignal]);
 
     const timeframes = [
         { label: '1 min', value: '1' },
@@ -123,26 +90,8 @@ const Trade = () => {
         { label: '1 week', value: 'W' }
     ];
 
-    // Periodic expiration check (ensures UI stays synced even if Firestore doesn't update)
     useEffect(() => {
-        const interval = setInterval(() => {
-            if (activeSignal) {
-                const now = new Date();
-                const expiresAt = new Date(activeSignal.expiresAt);
-                const isManuallyActive = activeSignal.isActive === true;
-                if (expiresAt < now || !isManuallyActive) {
-                    console.log('--- LOCAL SIGNAL EXPIRATION DETECTED ---');
-                    setActiveSignal(null);
-                    setSignalNotification({ type: 'stop' });
-                    setTimeout(() => setSignalNotification(null), 5000);
-                }
-            }
-        }, 1000);
-        return () => clearInterval(interval);
-    }, [activeSignal]);
-
-    useEffect(() => {
-        console.log('Setting up robust signal listener...');
+        console.log('Setting up global trade config listener...');
 
         const unsub = onSnapshot(
             doc(db, 'admin_set', 'market_signal'),
@@ -150,45 +99,36 @@ const Trade = () => {
                 const timestamp = new Date().toISOString();
                 if (snap.exists()) {
                     const data = snap.data();
-                    const now = new Date();
-                    const startTime = new Date(data.startTime || data.updatedAt);
-                    const expiresAt = new Date(data.expiresAt);
-                    const hasStarted = now >= startTime;
-                    const isExpired = expiresAt < now;
                     const isManuallyActive = data.isActive === true;
-                    const userAffected = data.affectedUsersMap?.[user?.id];
-                    const symbolMatch = data.symbol === selectedAsset?.name;
-                    const isActuallyActive = isManuallyActive && hasStarted && !isExpired && !!userAffected && symbolMatch;
+                    
+                    setGlobalTradeConfig(isManuallyActive ? data : null);
+                    // activeSignal is kept for backward compatibility with LightweightChart prop
+                    setActiveSignal(isManuallyActive ? data : null);
 
-                    console.log(`[${timestamp}] Signal State:`, isActuallyActive ? 'ACTIVE' : 'INACTIVE', data.direction);
-
-                    // Detect changes for notification
-                    if (isActuallyActive && lastSignalState.current !== 'ACTIVE') {
-                        setSignalNotification({ type: 'start', direction: data.direction });
-                        setTimeout(() => setSignalNotification(null), 5000);
-                    } else if (!isActuallyActive && lastSignalState.current === 'ACTIVE') {
-                        setSignalNotification({ type: 'stop' });
-                        setTimeout(() => setSignalNotification(null), 5000);
-                    }
-
-                    lastSignalState.current = isActuallyActive ? 'ACTIVE' : 'INACTIVE';
-                    setActiveSignal(isActuallyActive ? data : null);
+                    console.log(`[${timestamp}] Trade Config State:`, isManuallyActive ? 'ACTIVE' : 'INACTIVE');
                 } else {
-                    if (lastSignalState.current === 'ACTIVE') {
-                        setSignalNotification({ type: 'stop' });
-                        setTimeout(() => setSignalNotification(null), 5000);
-                    }
-                    lastSignalState.current = 'INACTIVE';
+                    setGlobalTradeConfig(null);
                     setActiveSignal(null);
                 }
             },
             (error) => {
-                console.error('❌ Signal listener error:', error);
+                console.error('❌ Config listener error:', error);
             }
         );
 
         return () => unsub();
     }, [user?.id, selectedAsset?.name]); // Added selectedAsset?.name for symbol matching
+
+    // Abort trade if currency changes while trading
+    useEffect(() => {
+        if (trading) {
+            console.log('Currency changed while trading! Resetting trade.');
+            setTrading(false);
+            setTradeCountdown(0);
+            setIntendedOutcome(null);
+            setTradeDirection(null);
+        }
+    }, [selectedAsset?.name]);
 
     // Auto-select asset passed via navigation state (from Home / Market page click)
     useEffect(() => {
@@ -252,76 +192,36 @@ const Trade = () => {
 
         setTrading(true);
         setTradeDirection(direction);
-        setTradeCountdown(activeSignal?.duration || 10);
+        setTradeCountdown(userSelectedDuration);
 
         try {
             // Deduct balance immediately
             await updateUser({ balance: increment(-amount) });
 
-            // Pre-calculate outcome if signal is active
-            const signalSnap = await getDoc(doc(db, 'admin_set', 'market_signal'));
-            const signal = signalSnap.data();
+            // Evaluate Outcome
+            let decidedOutcome = 'organic';
 
-            const isSignalActiveNow = !!(
-                signal?.isActive &&
-                new Date(signal?.startTime || signal?.updatedAt) <= new Date() &&
-                new Date(signal?.expiresAt) > new Date() &&
-                signal.symbol === selectedAsset.name
-            );
-            const userSignalConfig = isSignalActiveNow ? signal.affectedUsersMap?.[user?.id] : null;
+            if (globalTradeConfig?.isActive) {
+                const symbolMatch = globalTradeConfig.symbol === selectedAsset?.name || globalTradeConfig.symbol?.replace('/', '') === selectedAsset?.id;
+                
+                if (symbolMatch) {
+                    const userConfig = globalTradeConfig.affectedUsersMap?.[user?.id];
+                    let winLossPercentageVal = null;
+                    if (userConfig && userConfig.winLossPercentage !== undefined) {
+                        winLossPercentageVal = parseFloat(userConfig.winLossPercentage);
+                    } else if (globalTradeConfig.globalWinLossRate !== undefined) {
+                        winLossPercentageVal = parseFloat(globalTradeConfig.globalWinLossRate);
+                    }
 
-            // DEBUG: open browser console to verify signal matching
-            console.log('[Trade] Signal check →', {
-                signalActive: signal?.isActive,
-                signalSymbol: signal?.symbol,
-                assetName: selectedAsset.name,
-                symbolMatch: signal?.symbol === selectedAsset.name,
-                userFound: !!userSignalConfig,
-                userConfig: userSignalConfig,
-                direction
-            });
-
-            let decidedOutcome;
-            // 1. Global admin override takes highest priority
-            if (tradeOverride === 'win') {
-                decidedOutcome = 'win';
-            } else if (tradeOverride === 'loss') {
-                decidedOutcome = 'loss';
-            // please do not change or do not remove it can be used in the future
-            /*
-            } else if (userSignalConfig) {
-                // 2. Per-user signal config
-                const signalDir = signal.direction; // 'UP' or 'DOWN'
-                const isMatchingAction = (signalDir === 'UP' && direction === 'BUY') ||
-                    (signalDir === 'DOWN' && direction === 'SELL');
-                const winRate = parseInt(userSignalConfig.winRate ?? 100, 10);
-                const roll = Math.floor(Math.random() * 100) + 1; // 1–100
-                console.log('[Trade] winRate:', winRate, 'roll:', roll, 'matching direction:', isMatchingAction);
-                if (isMatchingAction) {
-                    decidedOutcome = roll <= winRate ? 'win' : 'loss';
-                } else {
-                    decidedOutcome = 'loss'; // Went against signal
-                }
-            } else {
-                decidedOutcome = 'organic';
-            */
-            } else if (isSignalActiveNow) {
-                // 2. Per-user signal config: targeted user in affectedUsersMap
-                if (userSignalConfig) {
-                    const signalDir = signal.direction; // 'UP' or 'DOWN'
-                    const isMatchingAction = (signalDir === 'UP' && direction === 'BUY') ||
-                        (signalDir === 'DOWN' && direction === 'SELL');
-                    if (isMatchingAction) {
-                        decidedOutcome = 'win';
-                    } else {
-                        decidedOutcome = 'loss'; // User went opposite to signal
+                    if (winLossPercentageVal !== null && !isNaN(winLossPercentageVal)) {
+                        decidedOutcome = winLossPercentageVal >= 0 ? 'win' : 'loss';
                     }
                 } else {
-                    decidedOutcome = 'loss'; // Untargeted users always lose during active signal
+                    // Mismatched symbol => 100% loss
+                    decidedOutcome = 'loss';
                 }
-            } else {
-                decidedOutcome = 'organic';
             }
+
             const entryPrice = parseFloat(String(selectedAsset.rate).replace(/,/g, ''));
             setIntendedOutcome(decidedOutcome);
 
@@ -337,10 +237,7 @@ const Trade = () => {
                 intendedOutcome: decidedOutcome // Store for tracking
             });
 
-            const nowTime = new Date().getTime();
-            const expiresTime = new Date(signal?.expiresAt).getTime();
-            const remainingSecs = Math.max(1, Math.floor((expiresTime - nowTime) / 1000));
-            const finalDuration = isSignalActiveNow ? remainingSecs : 10;
+            const finalDuration = userSelectedDuration;
             setTradeCountdown(finalDuration);
             setInitialTradeDuration(finalDuration);
 
@@ -353,30 +250,41 @@ const Trade = () => {
                 if (timeLeft <= 0) {
                     clearInterval(timer);
 
-                    // Resolve trade based on outcome type
-                    let isWin = false;
-                    if (decidedOutcome === 'organic') {
-                        const currentCandles = lightweightChartRef.current?.getCandles?.();
-                        const finalPrice = currentCandles?.[currentCandles.length - 1]?.close || entryPrice;
-                        isWin = direction === 'BUY' ? (finalPrice > entryPrice) : (finalPrice < entryPrice);
-                    } else {
-                        isWin = decidedOutcome === 'win';
-                    }
-                    
-                    const payoutPct = userSignalConfig?.winPercent ?? userSignalConfig?.payoutRate ?? 85;
-                    const totalReturn = isWin ? amount * (1 + (payoutPct / 100)) : 0;
+                    // ── Read fresh config from Firestore ──────────────────────
+                    const configSnap = await getDoc(doc(db, 'admin_set', 'market_signal'));
+                    const liveConfig = configSnap.exists() ? configSnap.data() : null;
 
-                    if (isWin) {
+                    // ── Get this user's winLossPercentage ─────────────────────
+                    // positive (+7)  → WIN,  user earns  amount × 7%
+                    // negative (-7)  → LOSS, user loses  amount × 7%
+                    // not found      → 100% LOSS (full amount lost)
+                    const rawPct = liveConfig?.affectedUsersMap?.[user?.id]?.winLossPercentage;
+                    const winLossPct = (rawPct !== undefined && rawPct !== null) ? parseFloat(rawPct) : -100;
+
+                    const isWin = winLossPct >= 0;
+                    const payoutPct = Math.abs(winLossPct);
+
+                    // profitOrLossAmount: +0.70 for win, -0.70 for loss
+                    const profitOrLossAmount = isWin
+                        ? +(amount * (payoutPct / 100))
+                        : -(amount * (payoutPct / 100));
+
+                    // Credit back: stake + profit (or stake - loss)
+                    const totalReturn = amount + profitOrLossAmount;
+                    if (totalReturn > 0) {
                         await updateUser({ balance: increment(totalReturn) });
                     }
 
                     await updateDoc(tradeRef, {
                         status: isWin ? 'profit' : 'loss',
-                        resultAmount: isWin ? (totalReturn - amount) : -amount,
-                        closedAt: new Date().toISOString()
+                        resultAmount: profitOrLossAmount,
+                        closedAt: new Date().toISOString(),
                     });
 
-                    setShowResult({ status: isWin ? 'win' : 'loss', amount: isWin ? (totalReturn - amount) : amount });
+                    setShowResult({
+                        status: isWin ? 'win' : 'loss',
+                        amount: Math.abs(profitOrLossAmount)
+                    });
                     setIntendedOutcome(null);
                     setTrading(false);
                 }
@@ -530,52 +438,45 @@ const Trade = () => {
                                 )
                             )}
 
-                            {signalNotification && (
-                                signalNotification.type === 'start' ? (
-                                    <span style={{ display: 'flex', alignItems: 'center', gap: '4px', fontSize: '11px', color: '#888', marginTop: '1.5px' }}>
-                                        <Circle size={10} color="#888" />
-                                    </span>
-                                ) : (
-                                    <CircleDashed size={10} color="#f0b90b" style={{ marginTop: '1.5px' }} />
-                                )
-                            )}
 
 
                         </div>
                     </div>
                 </div>
                 <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-                    {/* Countdown Timer — always visible */}
-                    <div style={{
-                        display: 'flex',
-                        alignItems: 'center',
-                        gap: '6px',
-                        background: (trading || activeSignal) ? 'rgba(240,185,11,0.08)' : 'rgba(255,255,255,0.03)',
-                        border: `1px solid ${(trading || activeSignal) ? 'rgba(240,185,11,0.3)' : '#222'}`,
-                        borderRadius: '8px',
-                        padding: '5px 10px',
-                        transition: 'all 0.3s'
-                    }}>
-                        <span style={{ 
-                            fontSize: '9px', 
-                            color: (trading || activeSignal) ? '#f0b90b' : '#333', 
-                            fontWeight: '800', 
-                            letterSpacing: '1px', 
-                            textTransform: 'uppercase' 
+                    {/* Countdown Timer — shown when a trade is active */}
+                    {trading && (
+                        <div style={{
+                            display: 'flex',
+                            alignItems: 'center',
+                            gap: '6px',
+                            background: 'rgba(240,185,11,0.08)',
+                            border: '1px solid rgba(240,185,11,0.3)',
+                            borderRadius: '8px',
+                            padding: '5px 10px',
+                            transition: 'all 0.3s'
                         }}>
-                            {trading ? 'LIVE' : (activeSignal ? 'SIGNAL' : 'TIME')}
-                        </span>
-                        <span style={{ 
-                            fontSize: '15px', 
-                            fontWeight: '900', 
-                            color: (trading || activeSignal) ? '#fff' : '#3a3a3a', 
-                            minWidth: '32px', 
-                            textAlign: 'right', 
-                            fontVariantNumeric: 'tabular-nums' 
-                        }}>
-                            {trading ? `${tradeCountdown}s` : (activeSignal ? `${signalTimeRemaining}s` : '--')}
-                        </span>
-                    </div>
+                            <span style={{
+                                fontSize: '9px',
+                                color: '#f0b90b',
+                                fontWeight: '800',
+                                letterSpacing: '1px',
+                                textTransform: 'uppercase'
+                            }}>
+                                TRADE
+                            </span>
+                            <span style={{
+                                fontSize: '15px',
+                                fontWeight: '900',
+                                color: '#fff',
+                                minWidth: '32px',
+                                textAlign: 'right',
+                                fontVariantNumeric: 'tabular-nums'
+                            }}>
+                                {tradeCountdown}s
+                            </span>
+                        </div>
+                    )}
                     <Link to="/binary-history">
                         <HistoryIcon size={20} color="#fff" />
                     </Link>
@@ -608,62 +509,10 @@ const Trade = () => {
             </div>
 
             <div style={{ height: '450px', width: '100%', position: 'relative', backgroundColor: '#000000', overflow: 'hidden' }}>
-                {/* Debug Signal Status */}
-                {/* {activeSignal && (
-                    <div style={{
-                        position: 'absolute',
-                        top: '50px',
-                        left: '12px',
-                        zIndex: 100,
-                        padding: '8px 12px',
-                        backgroundColor: 'rgba(240,185,11,0.9)',
-                        borderRadius: '6px',
-                        fontSize: '11px',
-                        fontWeight: '700',
-                        color: '#000',
-                        display: 'flex',
-                        alignItems: 'center',
-                        gap: '6px'
-                    }}>
-                        <div style={{ width: '8px', height: '8px', borderRadius: '50%', backgroundColor: '#000', animation: 'pulse 1.5s infinite' }} />
-                        SIGNAL: {activeSignal.direction} | Speed: {activeSignal.candleSpeed}s
-                    </div>
-                )} */}
+                {/* Debug Signal Status removed */}
 
-                {/* Signal Notification Toast */}
-                {/* <AnimatePresence>
-                    {signalNotification && (
-                        <motion.div
-                            initial={{ x: 100, opacity: 0 }}
-                            animate={{ x: 0, opacity: 1 }}
-                            exit={{ x: 100, opacity: 0 }}
-                            style={{
-                                position: 'absolute',
-                                top: '15px',
-                                right: '15px',
-                                zIndex: 1000,
-                                padding: '12px 20px',
-                                backgroundColor: signalNotification.type === 'start' ? 'rgba(0,192,135,0.95)' : 'rgba(240,185,11,0.95)',
-                                color: signalNotification.type === 'start' ? '#fff' : '#000',
-                                borderRadius: '12px',
-                                fontSize: '13px',
-                                fontWeight: '700',
-                                boxShadow: '0 8px 16px rgba(0,0,0,0.3)',
-                                display: 'flex',
-                                alignItems: 'center',
-                                gap: '10px',
-                                border: '1px solid rgba(255,255,255,0.2)',
-                                backdropFilter: 'blur(8px)'
-                            }}
-                        >
-                            {signalNotification.type === 'start' ? (
-                                <><Sparkles size={16} /> Forced Market Movement: {signalNotification.direction}</>
-                            ) : (
-                                <><CircleAlert size={16} /> Market Signal Ended</>
-                            )}
-                        </motion.div>
-                    )}
-                </AnimatePresence> */}
+                {/* Signal Notification Toast removed */}
+
 
                 {(chartLoading && !activeSignal && !useCustomChart) && (
                     <div
@@ -745,6 +594,7 @@ const Trade = () => {
                 gap: '15px',
                 zIndex: 100
             }}>
+                {/* --- Amount and Balance --- */}
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                     <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
                         <span style={{ fontSize: '13px', color: '#888' }}>Amount:</span>
@@ -761,6 +611,31 @@ const Trade = () => {
                     <div style={{ fontSize: '12px', color: '#888' }}>
                         Balance: <span style={{ color: '#fff' }}>{user?.balance || '0.00'} USDT</span>
                     </div>
+                </div>
+
+                {/* --- Timeframe Selection --- */}
+                <div style={{ display: 'flex', justifyContent: 'center', gap: '8px', marginBottom: '4px' }}>
+                    {[30, 60, 90, 120].map(time => (
+                        <button
+                            key={time}
+                            onClick={() => setUserSelectedDuration(time)}
+                            style={{
+                                flex: 1,
+                                padding: '8px 0',
+                                borderRadius: '8px',
+                                border: userSelectedDuration === time ? '1px solid var(--accent-gold)' : '1px solid #333',
+                                backgroundColor: userSelectedDuration === time ? 'rgba(240, 185, 11, 0.15)' : '#0a0a0a',
+                                color: userSelectedDuration === time ? 'var(--accent-gold)' : '#888',
+                                fontSize: '13px',
+                                fontWeight: '800',
+                                cursor: 'pointer',
+                                transition: 'all 0.2s',
+                                boxShadow: userSelectedDuration === time ? '0 0 10px rgba(240,185,11,0.2)' : 'none'
+                            }}
+                        >
+                            {time}s
+                        </button>
+                    ))}
                 </div>
 
                 <div style={{ display: 'flex', gap: '12px' }}>
@@ -781,7 +656,7 @@ const Trade = () => {
                             boxShadow: '0 4px 15px rgba(0, 192, 135, 0.3)'
                         }}
                     >
-                        {trading && tradeDirection === 'BUY' ? <Loader2 className="animate-spin" style={{ margin: '0 auto' }} /> : 'WIN'}
+                        {trading && tradeDirection === 'BUY' ? <Loader2 className="animate-spin" style={{ margin: '0 auto' }} /> : 'BUY'}
                     </button>
                     <button
                         onClick={() => handlePlaceTrade('SELL')}
@@ -800,7 +675,7 @@ const Trade = () => {
                             boxShadow: '0 4px 15px rgba(255, 77, 79, 0.3)'
                         }}
                     >
-                        {trading && tradeDirection === 'SELL' ? <Loader2 className="animate-spin" style={{ margin: '0 auto' }} /> : 'LOSS'}
+                        {trading && tradeDirection === 'SELL' ? <Loader2 className="animate-spin" style={{ margin: '0 auto' }} /> : 'SELL'}
                     </button>
                 </div>
             </div>
