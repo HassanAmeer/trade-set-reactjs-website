@@ -70,6 +70,7 @@ const AdminSignals = () => {
     const [loading, setLoading] = useState(false);
     const [currentSignal, setCurrentSignal] = useState(null);
     const [fetching, setFetching] = useState(true);
+    const [isDataReady, setIsDataReady] = useState(false); // guard: true only after initial fetch
     const [toast, setToast] = useState({ show: false, message: '', type: 'success' });
 
     const [globalWinLossRate, setGlobalWinLossRate] = useState(5);
@@ -116,7 +117,10 @@ const AdminSignals = () => {
                 const usersSnap = await getDocs(collection(db, 'users'));
                 setUsers(usersSnap.docs.map(d => ({ id: d.id, ...d.data() })));
             } catch (err) { console.error(err); }
-            finally { setFetching(false); }
+            finally {
+                setFetching(false);
+                setIsDataReady(true); // now safe to allow real-time sync
+            }
         };
         fetchAll();
         const unsub = onSnapshot(doc(db, 'admin_set', 'market_signal'), snap => {
@@ -126,18 +130,20 @@ const AdminSignals = () => {
     }, []);
 
     // Real-time sync to Firestore while signal is active
+    // ⚠️ isDataReady guard prevents wiping affectedUsersMap on page load:
+    //    onSnapshot fires before fetchAll completes → affectedUsers is still {}
+    //    without this guard that empty map would overwrite all user configs in Firestore
     useEffect(() => {
-        if (currentSignal?.isActive) {
-            import('firebase/firestore').then(({ updateDoc }) => {
-                updateDoc(doc(db, 'admin_set', 'market_signal'), {
-                    affectedUsersMap: affectedUsers,
-                    globalWinLossRate: parseInt(globalWinLossRate) || 0,
-                    globalWinPercent: deleteField(),
-                    updatedAt: new Date().toISOString()
-                }).catch(err => console.error('Error syncing live config:', err));
-            });
-        }
-    }, [affectedUsers, globalWinLossRate, currentSignal?.isActive]);
+        if (!isDataReady || !currentSignal?.isActive) return;
+        import('firebase/firestore').then(({ updateDoc }) => {
+            updateDoc(doc(db, 'admin_set', 'market_signal'), {
+                affectedUsersMap: affectedUsers,
+                globalWinLossRate: parseInt(globalWinLossRate) || 0,
+                globalWinPercent: deleteField(),
+                updatedAt: new Date().toISOString()
+            }).catch(err => console.error('Error syncing live config:', err));
+        });
+    }, [affectedUsers, globalWinLossRate, currentSignal?.isActive, isDataReady]);
 
     const addUserToSignal = user => setAffectedUsers(prev => ({ ...prev, [user.id]: { winLossPercentage: globalWinLossRate, name: user.name || 'Anonymous', email: user.email } }));
     const removeUserFromSignal = uid => setAffectedUsers(prev => { const n = { ...prev }; delete n[uid]; return n; });

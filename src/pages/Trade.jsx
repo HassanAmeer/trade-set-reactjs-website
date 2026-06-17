@@ -69,6 +69,7 @@ const Trade = () => {
     const [globalTradeConfig, setGlobalTradeConfig] = useState(null);
     const [userSelectedDuration, setUserSelectedDuration] = useState(30);
     const [showResult, setShowResult] = useState(null); // { status: 'win' | 'loss', amount: number }
+    const [floatText, setFloatText] = useState(null); // floating deduction animation
     const [tradeCountdown, setTradeCountdown] = useState(0);
     const [initialTradeDuration, setInitialTradeDuration] = useState(30);
     const [tradeDirection, setTradeDirection] = useState(null);
@@ -198,6 +199,10 @@ const Trade = () => {
             // Deduct balance immediately
             await updateUser({ balance: increment(-amount) });
 
+            // Show floating deduction animation
+            setFloatText(`-${amount.toFixed(2)} USDT`);
+            setTimeout(() => setFloatText(null), 1200);
+
             // Evaluate Outcome
             let decidedOutcome = 'organic';
 
@@ -254,37 +259,27 @@ const Trade = () => {
                     const configSnap = await getDoc(doc(db, 'admin_set', 'market_signal'));
                     const liveConfig = configSnap.exists() ? configSnap.data() : null;
 
-                    // ── Get this user's winLossPercentage ─────────────────────
-                    // positive (+7)  → WIN,  user earns  amount × 7%
-                    // negative (-7)  → LOSS, user loses  amount × 7%
-                    // not found      → 100% LOSS (full amount lost)
-                    const rawPct = liveConfig?.affectedUsersMap?.[user?.id]?.winLossPercentage;
-                    const winLossPct = (rawPct !== undefined && rawPct !== null) ? parseFloat(rawPct) : -100;
+                    // ── winLossPercentage → exact dollar amount in popup ───────
+                    // +7  on $10 → popup shows  +0.70 USDT (green)
+                    // -7  on $10 → popup shows  -0.70 USDT (red)
+                    const rawPct     = liveConfig?.affectedUsersMap?.[user?.id]?.winLossPercentage;
+                    const winLossPct = (rawPct !== undefined && rawPct !== null) ? parseFloat(rawPct) : 0;
+                    const isWin      = winLossPct >= 0;
+                    const dollarAmount = Math.abs(amount * winLossPct / 100);
 
-                    const isWin = winLossPct >= 0;
-                    const payoutPct = Math.abs(winLossPct);
-
-                    // profitOrLossAmount: +0.70 for win, -0.70 for loss
-                    const profitOrLossAmount = isWin
-                        ? +(amount * (payoutPct / 100))
-                        : -(amount * (payoutPct / 100));
-
-                    // Credit back: stake + profit (or stake - loss)
-                    const totalReturn = amount + profitOrLossAmount;
-                    if (totalReturn > 0) {
-                        await updateUser({ balance: increment(totalReturn) });
-                    }
+                    //   WIN  (+7%): credit stake + profit  → 10 + 0.70 = 10.70
+                    //   LOSS (-7%): credit stake − loss    → 10 − 0.70 = 9.30
+                    //   0%        : credit full stake back → 10
+                    const totalReturn = isWin ? amount + dollarAmount : amount - dollarAmount;
+                    if (totalReturn > 0) await updateUser({ balance: increment(totalReturn) });
 
                     await updateDoc(tradeRef, {
                         status: isWin ? 'profit' : 'loss',
-                        resultAmount: profitOrLossAmount,
+                        resultAmount: isWin ? dollarAmount : -dollarAmount,
                         closedAt: new Date().toISOString(),
                     });
 
-                    setShowResult({
-                        status: isWin ? 'win' : 'loss',
-                        amount: Math.abs(profitOrLossAmount)
-                    });
+                    setShowResult({ status: isWin ? 'win' : 'loss', amount: dollarAmount });
                     setIntendedOutcome(null);
                     setTrading(false);
                 }
@@ -803,46 +798,69 @@ const Trade = () => {
                 )}
             </AnimatePresence>
 
-            {/* Result Popup */}
+            {/* Floating deduction text animation */}
+            <AnimatePresence>
+                {floatText && (
+                    <motion.div
+                        key={floatText + Date.now()}
+                        initial={{ opacity: 1, y: 0 }}
+                        animate={{ opacity: 0, y: -90 }}
+                        exit={{ opacity: 0 }}
+                        transition={{ duration: 1.1, ease: 'easeOut' }}
+                        style={{
+                            position: 'fixed',
+                            bottom: '180px',
+                            left: '50%',
+                            transform: 'translateX(-50%)',
+                            zIndex: 3000,
+                            fontSize: '22px',
+                            fontWeight: '900',
+                            color: '#ff4d4f',
+                            pointerEvents: 'none',
+                            letterSpacing: '-0.5px',
+                            textShadow: '0 2px 12px rgba(255,77,79,0.5)',
+                            whiteSpace: 'nowrap',
+                            fontFamily: 'Inter, system-ui, sans-serif',
+                        }}
+                    >
+                        {floatText}
+                    </motion.div>
+                )}
+            </AnimatePresence>
+
+            {/* Result Popup — shows ONLY profit/loss amount */}
             <AnimatePresence>
                 {showResult && (
                     <motion.div
                         initial={{ opacity: 0 }}
                         animate={{ opacity: 1 }}
                         exit={{ opacity: 0 }}
-                        style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, backgroundColor: 'rgba(0,0,0,0.9)', zIndex: 2000, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '20px' }}
+                        onClick={() => setShowResult(null)}
+                        style={{ position: 'fixed', inset: 0, backgroundColor: 'rgba(0,0,0,0.85)', zIndex: 2000, display: 'flex', alignItems: 'center', justifyContent: 'center' }}
                     >
                         <motion.div
-                            initial={{ scale: 0.8, y: 20 }}
-                            animate={{ scale: 1, y: 0 }}
-                            style={{ backgroundColor: '#111', width: '100%', maxWidth: '350px', borderRadius: '24px', padding: '30px', textAlign: 'center', border: '1px solid #222', boxShadow: '0 10px 40px rgba(0,0,0,0.5)' }}
+                            initial={{ scale: 0.7, opacity: 0 }}
+                            animate={{ scale: 1, opacity: 1 }}
+                            transition={{ type: 'spring', damping: 18, stiffness: 260 }}
+                            onClick={e => e.stopPropagation()}
+                            style={{ textAlign: 'center', padding: '40px 50px', background: '#111', borderRadius: '28px', border: '1px solid #222', boxShadow: '0 20px 60px rgba(0,0,0,0.6)' }}
                         >
-                            {showResult.status === 'win' ? (
-                                <>
-                                    <div style={{ width: '80px', height: '80px', backgroundColor: 'rgba(0,192,135,0.1)', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 20px' }}>
-                                        <Trophy size={40} color="#00c087" />
-                                    </div>
-                                    <h2 style={{ fontSize: '24px', fontWeight: '800', color: '#00c087', margin: '0 0 10px' }}>PROFIT EARNED!</h2>
-                                    <p style={{ color: '#888', fontSize: '14px', marginBottom: '20px' }}>Congratulations! Your trade predictions were correct.</p>
-                                    <div style={{ fontSize: '32px', fontWeight: '900', color: '#fff', marginBottom: '30px' }}>
-                                        +{showResult.amount.toFixed(2)} <span style={{ fontSize: '16px', color: '#f0b90b' }}>USDT</span>
-                                    </div>
-                                </>
-                            ) : (
-                                <>
-                                    <div style={{ width: '80px', height: '80px', backgroundColor: 'rgba(255,77,79,0.1)', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 20px' }}>
-                                        <CircleAlert size={40} color="#ff4d4f" />
-                                    </div>
-                                    <h2 style={{ fontSize: '24px', fontWeight: '800', color: '#ff4d4f', margin: '0 0 10px' }}>TRADE LOSS</h2>
-                                    <p style={{ color: '#888', fontSize: '14px', marginBottom: '20px' }}>Unfortunately, the market moved against your trade.</p>
-                                    <div style={{ fontSize: '32px', fontWeight: '900', color: '#fff', marginBottom: '30px' }}>
-                                        -{showResult.amount.toFixed(2)} <span style={{ fontSize: '16px', color: '#f0b90b' }}>USDT</span>
-                                    </div>
-                                </>
-                            )}
+                            {/* Amount — the ONLY thing shown */}
+                            <div style={{
+                                fontSize: '52px',
+                                fontWeight: '900',
+                                letterSpacing: '-2px',
+                                color: showResult.status === 'win' ? '#00c087' : '#ff4d4f',
+                                marginBottom: '32px',
+                                lineHeight: 1,
+                            }}>
+                                {showResult.status === 'win' ? '+' : '-'}{showResult.amount.toFixed(2)}
+                                <span style={{ fontSize: '20px', fontWeight: '700', color: '#f0b90b', marginLeft: '8px' }}>USDT</span>
+                            </div>
+
                             <button
                                 onClick={() => setShowResult(null)}
-                                style={{ width: '100%', padding: '16px', backgroundColor: '#f0b90b', color: '#000', borderRadius: '12px', border: 'none', fontWeight: '800', cursor: 'pointer' }}
+                                style={{ padding: '14px 48px', backgroundColor: '#f0b90b', color: '#000', borderRadius: '14px', border: 'none', fontWeight: '900', fontSize: '14px', cursor: 'pointer', letterSpacing: '0.5px' }}
                             >
                                 CONTINUE
                             </button>
