@@ -51,7 +51,7 @@ const TradesRecord = () => {
             initial={{ opacity: 0, x: 20 }}
             animate={{ opacity: 1, x: 0 }}
             className="app-container"
-            style={{ minHeight: '100vh', background: 'var(--bg-primary)', color: '#fff' }}
+            style={{ minHeight: '100dvh', background: 'var(--bg-primary)', color: '#fff' }}
         >
             <div style={{ display: 'flex', alignItems: 'center', gap: '8px', padding: '16px', borderBottom: '1px solid #222' }}>
                 <ChevronLeft size={24} onClick={() => navigate(-1)} style={{ cursor: 'pointer' }} />

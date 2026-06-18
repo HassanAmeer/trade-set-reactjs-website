@@ -758,7 +758,7 @@ const AdminP2P = () => {
                         exit={{ y: 60, opacity: 0, x: '-50%' }}
                         style={{
                             position: 'fixed',
-                            bottom: '40px',
+                            bottom: '15%',
                             left: '50%',
                             background: toast.type === 'success'
                                 ? 'linear-gradient(135deg, rgba(0, 192, 135, 0.95) 0%, rgba(0, 160, 110, 0.95) 100%)'

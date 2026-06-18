@@ -1460,8 +1460,8 @@ const AdminCoinsAIBot = ({ coinsContext, onAddCoin, onRemoveCoin, onSetVisibilit
                                     animate={{ opacity: 1, y: 15, scale: 1 }}
                                     exit={{ opacity: 0, y: -20, scale: 0.95 }}
                                     style={{
-                                        position: 'absolute',
-                                        top: '60px',
+                                        position: 'fixed',
+                                        bottom: '15%',
                                         left: '50%',
                                         transform: 'translateX(-50%)',
                                         background: toast.type === 'success' ? 'rgba(0, 192, 135, 0.95)' : 'rgba(255, 77, 79, 0.95)',

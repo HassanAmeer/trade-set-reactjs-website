@@ -90,7 +90,7 @@ const BottomNav = () => {
             transition={{ type: 'spring', stiffness: 300, damping: 25 }}
             style={{
               position: 'fixed',
-              bottom: '100px', // Appears just above the bottom nav
+              bottom: '15%',
               left: '50%',
               transform: 'translateX(-50%)',
               backgroundColor: 'rgba(20, 20, 20, 0.95)',
@@ -126,7 +126,7 @@ const AppContent = () => {
           display: 'flex',
           alignItems: 'center',
           justifyContent: 'center',
-          minHeight: '100vh',
+          minHeight: '100dvh',
           backgroundColor: '#0a0a0a'
         }}>
           <div className="circular-loader-simple"></div>

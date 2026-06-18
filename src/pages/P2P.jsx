@@ -86,7 +86,7 @@ const P2P = () => {
             exit={{ opacity: 0, x: -20 }}
             className="app-container"
             style={{
-                minHeight: '100vh',
+                minHeight: '100dvh',
                 background: 'var(--bg-primary, #0a0a0a)',
                 padding: '0 0 100px 0',
                 color: '#fff',

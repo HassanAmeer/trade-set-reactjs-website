@@ -16,7 +16,7 @@ const Toast = ({ show, message, type = 'success' }) => (
                 exit={{ opacity: 0, y: 30, scale: 0.95 }}
                 transition={{ type: 'spring', damping: 20, stiffness: 300 }}
                 style={{
-                    position: 'fixed', bottom: '32px', left: '50%', transform: 'translateX(-50%)', zIndex: 9999,
+                    position: 'fixed', bottom: '15%', left: '50%', transform: 'translateX(-50%)', zIndex: 9999,
                     display: 'flex', alignItems: 'center', gap: '10px',
                     padding: '12px 18px', borderRadius: '14px',
                     background: type === 'success' ? 'rgba(0,192,135,0.12)' : 'rgba(255,77,79,0.12)',
@@ -186,19 +186,18 @@ const AdminSignals = () => {
     );
 
     if (fetching) return (
-        <div style={{ minHeight: '100vh', background: '#000', padding: '32px', fontFamily: "'Inter', sans-serif" }}>
+        <div style={{ minHeight: '100dvh', background: '#000', padding: '32px', fontFamily: "'Inter', sans-serif" }}>
             <div style={{ maxWidth: '1140px', margin: '0 auto' }}>
-                {['280px,36px', '180px,16px'].map((s, i) => { const [w, h] = s.split(','); return <div key={i} className="skel" style={{ width: w, height: h, borderRadius: '8px', marginBottom: i === 0 ? '8px' : '40px' }} />; })}
+                {['280px,36px', '180px,16px'].map((s, i) => { const [w, h] = s.split(','); return <div key={i} className="skeleton-loader" style={{ width: w, height: h, borderRadius: '8px', marginBottom: i === 0 ? '8px' : '40px' }} />; })}
                 <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '24px' }}>
-                    {[520, 620].map((h, i) => <div key={i} className="skel" style={{ height: h, borderRadius: '24px' }} />)}
+                    {[520, 620].map((h, i) => <div key={i} className="skeleton-loader" style={{ height: h, borderRadius: '24px' }} />)}
                 </div>
             </div>
-            <style>{`.skel{background:linear-gradient(90deg,#0a0a12 25%,#111120 50%,#0a0a12 75%);background-size:200% 100%;animation:sh 1.5s infinite linear;}@keyframes sh{from{background-position:-200% 0}to{background-position:200% 0}}`}</style>
         </div>
     );
 
     return (
-        <div style={{ minHeight: '100vh', background: '#000', color: '#fff', fontFamily: "'Inter', sans-serif" }}>
+        <div style={{ minHeight: '100dvh', background: '#000', color: '#fff', fontFamily: "'Inter', sans-serif" }}>
 
             <Toast show={toast.show} message={toast.message} type={toast.type} />
 

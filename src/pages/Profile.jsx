@@ -60,7 +60,7 @@ const Profile = () => {
     };
 
     if (loading) return (
-        <div style={{ padding: '24px', backgroundColor: '#0a0a0a', minHeight: '100vh' }}>
+        <div style={{ padding: '24px', backgroundColor: '#0a0a0a', minHeight: '100dvh' }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: '15px', marginBottom: '40px' }}>
                 <div className="skeleton-loader" style={{ width: '65px', height: '65px', borderRadius: '50%' }}></div>
                 <div style={{ flex: 1 }}>

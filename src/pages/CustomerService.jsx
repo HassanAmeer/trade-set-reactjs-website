@@ -87,7 +87,7 @@ const CustomerService = () => {
             animate={{ opacity: 1, scale: 1 }}
             className="app-container"
             style={{
-                minHeight: '100vh',
+                minHeight: '100dvh',
                 background: '#f8f9fa',
                 padding: '0',
                 color: '#333',

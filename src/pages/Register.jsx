@@ -10,7 +10,7 @@ const Register = () => {
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             className="app-container"
-            style={{ minHeight: '100vh', background: 'var(--bg-primary)' }}
+            style={{ minHeight: '100dvh', background: 'var(--bg-primary)' }}
         >
             <div className="flex-between" style={{ padding: '20px 0' }}>
                 <ChevronLeft size={24} />

@@ -28,7 +28,7 @@ body {
 
 #root {
   width: 100%;
-  min-height: 100vh;
+  min-height: 100dvh;
   display: flex;
   flex-direction: column;
 }
@@ -37,7 +37,7 @@ body {
   max-width: 480px;
   width: 100%;
   margin: 0 auto;
-  min-height: 100vh;
+  min-height: 100dvh;
   display: flex;
   flex-direction: column;
   background-color: var(--bg-primary);
@@ -48,7 +48,7 @@ body {
 
 .admin-root-wrapper {
   width: 100%;
-  min-height: 100vh;
+  min-height: 100dvh;
   background-color: #000000;
 }
 

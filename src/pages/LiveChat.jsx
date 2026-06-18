@@ -157,7 +157,7 @@ const LiveChat = () => {
             transform: 'translateX(-50%)',
             width: '100%',
             maxWidth: '480px',
-            height: '100vh',
+            height: '100dvh',
             zIndex: 1000,
             backgroundColor: '#0a0a0a',
             boxShadow: '0 0 50px rgba(0, 0, 0, 0.8)',

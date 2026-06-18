@@ -42,7 +42,7 @@ const BinaryHistory = () => {
             initial={{ opacity: 0, x: 20 }}
             animate={{ opacity: 1, x: 0 }}
             className="app-container"
-            style={{ minHeight: '100vh', background: '#000', color: '#fff' }}
+            style={{ minHeight: '100dvh', background: '#000', color: '#fff' }}
         >
             <div style={{ display: 'flex', alignItems: 'center', gap: '8px', padding: '16px', borderBottom: '1px solid #1a1a1a', backgroundColor: '#050505', sticky: 'top', zIndex: 10 }}>
                 <ChevronLeft size={24} onClick={() => navigate(-1)} style={{ cursor: 'pointer' }} />

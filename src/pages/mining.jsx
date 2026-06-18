@@ -254,7 +254,7 @@ const Mining = () => {
             className="app-container"
             style={{
                 padding: '20px 16px 140px 16px',
-                minHeight: '100vh',
+                minHeight: '100dvh',
                 background: `linear-gradient(rgba(0, 0, 0, 0.82), rgba(0, 0, 0, 0.96)), url(${btcBg})`,
                 backgroundSize: 'cover',
                 backgroundPosition: 'center',
@@ -659,9 +659,10 @@ const Mining = () => {
                         exit={{ opacity: 0, scale: 0.9, y: 20 }}
                         style={{
                             position: 'fixed',
-                            bottom: '100px',
-                            left: '16px',
-                            right: '16px',
+                            bottom: '15%',
+                            left: '50%',
+                            transform: 'translateX(-50%)',
+                            width: 'max-content',
                             zIndex: 5000,
                             padding: '18px 24px',
                             background: notification.type === 'error'

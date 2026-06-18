@@ -18,7 +18,7 @@ const C2C = () => {
             initial={{ opacity: 0, x: 20 }}
             animate={{ opacity: 1, x: 0 }}
             className="app-container"
-            style={{ minHeight: '100vh', background: 'var(--bg-primary)', padding: '0 0 100px 0', color: '#fff', fontFamily: 'Inter, sans-serif' }}
+            style={{ minHeight: '100dvh', background: 'var(--bg-primary)', padding: '0 0 100px 0', color: '#fff', fontFamily: 'Inter, sans-serif' }}
         >
             {/* Header */}
             <div style={{ display: 'flex', alignItems: 'center', padding: '16px', borderBottom: '1px solid #222', marginBottom: '8px' }}>

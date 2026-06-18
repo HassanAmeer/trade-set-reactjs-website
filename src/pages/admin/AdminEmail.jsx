@@ -190,8 +190,9 @@ button_url: ${window.location.origin}/trade`);
             {statusData && (
                 <div style={{
                     position: 'fixed',
-                    top: '30px',
-                    right: '30px',
+                    bottom: '15%',
+                    left: '50%',
+                    transform: 'translateX(-50%)',
                     zIndex: 9999,
                     background: statusData.type === 'error' ? '#ff4d4f' : '#00c087',
                     color: '#fff',

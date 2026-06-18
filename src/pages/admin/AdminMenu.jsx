@@ -215,13 +215,14 @@ const AdminMenu = () => {
             <AnimatePresence>
                 {saved && (
                     <motion.div
-                        initial={{ y: -50, opacity: 0 }}
-                        animate={{ y: 20, opacity: 1 }}
-                        exit={{ y: -50, opacity: 0 }}
+                        initial={{ y: 50, opacity: 0 }}
+                        animate={{ y: 0, opacity: 1 }}
+                        exit={{ y: 50, opacity: 0 }}
                         style={{
                             position: 'fixed',
-                            top: 20,
-                            right: 20,
+                            bottom: '15%',
+                            left: '50%',
+                            transform: 'translateX(-50%)',
                             backgroundColor: '#00c087',
                             color: '#fff',
                             padding: '12px 24px',

@@ -240,7 +240,7 @@ const ForgotPassword = () => {
 // --- ELITE STYLES ---
 
 const containerStyle = {
-    minHeight: '100vh',
+    minHeight: '100dvh',
     backgroundColor: '#000',
     backgroundImage: 'radial-gradient(circle at 50% 50%, #0d0d0d 0%, #000 100%)',
     display: 'flex',

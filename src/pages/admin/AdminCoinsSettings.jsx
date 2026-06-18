@@ -1713,7 +1713,7 @@ const AdminCoinsSettings = () => {
                         animate={{ y: 0, opacity: 1, x: '-50%' }}
                         exit={{ y: 60, opacity: 0, x: '-50%' }}
                         style={{
-                            position: 'fixed', bottom: '80px', left: '50%',
+                            position: 'fixed', bottom: '15%', left: '50%',
                             background: toast.type === 'success'
                                 ? 'linear-gradient(135deg, rgba(0, 192, 135, 0.9) 0%, rgba(0, 160, 110, 0.9) 100%)'
                                 : 'linear-gradient(135deg, rgba(255, 77, 79, 0.9) 0%, rgba(230, 50, 50, 0.9) 100%)',

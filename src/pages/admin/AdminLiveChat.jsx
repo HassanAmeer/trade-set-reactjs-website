@@ -570,7 +570,7 @@ const AdminLiveChat = () => {
 
                         {/* Input Area */}
                         <div style={{
-                            padding: '20px 30px',
+                            padding: '20px 30px max(20px, env(safe-area-inset-bottom)) 30px',
                             background: '#0d0d0d',
                             borderTop: '1px solid #111',
                             display: 'flex',

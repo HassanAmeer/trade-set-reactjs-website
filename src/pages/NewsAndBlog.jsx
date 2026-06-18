@@ -36,7 +36,7 @@ const NewsAndBlog = () => {
             animate={{ opacity: 1, x: 0 }}
             className="app-container"
             style={{
-                minHeight: '100vh',
+                minHeight: '100dvh',
                 background: 'var(--bg-primary)',
                 padding: '0 0 40px 0',
                 color: '#fff'

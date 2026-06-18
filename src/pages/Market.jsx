@@ -64,7 +64,7 @@ const Market = () => {
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             className="app-container"
-            style={{ padding: '0 0 100px 0', minHeight: '100vh', background: '#111' }}
+            style={{ padding: '0 0 100px 0', minHeight: '100dvh', background: '#111' }}
         >
             {/* Page Title */}
             <div style={{ textAlign: 'center', padding: '16px 0', borderBottom: '1px solid #222', marginBottom: '8px' }}>

@@ -109,7 +109,7 @@ const Verification = () => {
     };
 
     if (loading) return (
-        <div style={{ minHeight: '100vh', backgroundColor: '#0a0a0a', padding: '20px' }}>
+        <div style={{ minHeight: '100dvh', backgroundColor: '#0a0a0a', padding: '20px' }}>
             <div className="skeleton-loader" style={{ width: '100%', height: '60px', borderRadius: '12px', marginBottom: '30px' }}></div>
             <div className="skeleton-loader" style={{ width: '200px', height: '24px', marginBottom: '10px' }}></div>
             <div className="skeleton-loader" style={{ width: '100%', height: '16px', marginBottom: '40px' }}></div>
@@ -121,7 +121,7 @@ const Verification = () => {
     const isReadyToSubmit = frontFile && (docType === 'Passport' ? true : backFile);
 
     return (
-        <div style={{ minHeight: '100vh', backgroundColor: '#0a0a0a', color: '#fff' }}>
+        <div style={{ minHeight: '100dvh', backgroundColor: '#0a0a0a', color: '#fff' }}>
             {/* Header */}
             <div style={{ padding: '20px', display: 'flex', alignItems: 'center', gap: '15px', borderBottom: '1px solid #1a1a1a' }}>
                 <ChevronLeft size={24} onClick={() => navigate('/profile')} style={{ cursor: 'pointer' }} />
@@ -395,12 +395,12 @@ const Verification = () => {
             {/* Simple Toast Notification */}
             {showToast && (
                 <motion.div
-                    initial={{ y: -50, opacity: 0 }}
-                    animate={{ y: 20, opacity: 1 }}
-                    exit={{ y: -50, opacity: 0 }}
+                    initial={{ y: 50, opacity: 0 }}
+                    animate={{ y: 0, opacity: 1 }}
+                    exit={{ y: 50, opacity: 0 }}
                     style={{
                         position: 'fixed',
-                        top: 0,
+                        bottom: '15%',
                         left: '50%',
                         transform: 'translateX(-50%)',
                         backgroundColor: '#00c087',

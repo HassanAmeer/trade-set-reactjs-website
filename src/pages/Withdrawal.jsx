@@ -88,7 +88,7 @@ const Withdrawal = () => {
             initial={{ opacity: 0, x: 20 }}
             animate={{ opacity: 1, x: 0 }}
             className="app-container"
-            style={{ minHeight: '100vh', background: 'var(--bg-primary)', padding: '0 0 40px 0', color: '#fff' }}
+            style={{ minHeight: '100dvh', background: 'var(--bg-primary)', padding: '0 0 40px 0', color: '#fff' }}
         >
             {/* Header */}
             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '16px', borderBottom: '1px solid #222' }}>

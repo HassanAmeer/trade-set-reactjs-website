@@ -55,7 +55,7 @@ const DepositHistory = () => {
     };
 
     if (loading) return (
-        <div style={{ padding: '24px', backgroundColor: '#050505', minHeight: '100vh' }}>
+        <div style={{ padding: '24px', backgroundColor: '#050505', minHeight: '100dvh' }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: '15px', marginBottom: '32px' }}>
                 <div className="skeleton-loader" style={{ width: '24px', height: '24px', borderRadius: '4px' }}></div>
                 <div className="skeleton-loader" style={{ width: '180px', height: '24px', borderRadius: '4px' }}></div>

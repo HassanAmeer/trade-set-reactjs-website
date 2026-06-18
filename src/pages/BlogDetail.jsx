@@ -37,13 +37,13 @@ const BlogDetail = () => {
     }, [id]);
 
     if (loading) return (
-        <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '100vh', backgroundColor: 'var(--bg-primary)' }}>
+        <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '100dvh', backgroundColor: 'var(--bg-primary)' }}>
             <div className="circular-loader-simple"></div>
         </div>
     );
 
     if (!blog) return (
-        <div style={{ padding: '40px', textAlign: 'center', color: '#fff', backgroundColor: 'var(--bg-primary)', minHeight: '100vh' }}>
+        <div style={{ padding: '40px', textAlign: 'center', color: '#fff', backgroundColor: 'var(--bg-primary)', minHeight: '100dvh' }}>
             <h2>Blog Not Found</h2>
             <button onClick={() => navigate(-1)} style={{ padding: '10px 20px', marginTop: '20px', background: '#333', color: '#fff', border: 'none', borderRadius: '8px' }}>Go Back</button>
         </div>
@@ -54,7 +54,7 @@ const BlogDetail = () => {
             initial={{ opacity: 0, x: 20 }}
             animate={{ opacity: 1, x: 0 }}
             className="app-container"
-            style={{ minHeight: '100vh', background: 'var(--bg-primary)', padding: '0 0 60px 0', color: '#fff' }}
+            style={{ minHeight: '100dvh', background: 'var(--bg-primary)', padding: '0 0 60px 0', color: '#fff' }}
         >
             {/* Header */}
             <div style={{

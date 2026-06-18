@@ -261,7 +261,7 @@ const Trade = () => {
     });
 
     const renderSkeleton = () => (
-        <div style={{ padding: '0 0 100px 0', backgroundColor: '#000000', minHeight: '100vh' }}>
+        <div style={{ padding: '0 0 100px 0', backgroundColor: '#000000', minHeight: '100dvh' }}>
             <div style={{ padding: '12px 16px', backgroundColor: '#050505', borderBottom: '1px solid #1a1a1a', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                 <div style={{ display: 'flex', gap: '12px' }}>
                     <div className="skeleton-loader" style={{ width: '20px', height: '20px', borderRadius: '4px' }}></div>
@@ -291,7 +291,7 @@ const Trade = () => {
                 animate={{ opacity: 1 }}
                 style={{
                     backgroundColor: '#000000',
-                    minHeight: '100vh',
+                    minHeight: '100dvh',
                     color: '#fff',
                     paddingBottom: '160px',
                     fontFamily: 'Inter, system-ui, sans-serif'
@@ -343,10 +343,14 @@ const Trade = () => {
                             </div>
                         )}
 
-                        {/* Info icon — opens Trade Control Inspector */}
+                        {/* 
+                          IMPORTANT: Future mein kal ko need par sakti hai isliye isko yahan rakha gaya hai. 
+                          CANNOT BE DELETED BY AI. DO NOT DELETE this Info icon button or the InfoSheet logic. 
+                          Currently hidden (display: 'none') temporarily as requested.
+                        */}
                         <button
                             onClick={() => setShowInfoSheet(true)}
-                            style={{ background: 'none', border: 'none', cursor: 'pointer', padding: '2px', display: 'flex', alignItems: 'center' }}
+                            style={{ background: 'none', border: 'none', cursor: 'pointer', padding: '2px', display: 'none', alignItems: 'center' }}
                             title="Trade Control Info"
                         >
                             <Info size={20} color="#f0b90b" />
@@ -442,8 +446,46 @@ const Trade = () => {
                                 <span style={{ fontSize: '12px', color: 'var(--accent-gold)', marginLeft: '4px' }}>USDT</span>
                             </div>
                         </div>
-                        <div style={{ fontSize: '12px', color: '#888' }}>
-                            Balance: <span style={{ color: '#fff' }}>{user?.balance || '0.00'} USDT</span>
+                        <div style={{ textAlign: 'right', position: 'relative' }}>
+                            <div style={{ fontSize: '12px', color: '#888', marginBottom: '4px' }}>
+                                Balance: <span style={{ color: '#fff', fontWeight: 'bold' }}>{user?.balance || '0.00'} USDT</span>
+                            </div>
+                            <div style={{ fontSize: '10px', color: '#555' }}>
+                                ID: <span style={{ color: '#888' }}>{user?.id}</span>
+                            </div>
+
+                            {/* ── Floating Animation ── */}
+                            <AnimatePresence>
+                                {floatText && (
+                                    <motion.div
+                                        key={floatText.id}
+                                        initial={
+                                            floatText.type === 'deduct'
+                                                ? { opacity: 1, y: 0, scale: 1 }
+                                                : { opacity: 0, y: -40, scale: 1.2 }
+                                        }
+                                        animate={
+                                            floatText.type === 'deduct'
+                                                ? { opacity: 0, y: -40, scale: 1.1 }
+                                                : { opacity: [0, 1, 1, 0], y: [-40, -20, 0, 0], scale: [1.2, 1.1, 1, 0.8] }
+                                        }
+                                        transition={{ duration: 1.2, ease: 'easeOut' }}
+                                        style={{
+                                            position: 'absolute', right: 0, top: '-25px',
+                                            zIndex: 3500,
+                                            fontSize: '16px', fontWeight: '900', 
+                                            color: floatText.type === 'deduct' ? '#ff4d4f' : '#00c087',
+                                            pointerEvents: 'none', letterSpacing: '-0.5px',
+                                            textShadow: floatText.type === 'deduct' 
+                                                ? '0 4px 15px rgba(255,77,79,0.9)' 
+                                                : '0 4px 15px rgba(0,192,135,0.9)',
+                                            whiteSpace: 'nowrap', fontFamily: 'Inter, system-ui, sans-serif',
+                                        }}
+                                    >
+                                        {floatText.text}
+                                    </motion.div>
+                                )}
+                            </AnimatePresence>
                         </div>
                     </div>
 
@@ -600,38 +642,7 @@ const Trade = () => {
                     )}
                 </AnimatePresence>
 
-                {/* ── Floating Animation ── */}
-                <AnimatePresence>
-                    {floatText && (
-                        <motion.div
-                            key={floatText.id}
-                            initial={
-                                floatText.type === 'deduct'
-                                    ? { opacity: 1, y: 0, x: 100, scale: 1 }
-                                    : { opacity: 0, y: -200, x: 100, scale: 1.3 }
-                            }
-                            animate={
-                                floatText.type === 'deduct'
-                                    ? { opacity: 0, y: -150, x: 100, scale: 1.3 }
-                                    : { opacity: [0, 1, 1, 0], y: [-200, -100, 0, 0], x: [100, 100, 100, 100], scale: [1.3, 1.1, 1, 0.6] }
-                            }
-                            transition={{ duration: 1.4, ease: 'easeOut' }}
-                            style={{
-                                position: 'fixed', bottom: '235px', left: '50%',
-                                zIndex: 3500,
-                                fontSize: '24px', fontWeight: '900', 
-                                color: floatText.type === 'deduct' ? '#ff4d4f' : '#00c087',
-                                pointerEvents: 'none', letterSpacing: '-0.5px',
-                                textShadow: floatText.type === 'deduct' 
-                                    ? '0 4px 15px rgba(255,77,79,0.9)' 
-                                    : '0 4px 15px rgba(0,192,135,0.9)',
-                                whiteSpace: 'nowrap', fontFamily: 'Inter, system-ui, sans-serif',
-                            }}
-                        >
-                            {floatText.text}
-                        </motion.div>
-                    )}
-                </AnimatePresence>
+
 
                 {/* ── Trade Result Popup ── */}
                 <AnimatePresence>
@@ -847,7 +858,7 @@ const InfoSheet = ({ cfg, selectedAsset, user, tradeAmount, onClose }) => {
                                                     {u.name ?? 'Unknown'}{isMe ? ' (You)' : ''}
                                                 </p>
                                                 <p style={{ ...label, margin: 0 }}>{u.email ?? uid}</p>
-                                                <p style={{ ...label, margin: '2px 0 0', fontSize: '9px', color: '#888' }}>ID: {uid}</p>
+                                                <p style={{ ...label, margin: '4px 0 0', fontSize: '11px', color: '#aaa' }}>UID: <span style={{ color: '#00c087', fontWeight: '800' }}>{uid}</span></p>
                                             </div>
                                             <span style={{
                                                 fontSize: '14px', fontWeight: '900',

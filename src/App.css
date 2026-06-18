@@ -420,7 +420,7 @@
 /* Admin Panel Responsive */
 .admin-layout {
   display: flex;
-  height: 100vh;
+  height: 100dvh;
   overflow: hidden;
   background-color: #050505;
   font-family: sans-serif;
@@ -497,7 +497,7 @@
 /* Support Center Layout */
 .support-layout {
   display: flex;
-  height: calc(100vh - 120px);
+  height: calc(100dvh - 120px);
   gap: 2px;
   background: #080808;
   border: 1px solid #111;
@@ -580,7 +580,7 @@
     top: 0;
     left: -280px;
     width: 280px;
-    height: 100vh;
+    height: 100dvh;
     z-index: 2000;
     transition: left 0.3s ease;
     box-shadow: 10px 0 30px rgba(0, 0, 0, 0.5);
@@ -646,21 +646,27 @@
 
   .support-layout {
     flex-direction: column;
-    height: auto;
-    min-height: 80vh;
+    height: calc(100dvh - 60px); /* Exact fit for mobile viewport, 60px is mobile header height */
+    min-height: 0;
+    margin: -15px; /* Ignore admin-main padding */
+    border-radius: 0;
+    border-width: 0;
   }
 
   .support-sidebar {
     width: 100%;
     border-right: none;
     border-bottom: 1px solid #111;
-    max-height: 350px;
+    height: 35%; /* 35% viewport for list */
+    max-height: none;
     overflow-y: auto;
   }
 
   .support-main {
     width: 100%;
-    min-height: 400px;
+    height: 65%; /* 65% viewport for chat */
+    min-height: 0;
+    flex: 1;
   }
 
   .email-dashboard-grid {
