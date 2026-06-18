@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { db } from '../../firebase-setup';
-import { doc, getDoc, setDoc, collection, getDocs, onSnapshot, deleteField } from 'firebase/firestore';
+import { doc, getDoc, setDoc, collection, getDocs, onSnapshot } from 'firebase/firestore';
 import { X, Search, ChevronUp, ChevronDown, Users, Zap, BarChart2, Shield, Check } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 
@@ -39,7 +39,7 @@ const Toast = ({ show, message, type = 'success' }) => (
 );
 
 /* ─────────────────────────────────────────────────────────
-   Spin Counter
+   SpinCounter
 ───────────────────────────────────────────────────────── */
 const SpinCounter = ({ value, onChange, min = 0, max = 999, step = 1, label, suffix = '', color = '#f0b90b', compact = false }) => {
     const inc = () => onChange(Math.min(max, parseFloat((parseFloat(value) + step).toFixed(2))));
@@ -64,128 +64,120 @@ const SpinCounter = ({ value, onChange, min = 0, max = 999, step = 1, label, suf
     );
 };
 
-/* ═══════════════════════════════════════════════════════════════════════════ */
+/* ═══════════════════════════════════════════════════════════════════════════
+   Firestore structure:
+     admin_set / trade_control  {
+       currencyName : string   — e.g. "BTC/USDT"
+       winLossUsers : {
+         [userId] : { name, email, winLossPercentage }
+       }
+     }
+═══════════════════════════════════════════════════════════════════════════ */
 
 const AdminSignals = () => {
-    const [loading, setLoading] = useState(false);
-    const [currentSignal, setCurrentSignal] = useState(null);
-    const [fetching, setFetching] = useState(true);
-    const [isDataReady, setIsDataReady] = useState(false); // guard: true only after initial fetch
-    const [toast, setToast] = useState({ show: false, message: '', type: 'success' });
+    const [loading, setLoading]         = useState(false);
+    const [fetching, setFetching]       = useState(true);
+    const [toast, setToast]             = useState({ show: false, message: '', type: 'success' });
 
-    const [globalWinLossRate, setGlobalWinLossRate] = useState(5);
-    const [selectedSymbol, setSelectedSymbol] = useState('BTC/USDT');
-    const [affectedUsers, setAffectedUsers] = useState({});
-    const [users, setUsers] = useState([]);
-    const [searchTerm, setSearchTerm] = useState('');
+    // ── Local form state (mirrors what we'll save to Firestore) ──────────────
+    const [currencyName, setCurrencyName] = useState('BTC/USDT');  // maps to: trade_control.currencyName
+    const [winLossUsers, setWinLossUsers] = useState({});           // maps to: trade_control.winLossUsers
+    const [defaultRate, setDefaultRate]   = useState(5);            // default % applied when adding a user
+
+    const [users, setUsers]             = useState([]);
+    const [searchTerm, setSearchTerm]   = useState('');
     const [showUserModal, setShowUserModal] = useState(false);
 
-    const ALL_SYMBOLS = ['BTC/USDT', 'ETH/USDT', 'SOL/USDT', 'XRP/USDT', 'EUR/USD', 'GBP/USD', 'USD/JPY', 'AUD/USD', 'XAU/USD', 'XAG/USD', 'XPT/USD'];
+    const ALL_CURRENCIES = [
+        'BTC/USDT', 'ETH/USDT', 'SOL/USDT', 'XRP/USDT',
+        'EUR/USD', 'GBP/USD', 'USD/JPY', 'AUD/USD',
+        'XAU/USD', 'XAG/USD', 'XPT/USD'
+    ];
 
     const showToast = (message, type = 'success') => {
         setToast({ show: true, message, type });
         setTimeout(() => setToast(t => ({ ...t, show: false })), 3000);
     };
 
+    // ── Load current config + all users on mount ─────────────────────────────
     useEffect(() => {
-        const fetchAll = async () => {
+        const load = async () => {
             try {
-                const signalSnap = await getDoc(doc(db, 'admin_set', 'market_signal'));
-                if (signalSnap.exists()) {
-                    const data = signalSnap.data();
-                    setCurrentSignal(data);
-                    setSelectedSymbol(data.symbol || 'BTC/USDT');
-                    if (data.affectedUsersMap) {
-                        const migratedMap = {};
-                        Object.keys(data.affectedUsersMap).forEach(uid => {
-                            const u = data.affectedUsersMap[uid];
-                            let finalRate = u.winLossPercentage;
-                            if (finalRate === undefined) {
-                                if (u.winLossRate !== undefined) finalRate = u.winLossRate;
-                                else if (u.winPercent !== undefined) finalRate = u.winPercent;
-                            }
-                            migratedMap[uid] = { name: u.name || 'Anonymous', email: u.email || '', winLossPercentage: finalRate };
+                const snap = await getDoc(doc(db, 'admin_set', 'trade_control'));
+                if (snap.exists()) {
+                    const data = snap.data();
+                    // currencyName
+                    if (data.currencyName) setCurrencyName(data.currencyName);
+                    // winLossUsers — keep only the three needed fields per user
+                    if (data.winLossUsers) {
+                        const cleaned = {};
+                        Object.entries(data.winLossUsers).forEach(([uid, u]) => {
+                            cleaned[uid] = {
+                                name:              u.name  || 'Anonymous',
+                                email:             u.email || '',
+                                winLossPercentage: Number(u.winLossPercentage ?? 0)
+                            };
                         });
-                        setAffectedUsers(migratedMap);
-                    }
-                    if (data.globalWinPercent !== undefined && data.globalWinLossRate === undefined) {
-                        setGlobalWinLossRate(data.globalWinPercent);
-                    } else if (data.globalWinLossRate !== undefined) {
-                        setGlobalWinLossRate(data.globalWinLossRate);
+                        setWinLossUsers(cleaned);
                     }
                 }
+                // Load users list for the picker
                 const usersSnap = await getDocs(collection(db, 'users'));
                 setUsers(usersSnap.docs.map(d => ({ id: d.id, ...d.data() })));
             } catch (err) { console.error(err); }
-            finally {
-                setFetching(false);
-                setIsDataReady(true); // now safe to allow real-time sync
-            }
+            finally { setFetching(false); }
         };
-        fetchAll();
-        const unsub = onSnapshot(doc(db, 'admin_set', 'market_signal'), snap => {
-            if (snap.exists() && !showUserModal) { setCurrentSignal(snap.data()); }
+        load();
+
+        // Live listener so multiple admin tabs stay in sync (read-only — does NOT auto-save)
+        const unsub = onSnapshot(doc(db, 'admin_set', 'trade_control'), snap => {
+            if (snap.exists() && !showUserModal) {
+                const data = snap.data();
+                if (data.currencyName) setCurrencyName(data.currencyName);
+                if (data.winLossUsers) {
+                    const cleaned = {};
+                    Object.entries(data.winLossUsers).forEach(([uid, u]) => {
+                        cleaned[uid] = {
+                            name:              u.name  || 'Anonymous',
+                            email:             u.email || '',
+                            winLossPercentage: Number(u.winLossPercentage ?? 0)
+                        };
+                    });
+                    setWinLossUsers(cleaned);
+                }
+            }
         });
         return () => unsub();
-    }, []);
+    }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
-    // Real-time sync to Firestore while signal is active
-    // ⚠️ isDataReady guard prevents wiping affectedUsersMap on page load:
-    //    onSnapshot fires before fetchAll completes → affectedUsers is still {}
-    //    without this guard that empty map would overwrite all user configs in Firestore
-    useEffect(() => {
-        if (!isDataReady || !currentSignal?.isActive) return;
-        import('firebase/firestore').then(({ updateDoc }) => {
-            updateDoc(doc(db, 'admin_set', 'market_signal'), {
-                affectedUsersMap: affectedUsers,
-                globalWinLossRate: parseInt(globalWinLossRate) || 0,
-                globalWinPercent: deleteField(),
-                updatedAt: new Date().toISOString()
-            }).catch(err => console.error('Error syncing live config:', err));
-        });
-    }, [affectedUsers, globalWinLossRate, currentSignal?.isActive, isDataReady]);
-
-    const addUserToSignal = user => setAffectedUsers(prev => ({ ...prev, [user.id]: { winLossPercentage: globalWinLossRate, name: user.name || 'Anonymous', email: user.email } }));
-    const removeUserFromSignal = uid => setAffectedUsers(prev => { const n = { ...prev }; delete n[uid]; return n; });
-    const updateUserRate = (uid, field, val) => {
+    // ── User list helpers ────────────────────────────────────────────────────
+    const addUser    = u  => setWinLossUsers(prev => ({ ...prev, [u.id]: { name: u.name || 'Anonymous', email: u.email, winLossPercentage: defaultRate } }));
+    const removeUser = id => setWinLossUsers(prev => { const n = { ...prev }; delete n[id]; return n; });
+    const updateRate = (id, val) => {
         const parsed = parseInt(val);
-        setAffectedUsers(prev => ({ ...prev, [uid]: { ...prev[uid], [field]: isNaN(parsed) ? 0 : parsed } }));
+        setWinLossUsers(prev => ({ ...prev, [id]: { ...prev[id], winLossPercentage: isNaN(parsed) ? 0 : parsed } }));
     };
-    const applyGlobalToAll = () => {
-        const val = parseInt(globalWinLossRate);
+    const applyDefaultToAll = () => {
+        const val = parseInt(defaultRate);
         const next = {};
-        Object.keys(affectedUsers).forEach(id => { next[id] = { ...affectedUsers[id], winLossPercentage: isNaN(val) ? 0 : val }; });
-        setAffectedUsers(next);
+        Object.keys(winLossUsers).forEach(id => {
+            next[id] = { ...winLossUsers[id], winLossPercentage: isNaN(val) ? 0 : val };
+        });
+        setWinLossUsers(next);
     };
 
+    // ── Save to Firestore ────────────────────────────────────────────────────
+    // Only saves: currencyName + winLossUsers (nothing else)
     const saveConfiguration = async () => {
         setLoading(true);
         try {
-            const signalData = {
-                direction: 'UP',
-                symbol: selectedSymbol,
-                globalWinLossRate: parseInt(globalWinLossRate) || 0,
-                isActive: true,
-                affectedUsersMap: affectedUsers,
-                updatedAt: new Date().toISOString()
-            };
-            await setDoc(doc(db, 'admin_set', 'market_signal'), signalData);
-            setCurrentSignal(signalData);
-            showToast('Configuration saved successfully!', 'success');
+            const data = { currencyName, winLossUsers };
+            await setDoc(doc(db, 'admin_set', 'trade_control'), data);
+            showToast('Saved successfully!', 'success');
         } catch (err) {
             console.error(err);
-            showToast('Failed to save: ' + err.message, 'error');
+            showToast('Failed: ' + err.message, 'error');
         } finally { setLoading(false); }
-    };
-
-    const clearSignal = async () => {
-        setLoading(true);
-        try {
-            await setDoc(doc(db, 'admin_set', 'market_signal'), { isActive: false, expiresAt: new Date().toISOString() }, { merge: true });
-            setCurrentSignal(null);
-            showToast('Signal cleared.', 'success');
-        } catch (err) { showToast('Failed: ' + err.message, 'error'); }
-        finally { setLoading(false); }
     };
 
     const filteredUsers = users.filter(u =>
@@ -217,7 +209,6 @@ const AdminSignals = () => {
                 background: 'rgba(0,0,0,0.85)', backdropFilter: 'blur(20px)',
                 position: 'sticky', top: 0, zIndex: 100
             }}>
-                {/* Left: Logo + Title */}
                 <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
                     <div style={{
                         width: '34px', height: '34px', borderRadius: '10px',
@@ -228,11 +219,10 @@ const AdminSignals = () => {
                     </div>
                     <div>
                         <h1 style={{ fontSize: '16px', fontWeight: '800', letterSpacing: '-0.3px', margin: 0, background: 'linear-gradient(90deg, #ffffff, #aaaacc)', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent' }}>Trade Control</h1>
-                        <p style={{ color: '#555', fontSize: '10px', margin: 0 }}>Market manipulation console</p>
+                        <p style={{ color: '#555', fontSize: '10px', margin: 0 }}>Win / Loss manager</p>
                     </div>
                 </div>
 
-                {/* Right: Save button */}
                 <motion.button
                     whileHover={{ scale: 1.03, boxShadow: '0 6px 24px rgba(240,185,11,0.3)' }}
                     whileTap={{ scale: 0.97 }}
@@ -261,7 +251,7 @@ const AdminSignals = () => {
             <div style={{ padding: '28px', maxWidth: '1140px', margin: '0 auto' }}>
                 <div style={{ display: 'grid', gridTemplateColumns: 'minmax(0,1fr) minmax(0,1fr)', gap: '20px', alignItems: 'start' }}>
 
-                    {/* ── LEFT: Config Card ── */}
+                    {/* ── LEFT: Currency Selection ── */}
                     <div style={{
                         background: '#0a0a0a', border: '1px solid #1a1a1a', borderRadius: '20px',
                         padding: '24px', display: 'flex', flexDirection: 'column', gap: '20px',
@@ -269,19 +259,18 @@ const AdminSignals = () => {
                     }}>
                         <div style={{ position: 'absolute', top: 0, right: 0, width: '100px', height: '100px', background: 'radial-gradient(circle, rgba(240,185,11,0.06) 0%, transparent 70%)', pointerEvents: 'none' }} />
 
-                        {/* Section label */}
                         <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
                             <Shield size={13} color="#f0b90b" />
-                            <span style={{ fontSize: '10px', fontWeight: '700', color: '#666', textTransform: 'uppercase', letterSpacing: '1.2px' }}>Signal Configuration</span>
+                            <span style={{ fontSize: '10px', fontWeight: '700', color: '#666', textTransform: 'uppercase', letterSpacing: '1.2px' }}>Currency Configuration</span>
                         </div>
 
-                        {/* Target Asset */}
+                        {/* Currency Selector */}
                         <div>
-                            <p style={{ fontSize: '10px', color: '#555', marginBottom: '8px', textTransform: 'uppercase', letterSpacing: '0.8px', fontWeight: '600' }}>Target Asset</p>
+                            <p style={{ fontSize: '10px', color: '#555', marginBottom: '8px', textTransform: 'uppercase', letterSpacing: '0.8px', fontWeight: '600' }}>Target Currency</p>
                             <div style={{ position: 'relative' }}>
                                 <select
-                                    value={selectedSymbol}
-                                    onChange={e => setSelectedSymbol(e.target.value)}
+                                    value={currencyName}
+                                    onChange={e => setCurrencyName(e.target.value)}
                                     style={{
                                         width: '100%', padding: '13px 42px 13px 16px',
                                         background: '#000', color: '#fff',
@@ -290,7 +279,7 @@ const AdminSignals = () => {
                                         appearance: 'none', outline: 'none', letterSpacing: '0.3px'
                                     }}
                                 >
-                                    {ALL_SYMBOLS.map(s => <option key={s} value={s}>{s}</option>)}
+                                    {ALL_CURRENCIES.map(c => <option key={c} value={c}>{c}</option>)}
                                 </select>
                                 <ChevronDown size={14} color="#555" style={{ position: 'absolute', right: '14px', top: '50%', transform: 'translateY(-50%)', pointerEvents: 'none' }} />
                             </div>
@@ -305,7 +294,7 @@ const AdminSignals = () => {
                         </div>
                     </div>
 
-                    {/* ── RIGHT: Users Panel ── */}
+                    {/* ── RIGHT: winLossUsers Panel ── */}
                     <div style={{
                         background: '#0a0a0a', border: '1px solid #1a1a1a', borderRadius: '20px',
                         padding: '24px', display: 'flex', flexDirection: 'column', minHeight: '500px',
@@ -318,11 +307,11 @@ const AdminSignals = () => {
                             <div>
                                 <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '4px' }}>
                                     <Users size={13} color="#f0b90b" />
-                                    <span style={{ fontSize: '10px', fontWeight: '700', color: '#666', textTransform: 'uppercase', letterSpacing: '1.2px' }}>Targeted Users</span>
+                                    <span style={{ fontSize: '10px', fontWeight: '700', color: '#666', textTransform: 'uppercase', letterSpacing: '1.2px' }}>Win/Loss Users</span>
                                 </div>
                                 <div style={{ display: 'flex', alignItems: 'baseline', gap: '6px' }}>
-                                    <span style={{ fontSize: '28px', fontWeight: '900', color: '#fff', lineHeight: 1 }}>{Object.keys(affectedUsers).length}</span>
-                                    <span style={{ fontSize: '12px', color: '#555' }}>targets</span>
+                                    <span style={{ fontSize: '28px', fontWeight: '900', color: '#fff', lineHeight: 1 }}>{Object.keys(winLossUsers).length}</span>
+                                    <span style={{ fontSize: '12px', color: '#555' }}>users</span>
                                 </div>
                             </div>
                             <motion.button
@@ -334,12 +323,12 @@ const AdminSignals = () => {
                             </motion.button>
                         </div>
 
-                        {/* Global batch row */}
+                        {/* Default rate + Apply All */}
                         <div style={{ display: 'flex', gap: '10px', marginBottom: '16px', padding: '14px', background: 'rgba(255,255,255,0.02)', borderRadius: '14px', border: '1px solid #1a1a1a', alignItems: 'flex-end' }}>
-                            <SpinCounter value={globalWinLossRate} onChange={setGlobalWinLossRate} min={-100} max={500} step={1} label="Default Win/Loss %" suffix="%" color={globalWinLossRate >= 0 ? '#00c087' : '#ff4d4f'} compact />
+                            <SpinCounter value={defaultRate} onChange={setDefaultRate} min={-100} max={500} step={1} label="Default Win/Loss %" suffix="%" color={defaultRate >= 0 ? '#00c087' : '#ff4d4f'} compact />
                             <motion.button
                                 whileTap={{ scale: 0.96 }}
-                                onClick={applyGlobalToAll}
+                                onClick={applyDefaultToAll}
                                 style={{ padding: '0 12px', background: 'rgba(240,185,11,0.08)', border: '1px solid rgba(240,185,11,0.2)', borderRadius: '10px', color: '#f0b90b', fontSize: '10px', fontWeight: '800', cursor: 'pointer', whiteSpace: 'nowrap', height: '40px', letterSpacing: '0.5px' }}
                             >
                                 APPLY ALL
@@ -351,7 +340,7 @@ const AdminSignals = () => {
                         {/* User list */}
                         <div style={{ flex: 1, overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: '8px' }}>
                             <AnimatePresence>
-                                {Object.entries(affectedUsers).map(([id, u], idx) => (
+                                {Object.entries(winLossUsers).map(([id, u], idx) => (
                                     <motion.div
                                         key={id}
                                         initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }}
@@ -369,23 +358,23 @@ const AdminSignals = () => {
                                             </div>
                                         </div>
 
-                                        {/* Win/Loss control */}
+                                        {/* Win/Loss % control */}
                                         <div style={{ display: 'flex', alignItems: 'center', gap: '6px', flexShrink: 0 }}>
                                             <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '2px' }}>
                                                 <span style={{ fontSize: '8px', color: '#555', textTransform: 'uppercase', letterSpacing: '0.5px' }}>Win/Loss %</span>
                                                 <div style={{ display: 'flex', alignItems: 'center', gap: '2px', background: '#000', border: `1px solid ${(parseInt(u.winLossPercentage) || 0) >= 0 ? 'rgba(0,192,135,0.2)' : 'rgba(255,77,79,0.2)'}`, borderRadius: '8px', padding: '3px 6px' }}>
-                                                    <button type="button" onClick={() => updateUserRate(id, 'winLossPercentage', Math.max(-100, (parseInt(u.winLossPercentage) || 0) - 1))} style={{ background: 'none', border: 'none', color: '#555', cursor: 'pointer', padding: 0 }}><ChevronDown size={11} /></button>
+                                                    <button type="button" onClick={() => updateRate(id, Math.max(-100, (parseInt(u.winLossPercentage) || 0) - 1))} style={{ background: 'none', border: 'none', color: '#555', cursor: 'pointer', padding: 0 }}><ChevronDown size={11} /></button>
                                                     <input
                                                         type="number"
                                                         value={u.winLossPercentage || 0}
-                                                        onChange={e => updateUserRate(id, 'winLossPercentage', e.target.value)}
+                                                        onChange={e => updateRate(id, e.target.value)}
                                                         style={{ width: '36px', background: 'none', border: 'none', outline: 'none', color: (parseInt(u.winLossPercentage) || 0) >= 0 ? '#00c087' : '#ff4d4f', fontSize: '13px', fontWeight: '900', textAlign: 'center' }}
                                                     />
-                                                    <button type="button" onClick={() => updateUserRate(id, 'winLossPercentage', Math.min(500, (parseInt(u.winLossPercentage) || 0) + 1))} style={{ background: 'none', border: 'none', color: '#555', cursor: 'pointer', padding: 0 }}><ChevronUp size={11} /></button>
+                                                    <button type="button" onClick={() => updateRate(id, Math.min(500, (parseInt(u.winLossPercentage) || 0) + 1))} style={{ background: 'none', border: 'none', color: '#555', cursor: 'pointer', padding: 0 }}><ChevronUp size={11} /></button>
                                                 </div>
                                             </div>
                                             <button
-                                                onClick={() => removeUserFromSignal(id)}
+                                                onClick={() => removeUser(id)}
                                                 style={{ padding: '6px', background: 'rgba(255,77,79,0.06)', border: '1px solid rgba(255,77,79,0.15)', borderRadius: '8px', color: '#ff4d4f', cursor: 'pointer', display: 'flex', alignItems: 'center' }}
                                             >
                                                 <X size={12} />
@@ -395,13 +384,13 @@ const AdminSignals = () => {
                                 ))}
                             </AnimatePresence>
 
-                            {Object.keys(affectedUsers).length === 0 && (
+                            {Object.keys(winLossUsers).length === 0 && (
                                 <div style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: '12px', padding: '50px 0' }}>
                                     <div style={{ width: '56px', height: '56px', borderRadius: '18px', background: 'rgba(255,255,255,0.02)', border: '1px dashed #222', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
                                         <Users size={26} color="#333" />
                                     </div>
                                     <div style={{ textAlign: 'center' }}>
-                                        <p style={{ fontSize: '14px', fontWeight: '700', color: '#333', margin: 0 }}>No targets yet</p>
+                                        <p style={{ fontSize: '14px', fontWeight: '700', color: '#333', margin: 0 }}>No users yet</p>
                                         <p style={{ fontSize: '11px', color: '#2a2a2a', marginTop: '4px' }}>Add users to control their trade results</p>
                                     </div>
                                     <motion.button
@@ -409,7 +398,7 @@ const AdminSignals = () => {
                                         onClick={() => setShowUserModal(true)}
                                         style={{ padding: '9px 20px', background: 'rgba(240,185,11,0.07)', border: '1px solid rgba(240,185,11,0.18)', borderRadius: '10px', color: '#f0b90b', fontSize: '12px', fontWeight: '800', cursor: 'pointer' }}
                                     >
-                                        + Add Targets
+                                        + Add Users
                                     </motion.button>
                                 </div>
                             )}
@@ -434,7 +423,7 @@ const AdminSignals = () => {
 
                             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '18px' }}>
                                 <div>
-                                    <h3 style={{ fontSize: '18px', fontWeight: '900', margin: 0 }}>Select Target Users</h3>
+                                    <h3 style={{ fontSize: '18px', fontWeight: '900', margin: 0 }}>Select Users</h3>
                                     <p style={{ fontSize: '11px', color: '#555', marginTop: '3px' }}>{filteredUsers.length} users available</p>
                                 </div>
                                 <button onClick={() => setShowUserModal(false)} style={{ background: '#1a1a1a', border: 'none', padding: '9px', borderRadius: '50%', color: '#666', cursor: 'pointer', display: 'flex', alignItems: 'center' }}>
@@ -453,11 +442,11 @@ const AdminSignals = () => {
 
                             <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
                                 {filteredUsers.map(u => {
-                                    const isAdded = !!affectedUsers[u.id];
+                                    const isAdded = !!winLossUsers[u.id];
                                     return (
                                         <motion.div
                                             key={u.id} whileTap={{ scale: 0.985 }}
-                                            onClick={() => isAdded ? removeUserFromSignal(u.id) : addUserToSignal(u)}
+                                            onClick={() => isAdded ? removeUser(u.id) : addUser(u)}
                                             style={{ padding: '12px 14px', background: isAdded ? 'rgba(240,185,11,0.05)' : '#111', border: `1px solid ${isAdded ? 'rgba(240,185,11,0.3)' : '#1a1a1a'}`, borderRadius: '14px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', cursor: 'pointer', transition: 'all 0.18s' }}
                                         >
                                             <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>

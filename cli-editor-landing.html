@@ -1,0 +1,629 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>CHEAP — AI-Powered CLI Code Editor</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&family=JetBrains+Mono:wght@400;500;600;700&display=swap" rel="stylesheet" />
+  <style>
+    :root {
+      --bg: #0B0806;
+      --primary: #D48148;
+      --primary-light: #f0a070;
+      --heading: #FFF1E8;
+      --muted: #A89F98;
+      --surface: #18110C;
+      --border: #2D211A;
+    }
+    * { margin:0; padding:0; box-sizing:border-box; }
+    html { scroll-behavior:smooth; }
+    body {
+      font-family:'Inter',sans-serif;
+      background:var(--bg);
+      color:var(--heading);
+      overflow-x:hidden;
+    }
+    a { text-decoration:none; color:inherit; }
+    .container { max-width:1200px; margin:0 auto; padding:0 24px; }
+
+    .flex { display:flex; align-items:center; }
+    .justify-between { justify-content:space-between; }
+    .grid { display:grid; gap:24px; }
+    .text-center { text-align:center; }
+    .btn { cursor:pointer; border:none; border-radius:8px; padding:12px 24px; font-weight:600; transition:transform .2s,box-shadow .2s; }
+    .btn-primary { background:linear-gradient(135deg,var(--primary),#b86a3a); color:var(--heading); }
+    .btn-primary:hover { transform:translateY(-2px); box-shadow:0 8px 25px rgba(212,129,72,.4); }
+    .btn-outline { background:transparent; border:1px solid rgba(255,241,232,.15); color:var(--heading); }
+    .btn-outline:hover { background:rgba(255,241,232,.05); border-color:rgba(255,241,232,.3); }
+    .section { padding:100px 0; position:relative; }
+    .section-label { font-family:'JetBrains Mono',monospace; font-size:0.8rem; color:var(--primary); letter-spacing:0.15em; text-transform:uppercase; margin-bottom:16px; }
+    .section-title { font-size:2.8rem; font-weight:800; margin-bottom:20px; line-height:1.15; }
+    .section-sub { max-width:600px; margin:0 auto 40px; color:var(--muted); font-size:1.05rem; line-height:1.7; }
+
+    /* ─── Navbar ─── */
+    .navbar {
+      position:fixed; top:0; left:0; right:0; z-index:1000; padding:18px 0;
+      background:rgba(11,8,6,.85);
+      backdrop-filter:blur(20px);
+      -webkit-backdrop-filter:blur(20px);
+      border-bottom:1px solid rgba(255,241,232,.08);
+    }
+    .nav-logo { font-family:'JetBrains Mono',monospace; font-weight:700; font-size:1.4rem; color:var(--heading); letter-spacing:1px; }
+    .nav-logo span { color:var(--primary); }
+    .nav-links { display:flex; gap:32px; }
+    .nav-links a { font-size:0.95rem; color:var(--muted); transition:color .2s; font-weight:500; }
+    .nav-links a:hover { color:var(--heading); }
+    .nav-cta { background:linear-gradient(135deg,var(--primary),#b86a3a); color:var(--heading) !important; padding:10px 24px; border-radius:8px; font-weight:600; }
+    .hamburger { display:none; flex-direction:column; gap:4px; cursor:pointer; }
+    .hamburger div { width:22px; height:2.5px; background:var(--heading); transition:all .3s; }
+    @media (max-width:768px) {
+      .nav-links { display:none; flex-direction:column; background:rgba(11,8,6,.95); position:absolute; top:100%; left:0; right:0; padding:16px 0; gap:12px; }
+      .nav-links.show { display:flex; }
+      .hamburger { display:flex; }
+      .hamburger.active div:nth-child(1) { transform:rotate(45deg) translate(4px,4px); }
+      .hamburger.active div:nth-child(2) { opacity:0; }
+      .hamburger.active div:nth-child(3) { transform:rotate(-45deg) translate(4px,-4px); }
+    }
+
+    /* ─── Hero ─── */
+    .hero { min-height:100vh; display:flex; align-items:center; padding-top:80px; overflow:hidden; position:relative; }
+    .hero-bg { position:absolute; inset:0; overflow:hidden; pointer-events:none; }
+    .hero-bg canvas { width:100%; height:100%; display:block; }
+    .hero-content { position:relative; z-index:2; display:grid; grid-template-columns:1fr 1fr; gap:60px; align-items:center; }
+    .hero-left { display:flex; flex-direction:column; gap:24px; }
+    .hero-badge { display:inline-flex; align-items:center; gap:10px; padding:8px 16px; border-radius:999px; background:rgba(212,129,72,.12); border:1px solid rgba(212,129,72,.25); font-size:0.85rem; color:var(--primary-light); font-weight:500; }
+    .hero-badge .dot { width:8px; height:8px; border-radius:50%; background:#22c55e; animation:pulse .8s infinite; box-shadow:0 0 8px #22c55e; }
+    @keyframes pulse { 0%,100%{opacity:1;}50%{opacity:.4;} }
+    .hero h1 { font-size:3.8rem; font-weight:800; line-height:1.05; letter-spacing:-.02em; }
+    .hero h1 .gradient { background:linear-gradient(135deg,#fff1e8 0%,#f0a070 40%,#d48148 100%); -webkit-background-clip:text; -webkit-text-fill-color:transparent; background-clip:text; }
+    .hero p { font-size:1.2rem; color:var(--muted); max-width:480px; line-height:1.7; }
+    .hero-ctas { display:flex; gap:16px; margin-top:8px; }
+    .hero-stats { display:flex; gap:32px; margin-top:20px; }
+    .stat { text-align:center; }
+    .stat h3 { font-size:2rem; color:var(--heading); font-weight:700; }
+    .stat h3 span { color:var(--primary); }
+    .stat p { font-size:0.85rem; color:var(--muted); margin-top:4px; font-weight:500; }
+    .terminal-mock { position:relative; width:100%; max-width:540px; }
+    .terminal-mock::before { content:''; position:absolute; inset:-6px; border-radius:18px; background:linear-gradient(135deg,rgba(212,129,72,.3),transparent 60%); z-index:-1; }
+    .terminal-window { background:#050302; border-radius:14px; border:1px solid rgba(255,241,232,.08); overflow:hidden; box-shadow:0 30px 80px rgba(0,0,0,.6); }
+    .terminal-header { display:flex; align-items:center; gap:10px; padding:12px 16px; background:rgba(255,241,232,.04); border-bottom:1px solid rgba(255,241,232,.06); }
+    .dot { width:12px; height:12px; border-radius:50%; }
+    .dot.red{background:#ff5f56;} .dot.yellow{background:#ffbd2e;} .dot.green{background:#27c93f;}
+    .terminal-title { font-family:'JetBrains Mono',monospace; font-size:0.75rem; color:var(--muted); letter-spacing:.5px; }
+    .terminal-body { padding:20px; font-family:'JetBrains Mono',monospace; font-size:0.85rem; line-height:1.7; color:#c4b5a5; min-height:280px; }
+    .line { opacity:0; animation:fade .4s forwards; }
+    @keyframes fade { to { opacity:1; } }
+    .cursor { display:inline-block; width:8px; height:18px; background:var(--primary); animation:blink 1s steps(2) infinite; margin-left:4px; vertical-align:text-bottom; }
+
+    /* ─── Features ─── */
+    .features .grid { grid-template-columns:repeat(auto-fit,minmax(280px,1fr)); }
+    .feature-card { background:rgba(24,17,12,.6); border:1px solid rgba(255,241,232,.1); border-radius:20px; padding:32px; backdrop-filter:blur(20px); -webkit-backdrop-filter:blur(20px); transition:all .3s; position:relative; overflow:hidden; }
+    .feature-card:hover { transform:translateY(-8px); border-color:rgba(212,129,72,.5); box-shadow:0 20px 50px rgba(212,129,72,.2); }
+    .feature-card:before { content:''; position:absolute; top:-2px; left:-2px; right:-2px; bottom:-2px; border-radius:22px; background:linear-gradient(135deg,rgba(212,129,72,.2),transparent); z-index:-1; opacity:0; transition:opacity .3s; }
+    .feature-card:hover:before { opacity:1; }
+    .feature-icon { font-size:2.2rem; margin-bottom:18px; display:inline-block; }
+    .feature-card h3 { font-size:1.3rem; margin-bottom:12px; font-weight:600; }
+    .feature-card p { color:var(--muted); font-size:0.95rem; line-height:1.6; }
+      <div class="hamburger" id="hamburger"><div></div><div></div><div></div></div>
+      <ul class="nav-links" id="navLinks">
+        <li><a href="#features">Features</a></li>
+        <li><a href="#how">How it works</a></li>
+        <li><a href="#pricing">Pricing</a></li>
+        <li><a href="#faq">FAQ</a></li>
+        <li><a href="#" class="nav-cta">Install →</a></li>
+      </ul>
+    </div>
+  </nav>
+
+  <!-- Hero -->
+  <section class="hero" id="hero">
+    <div class="hero-bg" id="heroBg"></div>
+    <div class="container hero-content">
+      <div class="hero-left">
+        <div class="hero-badge"><span class="dot"></span>v2.5 – AI‑Powered CLI</div>
+        <h1>Code at the <span class="gradient">Speed of Thought</span></h1>
+        <p>An autonomous CLI editor that writes production‑ready code, self‑heals, and searches the web—all from your terminal.</p>
+        <div class="hero-ctas">
+          <button class="btn btn-primary" onclick="alert('Install via: curl -fsSL https://cheap.sh | sh')">⌘ Install Now</button>
+          <button class="btn btn-outline" onclick="document.getElementById('features').scrollIntoView({behavior:'smooth'})">See Features →</button>
+        </div>
+        <div class="hero-stats">
+          <div class="stat"><h3>14<span>k</span></h3><p>GitHub Stars</p></div>
+          <div class="stat"><h3>2.4<span>k</span></h3><p>Daily Users</p></div>
+          <div class="stat"><h3>99<span>%</span></h3><p>Uptime</p></div>
+        </div>
+      </div>
+      <div class="hero-right">
+        <div class="terminal-mock">
+          <div class="terminal-window">
+            <div class="terminal-header">
+              <span class="dot red"></span><span class="dot yellow"></span><span class="dot green"></span>
+              <span class="terminal-title">cheap — ~/project (zsh)</span>
+            </div>
+            <div class="terminal-body" id="terminalBody">
+              <div class="line"><span class="cursor"></span></div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- Trust Bar -->
+  <section class="trust" id="trust">
+    <div class="container">
+      <div class="logos">
+        <img src="https://via.placeholder.com/80x32?text=Brand1" alt="Brand 1" />
+        <img src="https://via.placeholder.com/80x32?text=Brand2" alt="Brand 2" />
+        <img src="https://via.placeholder.com/80x32?text=Brand3" alt="Brand 3" />
+        <img src="https://via.placeholder.com/80x32?text=Brand4" alt="Brand 4" />
+      </div>
+    </div>
+  </section>
+
+  <!-- Features -->
+  <section class="features section" id="features">
+    <div class="container text-center">
+      <div class="section-label">✦ Features</div>
+      <h2 class="section-title">Powerful AI‑Driven CLI</h2>
+      <p class="section-sub">Everything you need to build, debug, and ship without leaving the terminal.</p>
+      <div class="grid">
+        <div class="feature-card">
+          <div class="feature-icon">🧠</div>
+          <h3>Autonomous Code Gen</h3>
+          <p>Just describe what you want – CHEAP writes full files, tests, and docs.</p>
+        </div>
+        <div class="feature-card">
+          <div class="feature-icon">🔧</div>
+          <h3>Self‑Healing Mode</h3>
+          <p>Detects lint errors, broken imports, type mismatches and auto‑fixes them.</p>
+        </div>
+        <div class="feature-card">
+          <div class="feature-icon">🌐</div>
+          <h3>Web‑Aware Search</h3>
+          <p>Searches the web, reads docs, and generates integration code on‑the‑fly.</p>
+.feature-card p { color:var(--muted); font-size:0.95rem; line-height:1.6; }
+
+    /* ─── How It Works ─── */
+    .how { background:linear-gradient(135deg,rgba(212,129,72,.05),transparent); border:1px solid rgba(255,241,232,.1); border-radius:24px; padding:60px; margin:40px 0; }
+    .how .step { display:flex; align-items:flex-start; gap:24px; margin-bottom:40px; }
+    .how .step:last-child { margin-bottom:0; }
+    .how .step-number { width:52px; height:52px; border-radius:50%; background:linear-gradient(135deg,var(--primary),#b86a3a); color:var(--heading); display:flex; align-items:center; justify-content:center; font-weight:700; font-size:1.4rem; box-shadow:0 8px 20px rgba(212,129,72,.3); }
+    .how .step-content h4 { font-size:1.5rem; margin-bottom:10px; font-weight:600; }
+    .how .step-content p { color:var(--muted); font-size:1.05rem; }
+
+    /* ─── Integrations ─── */
+    .integrations .grid { grid-template-columns:repeat(auto-fit,minmax(100px,1fr)); justify-items:center; }
+    .integrations img { height:48px; filter:brightness(.9) grayscale(.2); transition:all .3s; }
+    .integrations img:hover { transform:scale(1.15) brightness(1.2); filter:brightness(1.2); }
+
+    /* ─── Pricing ─── */
+    .pricing .grid { grid-template-columns:repeat(auto-fit,minmax(280px,1fr)); gap:32px; }
+    .price-card { background:rgba(24,17,12,.6); border:1px solid rgba(255,241,232,.1); border-radius:20px; padding:36px; text-align:center; transition:all .3s; position:relative; backdrop-filter:blur(20px); -webkit-backdrop-filter:blur(20px); transform:scale(1); }
+    .price-card.popular { border-color:rgba(212,129,72,.6); box-shadow:0 15px 50px rgba(212,129,72,.25); transform:scale(1.03); }
+    .price-card:hover { transform:scale(1.05); box-shadow:0 25px 60px rgba(0,0,0,.4); }
+    .price-card h3 { font-size:1.6rem; margin-bottom:12px; font-weight:600; }
+    .price-card .price { font-size:2.8rem; font-weight:700; margin:16px 0; color:var(--primary); }
+    .price-card ul { text-align:left; margin:20px 0; color:var(--muted); }
+    .price-card li { margin-bottom:12px; padding-left:20px; position:relative; }
+    .price-card li:before { content:'✓'; position:absolute; left:0; color:var(--primary); font-weight:bold; }
+    .popular-badge { position:absolute; top:-14px; left:50%; transform:translateX(-50%); background:linear-gradient(135deg,var(--primary),#b86a3a); padding:6px 16px; border-radius:999px; font-size:0.75rem; font-weight:700; letter-spacing:.5px; }
+
+    /* ─── Testimonials ─── */
+    .testimonials { position:relative; }
+    .testimonial { background:rgba(24,17,12,.6); border:1px solid rgba(255,241,232,.1); border-radius:20px; padding:40px; max-width:680px; margin:0 auto; opacity:0; transition:all .5s; backdrop-filter:blur(20px); -webkit-backdrop-filter:blur(20px); position:relative; transform:scale(.95); }
+    .testimonial.active { opacity:1; transform:scale(1); }
+    .testimonial:before { content:'"'; position:absolute; top:20px; left:20px; font-size:5rem; color:var(--primary); opacity:.1; font-family:Georgia, serif; line-height:1; }
+    .testimonial img { width:96px; height:96px; border-radius:50%; margin:0 auto 20px; border:4px solid var(--primary); }
+    .testimonial p { font-style:italic; color:var(--muted); margin-bottom:20px; font-size:1.05rem; line-height:1.7; }
+    .testimonial h4 { font-weight:600; color:var(--heading); font-size:1.1rem; }
+
+    /* ─── FAQ ─── */
+    .faq { background:rgba(24,17,12,.6); border:1px solid rgba(255,241,232,.1); border-radius:20px; padding:40px; backdrop-filter:blur(20px); -webkit-backdrop-filter:blur(20px); }
+    .faq .question { cursor:pointer; padding:20px; border-bottom:1px solid var(--border); font-weight:500; transition:all .2s; position:relative; }
+    .faq .question:last-child { border-bottom:0; }
+    .faq .question:hover { color:var(--primary); }
+    .faq .answer { max-height:0; overflow:hidden; transition:max-height .5s ease; padding:0 20px; color:var(--muted); }
+    .faq .question.active + .answer { max-height:200px; padding-top:16px; }
+
+    /* ─── Final CTA ─── */
+    .final-cta { background:linear-gradient(135deg,var(--primary),#b86a3a); color:var(--heading); text-align:center; padding:120px 40px; border-radius:24px; margin:60px 0; }
+    .final-cta h2 { font-size:2.8rem; margin-bottom:24px; font-weight:800; }
+    .final-cta .btn { font-size:1.1rem; padding:16px 32px; }
+
+    /* ─── Footer ─── */
+    .footer { background:var(--surface); padding:60px 0 30px; border-top:1px solid var(--border); }
+    .footer .grid { grid-template-columns:repeat(auto-fit,minmax(180px,1fr)); gap:32px; }
+    .footer a { color:var(--muted); font-size:0.9rem; transition:color .2s; }
+    .footer a:hover { color:var(--heading); }
+    .footer .logo { font-family:'JetBrains Mono',monospace; font-size:1.4rem; color:var(--primary); letter-spacing:1px; }
+    .footer-bottom { margin-top:40px; padding-top:20px; border-top:1px solid var(--border); text-align:center; color:var(--muted); font-size:0.85rem; }
+
+    /* ─── Responsive ─── */
+    @media (max-width:1200px) {
+      .hero h1 { font-size:3.2rem; }
+    }
+    @media (max-width:1024px) {
+      .hero-content { grid-template-columns:1fr; gap:40px; }
+      .hero h1 { font-size:2.8rem; }
+      .how { padding:40px; }
+    }
+    @media (max-width:768px) {
+      .nav-links { flex-direction:column; }
+      .hero h1 { font-size:2.3rem; }
+      .section-title { font-size:2.2rem; }
+      .final-cta h2 { font-size:2.2rem; }
+      .final-cta { padding:80px 20px; }
+      .testimonial { padding:30px; }
+    }
+</style>
+</head>
+<body>
+  <!-- Navbar -->
+  <nav class="navbar">
+    <div class="container flex justify-between">
+      <div class="nav-logo"><span>~</span>cheap<span>@</span>cli<span>$</span></div>
+      <div class="hamburger" id="hamburger"><div></div><div></div><div></div></div>
+      <ul class="nav-links" id="navLinks">
+        <li><a href="#features">Features</a></li>
+        <li><a href="#how">How it works</a></li>
+        <li><a href="#pricing">Pricing</a></li>
+        <li><a href="#faq">FAQ</a></li>
+        <li><a href="#" class="nav-cta">Install →</a></li>
+      </ul>
+    </div>
+  </nav>
+
+  <!-- Hero -->
+  <section class="hero" id="hero">
+    <div class="hero-bg" id="heroBg"></div>
+    <div class="container hero-content">
+      <div class="hero-left">
+        <div class="hero-badge"><span class="dot"></span> v2.5 – AI-Powered CLI</div>
+        <h1>Code at the <span class="gradient">Speed of Thought</span></h1>
+        <p>An autonomous CLI editor that writes production-ready code, self-heals, and searches the web—all from your terminal.</p>
+        <div class="hero-ctas">
+          <button class="btn btn-primary" onclick="alert('Install via: curl -fsSL https://cheap.sh | sh')">⌘ Install Now</button>
+          <button class="btn btn-outline" onclick="document.getElementById('features').scrollIntoView({behavior:'smooth'})">See Features →</button>
+        </div>
+        <div class="hero-stats">
+          <div class="stat"><h3>14<span>k</span></h3><p>GitHub Stars</p></div>
+          <div class="stat"><h3>2.4<span>k</span></h3><p>Daily Users</p></div>
+          <div class="stat"><h3>99<span>%</span></h3><p>Uptime</p></div>
+        </div>
+      </div>
+      <div class="hero-right">
+        <div class="terminal-mock">
+          <div class="terminal-window">
+            <div class="terminal-header">
+              <span class="dot red"></span><span class="dot yellow"></span><span class="dot green"></span>
+              <span class="terminal-title">cheap — ~/project (zsh)</span>
+            </div>
+            <div class="terminal-body" id="terminalBody">
+              <div class="line"><span class="cursor"></span></div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- Trust Bar -->
+  <section class="trust" id="trust">
+    <div class="container">
+      <div class="logos" style="display:flex; justify-content:center; gap:40px; flex-wrap:wrap; opacity:.7;">
+        <span style="color:var(--muted);">Trusted by developers worldwide</span>
+      </div>
+    </div>
+  </section>
+
+  <!-- Features -->
+  </section>
+
+  <!-- How It Works -->
+  <section class="how section" id="how">
+    <div class="container text-center">
+      <div class="section-label">⚡ How it works</div>
+      <h2 class="section-title">Three simple steps</h2>
+      <div class="grid" style="grid-template-columns:repeat(auto-fit,minmax(260px,1fr)); gap:32px;">
+        <div class="step">
+          <div class="step-number">1</div>
+          <div class="step-content">
+            <h4>Describe</h4>
+            <p>Type a natural‑language command. CHEAP understands intent instantly.</p>
+          </div>
+        </div>
+        <div class="step">
+          <div class="step-number">2</div>
+          <div class="step-content">
+            <h4>Generate</h4>
+            <p>AI produces code, docs, configs, or tests perfectly tailored to your project.</p>
+          </div>
+        </div>
+        <div class="step">
+          <div class="step-number">3</div>
+          <div class="step-content">
+            <h4>Deploy</h4>
+            <p>One‑click run, commit, or publish – stay in the terminal the whole way.</p>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- Integrations -->
+  <section class="integrations section" id="integrations">
+    <div class="container text-center">
+      <div class="section-label">🛠️ Integrations</div>
+      <h2 class="section-title">Works with your stack</h2>
+      <div class="grid">
+        <img src="https://cdn.jsdelivr.net/npm/simple-icons@v9/icons/react.svg" alt="React" />
+        <img src="https://cdn.jsdelivr.net/npm/simple-icons@v9/icons/nodejs.svg" alt="Node.js" />
+        <img src="https://cdn.jsdelivr.net/npm/simple-icons@v9/icons/python.svg" alt="Python" />
+        <img src="https://cdn.jsdelivr.net/npm/simple-icons@v9/icons/github.svg" alt="GitHub" />
+        <img src="https://cdn.jsdelivr.net/npm/simple-icons@v9/icons/docker.svg" alt="Docker" />
+        <img src="https://cdn.jsdelivr.net/npm/simple-icons@v9/icons/aws.svg" alt="AWS" />
+      </div>
+    </div>
+  </section>
+
+  <!-- Pricing -->
+  <section class="pricing section" id="pricing">
+    <div class="container text-center">
+      <div class="section-label">💰 Pricing</div>
+      <h2 class="section-title">Flexible plans for every developer</h2>
+      <div class="grid">
+        <div class="price-card">
+          <h3>Free</h3>
+          <div class="price">$0<span style="font-size:0.6rem;">/mo</span></div>
+          <ul>
+            <li>100 commands / month</li>
+            <li>Basic models</li>
+            <li>Community support</li>
+          </ul>
+          <button class="btn btn-primary" onclick="alert('Getting started…')">Start Free</button>
+        </div>
+        <div class="price-card">
+          <h3>Pro</h3>
+          <div class="price">$19<span style="font-size:0.6rem;">/mo</span></div>
+          <ul>
+            <li>Unlimited commands</li>
+            <li>Advanced models</li>
+            <li>Priority support</li>
+            <li>Web search</li>
+          </ul>
+          <button class="btn btn-primary" onclick="alert('Proceed to checkout')">Go Pro</button>
+        </div>
+        <div class="price-card">
+          <h3>Enterprise</h3>
+          <div class="price">$49<span style="font-size:0.6rem;">/mo</span></div>
+          <ul>
+            <li>Team seats</li>
+            <li>Custom models</li>
+            <li>SSO & audit logs</li>
+            <li>Dedicated support</li>
+          </ul>
+          <button class="btn btn-primary" onclick="alert('Contact sales')">Contact Sales</button>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- Testimonials -->
+  <section class="testimonials section" id="testimonials">
+    <div class="container text-center">
+      <div class="section-label">💬 What developers say</div>
+      <h2 class="section-title">Real stories from real devs</h2>
+      <div class="testimonial active" id="t1">
+        <img src="https://i.pravatar.cc/80?img=5" alt="Avatar" />
+        <p>"CHEAP cut my onboarding time in half. I just describe a feature and it appears in my repo ready to ship."</p>
+        <h4>Alex M., Full‑Stack Engineer</h4>
+      </div>
+      <div class="testimonial" id="t2">
+        <img src="https://i.pravatar.cc/80?img=12" alt="Avatar" />
+        <p>"The self‑healing mode caught a silent lint error before my CI even ran. Pure magic!"</p>
+        <h4>Priya S., DevOps Lead</h4>
+      </div>
+      <div class="testimonial" id="t3">
+        <img src="https://i.pravatar.cc/80?img=8" alt="Avatar" />
+        <p>"Web‑aware search saved me hours of digging through docs. It writes the integration code for me!"</p>
+        <h4>Liam K., API Engineer</h4>
+      </div>
+    </div>
+  </section>
+
+  <!-- FAQ -->
+  <section class="faq section" id="faq">
+    <div class="container">
+      <div class="section-label">❓ FAQ</div>
+      <h2 class="section-title text-center">Common questions</h2>
+      <div class="question" data-answer="CHEAP runs locally, but calls OpenAI/Gemini APIs for generation. No data leaves your machine unless you enable web search."><strong>Is my code sent to the cloud?</strong></div>
+      <div class="answer">Only the prompt you type is sent to the LLM provider. All generated files stay on your filesystem.</div>
+      <div class="question" data-answer="Yes – you can install CHEAP with a one‑liner curl command or via Homebrew."><strong>How do I install?</strong></div>
+      <div class="answer">Run <code>curl -fsSL https://cheap.sh | sh</code> or <code>brew install cheap-cli</code>.</div>
+      <div class="question" data-answer="CHEAP works on macOS, Linux and Windows (via WSL). It requires Node >=18."><strong>What platforms are supported?</strong></div>
+      <div class="answer">macOS, Linux, and Windows (WSL) – any environment with Node 18+.</div>
+    </div>
+  </section>
+
+  <!-- Final CTA -->
+  <section class="final-cta" id="final-cta">
+    <div class="container">
+      <h2>Ready to supercharge your terminal?</h2>
+      <button class="btn btn-primary" onclick="alert('Installing…')">Install CHEAP now</button>
+    </div>
+  </section>
+
+  <!-- Footer -->
+  <footer class="footer">
+    <div class="container">
+      <div class="grid">
+        <div>
+          <div class="logo">cheap<span>@</span>cli</div>
+          <p style="color:var(--muted); font-size:0.9rem; margin-top:8px;">© 2025 • Built with ☕ &amp; ⌨️</p>
+        </div>
+        <div>
+          <h4 style="color:var(--heading); margin-bottom:8px;">Product</h4>
+          <a href="#features">Features</a><br/>
+          <a href="#pricing">Pricing</a><br/>
+          <a href="#how">How it works</a>
+        </div>
+        <div>
+          <h4 style="color:var(--heading); margin-bottom:8px;">Resources</h4>
+          <a href="#">Docs</a><br/>
+          <a href="#">GitHub</a><br/>
+          <a href="#">Blog</a>
+        </div>
+        <div>
+          <h4 style="color:var(--heading); margin-bottom:8px;">Community</h4>
+          <a href="#">Discord</a><br/>
+          <a href="#">Twitter</a><br/>
+          <a href="#">Stack Overflow</a>
+        </div>
+      </div>
+    </div>
+  </footer>
+
+  <!-- Scripts -->
+  <script>
+    // Mobile menu toggle
+    const hamburger = document.getElementById('hamburger');
+    const navLinks = document.getElementById('navLinks');
+    hamburger.addEventListener('click', () => navLinks.classList.toggle('show'));
+
+    // Scroll reveal
+    const revealElements = document.querySelectorAll('.section');
+    const onScroll = () => {
+      const vh = window.innerHeight;
+      revealElements.forEach(el => {
+        const rect = el.getBoundingClientRect();
+        if (rect.top < vh - 100) {
+          el.style.opacity = '1';
+          el.style.transform = 'translateY(0)';
+        }
+      });
+    };
+    window.addEventListener('scroll', onScroll);
+    revealElements.forEach(el => { el.style.opacity='0'; el.style.transform='translateY(40px)'; el.style.transition='opacity .6s, transform .6s'; });
+
+    // Counter animation
+    const counters = document.querySelectorAll('.stat h3');
+    const animateCounters = () => {
+      counters.forEach(counter => {
+        const target = +counter.textContent.replace(/[^0-9]/g,'');
+        let count = 0;
+        const inc = Math.ceil(target/120);
+        const update = () => {
+          count += inc;
+          if (count > target) count = target;
+          const s = counter.querySelector('span').innerHTML;
+          counter.innerHTML = count + '<span>' + s + '</span>';
+          if (count < target) requestAnimationFrame(update);
+        };
+        update();
+      });
+    };
+    const statsSection = document.querySelector('.hero-stats');
+    const statsObs = new IntersectionObserver(entries=>{ if(entries[0].isIntersecting){ animateCounters(); statsObs.unobserve(statsSection); } }, {threshold:0.5});
+    statsObs.observe(statsSection);
+
+    // Typewriter effect
+    const tBody = document.getElementById('terminalBody');
+    const cmds = [
+      {text: 'cheap "create a landing page with React"', delay:500},
+      {text: '✔ Generated Landing.jsx', output:true},
+      {text: '✔ Generated Landing.css', output:true},
+      {text: 'cheap "add dark mode toggle"', delay:800},
+      {text: '✔ Updated theme files', output:true}
+    ];
+    let ci = 0;
+    function typeCmd(c){
+      const line = document.createElement('div');
+      line.className = 'line';
+      tBody.appendChild(line);
+      if(c.output){
+        line.textContent = c.text;
+        setTimeout(nextCmd, 800);
+        return;
+      }
+      const p = document.createElement('span');
+      p.textContent = '❯ ';
+      p.style.color = '#D48148';
+      line.appendChild(p);
+      const sp = document.createElement('span');
+      sp.style.color = '#FFF1E8';
+      line.appendChild(sp);
+      let i = 0;
+      const t = setInterval(()=>{
+        if(i < c.text.length){
+          sp.textContent += c.text.charAt(i);
+          i++;
+        } else {
+          clearInterval(t);
+          const cur = document.createElement('span');
+          cur.className = 'cursor';
+          line.appendChild(cur);
+          setTimeout(nextCmd, c.delay || 1200);
+        }
+      }, 40);
+    }
+    function nextCmd(){
+      if(ci < cmds.length){
+        typeCmd(cmds[ci]);
+        ci++;
+      }
+    }
+    nextCmd();
+
+    // FAQ accordion
+    document.querySelectorAll('.faq .question').forEach(q=>{
+      q.addEventListener('click',()=>{
+        q.classList.toggle('active');
+        const ans = q.nextElementSibling;
+        ans.style.maxHeight = q.classList.contains('active') ? ans.scrollHeight + 'px' : '0';
+      });
+    });
+
+    // Particle background
+    const cvs = document.createElement('canvas');
+    const ctx = cvs.getContext('2d');
+    const hbg = document.getElementById('heroBg');
+    hbg.appendChild(cvs);
+    let pts = [];
+    const initPts = () => {
+      cvs.width = window.innerWidth;
+      cvs.height = window.innerHeight;
+      pts = [];
+      for(let i=0;i<80;i++){
+        pts.push({x:Math.random()*cvs.width, y:Math.random()*cvs.height, r:Math.random()*2+0.5, vx:(Math.random()-0.5)*0.4, vy:(Math.random()-0.5)*0.4});
+      }
+    };
+    const drawPts = () => {
+      ctx.clearRect(0,0,cvs.width,cvs.height);
+      ctx.fillStyle = 'rgba(212,129,72,0.12)';
+      pts.forEach(p=>{
+        ctx.beginPath();
+        ctx.arc(p.x,p.y,p.r,0,Math.PI*2);
+        ctx.fill();
+        p.x+=p.vx; p.y+=p.vy;
+        if(p.x<0||p.x>cvs.width) p.vx*=-1;
+        if(p.y<0||p.y>cvs.height) p.vy*=-1;
+      });
+      requestAnimationFrame(drawPts);
+    };
+    initPts();
+    drawPts();
+    window.addEventListener('resize', initPts);
+
+    // Testimonial rotation
+    const tms = document.querySelectorAll('.testimonial');
+    let tc = 0;
+    setInterval(()=>{
+      tms[tc].classList.remove('active');
+      tc = (tc+1)%tms.length;
+      tms[tc].classList.add('active');
+    }, 6000);
+  </script>
+</body>
+</html>
