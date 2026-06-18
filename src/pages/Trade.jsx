@@ -203,7 +203,7 @@ const Trade = () => {
 
                     // Default: 100% loss (if not targeted)
                     let totalReturn = 0;
-                    let displayAmount = amount; 
+                    let displayAmount = amount;
                     let isWin = false;
                     let dbResultAmount = -amount;
 
@@ -212,7 +212,7 @@ const Trade = () => {
                         if (!isNaN(winLossPct)) {
                             isWin = winLossPct >= 0;
                             const dollar = Math.abs(amount * winLossPct / 100);
-                            
+
                             if (isWin) {
                                 // WIN: original stake + profit
                                 totalReturn = amount + dollar;
@@ -450,9 +450,7 @@ const Trade = () => {
                             <div style={{ fontSize: '12px', color: '#888', marginBottom: '4px' }}>
                                 Balance: <span style={{ color: '#fff', fontWeight: 'bold' }}>{user?.balance || '0.00'} USDT</span>
                             </div>
-                            <div style={{ fontSize: '10px', color: '#555' }}>
-                                ID: <span style={{ color: '#888' }}>{user?.id}</span>
-                            </div>
+
 
                             {/* ── Floating Animation ── */}
                             <AnimatePresence>
@@ -473,11 +471,11 @@ const Trade = () => {
                                         style={{
                                             position: 'absolute', right: 0, top: '-25px',
                                             zIndex: 3500,
-                                            fontSize: '16px', fontWeight: '900', 
+                                            fontSize: '16px', fontWeight: '900',
                                             color: floatText.type === 'deduct' ? '#ff4d4f' : '#00c087',
                                             pointerEvents: 'none', letterSpacing: '-0.5px',
-                                            textShadow: floatText.type === 'deduct' 
-                                                ? '0 4px 15px rgba(255,77,79,0.9)' 
+                                            textShadow: floatText.type === 'deduct'
+                                                ? '0 4px 15px rgba(255,77,79,0.9)'
                                                 : '0 4px 15px rgba(0,192,135,0.9)',
                                             whiteSpace: 'nowrap', fontFamily: 'Inter, system-ui, sans-serif',
                                         }}
