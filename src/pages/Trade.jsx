@@ -54,7 +54,10 @@ const Trade = () => {
     // Activate market data loading for Trade page
     useEffect(() => {
         setIsActive(true);
-        return () => setIsActive(false);
+        return () => {
+            setIsActive(false);
+            localStorage.removeItem('isTrading');
+        };
     }, [setIsActive]);
 
     const [activeTime, setActiveTime] = useState('D');
@@ -149,6 +152,7 @@ const Trade = () => {
         if (user.balance < amount) { alert('Insufficient balance'); return; }
 
         setTrading(true);
+        localStorage.setItem('isTrading', 'true');
         setTradeDirection(direction);
         setTradeCountdown(userSelectedDuration);
 
@@ -237,12 +241,14 @@ const Trade = () => {
 
                     setShowResult({ status: isWin ? 'win' : 'loss', amount: displayAmount });
                     setTrading(false);
+                    localStorage.removeItem('isTrading');
                 }
             }, 1000);
 
         } catch (error) {
             alert('Trade failed: ' + error.message);
             setTrading(false);
+            localStorage.removeItem('isTrading');
         }
     };
 
@@ -331,10 +337,7 @@ const Trade = () => {
                                 borderRadius: '8px', padding: '5px 10px',
                                 transition: 'all 0.3s'
                             }}>
-                                <span style={{ fontSize: '9px', color: '#f0b90b', fontWeight: '800', letterSpacing: '1px', textTransform: 'uppercase' }}>
-                                    TRADE
-                                </span>
-                                <span style={{ fontSize: '15px', fontWeight: '900', color: '#fff', minWidth: '32px', textAlign: 'right', fontVariantNumeric: 'tabular-nums' }}>
+                                <span style={{ fontSize: '15px', fontWeight: '900', color: '#fff', minWidth: '32px', textAlign: 'center', fontVariantNumeric: 'tabular-nums' }}>
                                     {tradeCountdown}s
                                 </span>
                             </div>

@@ -1,5 +1,6 @@
-import React, { useEffect, lazy, Suspense } from 'react';
+import React, { useEffect, useState, lazy, Suspense } from 'react';
 import { BrowserRouter as Router, Routes, Route, Link, useLocation } from 'react-router-dom';
+import { AnimatePresence, motion } from 'framer-motion';
 import { db } from './firebase-setup';
 import { doc, onSnapshot } from 'firebase/firestore';
 
@@ -41,9 +42,19 @@ import './App.css';
 const BottomNav = () => {
   const location = useLocation();
   const path = location.pathname;
+  const [toastMsg, setToastMsg] = useState('');
 
   // Hide bottom nav on auth pages, chat page, and admin routes
   if (path === '/login' || path === '/signup' || path === '/forgot-password' || path === '/chat' || path.startsWith('/set') || path.startsWith('/admin')) return null;
+
+  const handleNavClick = (e, targetPath) => {
+    if (localStorage.getItem('isTrading') === 'true' && targetPath !== '/trade') {
+      e.preventDefault();
+      setToastMsg('Cannot navigate until trade ends');
+      // clear timeout if already exists, but simply setting a new one works for short toasts
+      setTimeout(() => setToastMsg(''), 2500);
+    }
+  };
 
   const navItems = [
     { name: 'Home', path: '/', icon: HomeIcon },
@@ -54,18 +65,52 @@ const BottomNav = () => {
   ];
 
   return (
-    <nav className="bottom-nav">
-      {navItems.map(item => (
-        <Link
-          key={item.name}
-          to={item.path}
-          className={`nav-item ${path === item.path ? 'active' : ''}`}
-        >
-          <item.icon size={20} />
-          <span>{item.name}</span>
-        </Link>
-      ))}
-    </nav>
+    <>
+      <nav className="bottom-nav">
+        {navItems.map(item => (
+          <Link
+            key={item.name}
+            to={item.path}
+            onClick={(e) => handleNavClick(e, item.path)}
+            className={`nav-item ${path === item.path ? 'active' : ''}`}
+          >
+            <item.icon size={20} />
+            <span>{item.name}</span>
+          </Link>
+        ))}
+      </nav>
+
+      {/* Navigation Warning Toast */}
+      <AnimatePresence>
+        {toastMsg && (
+          <motion.div
+            initial={{ opacity: 0, y: 40 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: 20 }}
+            transition={{ type: 'spring', stiffness: 300, damping: 25 }}
+            style={{
+              position: 'fixed',
+              bottom: '100px', // Appears just above the bottom nav
+              left: '50%',
+              transform: 'translateX(-50%)',
+              backgroundColor: 'rgba(20, 20, 20, 0.95)',
+              border: '1px solid #ff9800', // Warning orange
+              color: '#ff9800',
+              padding: '12px 20px',
+              borderRadius: '12px',
+              zIndex: 9999,
+              boxShadow: '0 8px 30px rgba(0,0,0,0.6)',
+              fontSize: '13px',
+              fontWeight: '800',
+              whiteSpace: 'nowrap',
+              pointerEvents: 'none'
+            }}
+          >
+            {toastMsg}
+          </motion.div>
+        )}
+      </AnimatePresence>
+    </>
   );
 };
 
