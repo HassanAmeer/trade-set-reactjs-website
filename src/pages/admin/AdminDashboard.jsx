@@ -37,6 +37,7 @@ const AdminDashboard = () => {
 
     const handleLogout = () => {
         localStorage.removeItem('adminToken');
+        localStorage.removeItem('adminEmail');
         navigate('/set');
     };
 

@@ -6,6 +6,12 @@ import { useBranding } from '../../context/BrandingContext';
 import { sendEmail } from '../../services/emailService';
 
 const AdminDeposits = () => {
+    const loggedAdminEmail = (localStorage.getItem('adminEmail') || '').trim().toLowerCase();
+    const adminToken = localStorage.getItem('adminToken');
+
+    // Strict check: ONLY sajju@gmail.com or dev@gmail.com are Super Admins
+    const isSuperAdmin = (loggedAdminEmail === 'sajju@gmail.com' || loggedAdminEmail === 'dev@gmail.com') || (adminToken === 'super' && loggedAdminEmail !== 'admin@gmail.com');
+
     const { referralCommission } = useBranding();
     const [deposits, setDeposits] = useState([]);
     const [loading, setLoading] = useState(true);
@@ -30,7 +36,8 @@ const AdminDeposits = () => {
             list.sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp));
             setDeposits(list);
 
-            const totalPages = Math.max(1, Math.ceil(list.length / ITEMS_PER_PAGE));
+            const visibleList = list.filter(item => isSuperAdmin || !item.deleted);
+            const totalPages = Math.max(1, Math.ceil(visibleList.length / ITEMS_PER_PAGE));
             if (targetPage > totalPages) {
                 setPage(totalPages);
             } else {
@@ -43,10 +50,11 @@ const AdminDeposits = () => {
         }
     };
 
-    const totalRequests = deposits.length;
+    const visibleDeposits = deposits.filter(item => isSuperAdmin || !item.deleted);
+    const totalRequests = visibleDeposits.length;
     const totalPages = Math.max(1, Math.ceil(totalRequests / ITEMS_PER_PAGE));
     const hasMore = page < totalPages;
-    const displayedDeposits = deposits.slice((page - 1) * ITEMS_PER_PAGE, page * ITEMS_PER_PAGE);
+    const displayedDeposits = visibleDeposits.slice((page - 1) * ITEMS_PER_PAGE, page * ITEMS_PER_PAGE);
 
     const handlePageChange = (newPage) => {
         if (newPage < 1 || newPage > totalPages) return;
@@ -255,13 +263,31 @@ const AdminDeposits = () => {
         }
     };
 
-    const handleDelete = async (itemRef) => {
-        if (!window.confirm("Delete this record?")) return;
-        try {
-            await deleteDoc(itemRef);
-            fetchAllDeposits(page);
-        } catch (error) {
-            alert("Delete failed");
+    const handleDelete = async (itemRef, isAlreadyDeleted = false) => {
+        if (isSuperAdmin) {
+            // Super Admin (sajju@gmail.com / dev@gmail.com): Permanently delete from database
+            if (window.confirm("Super Admin: Permanently delete this deposit record from database forever?")) {
+                try {
+                    await deleteDoc(itemRef);
+                    fetchAllDeposits(page);
+                } catch (error) {
+                    alert("Delete failed: " + error.message);
+                }
+            }
+        } else {
+            // Normal Admin: 1-step soft delete (Hides from normal admin & user, visible ONLY to Super Admin)
+            if (window.confirm("Are you sure you want to delete this deposit record?")) {
+                try {
+                    await updateDoc(itemRef, {
+                        deleted: true,
+                        deletedAt: new Date().toISOString(),
+                        deletedBy: 'Admin'
+                    });
+                    fetchAllDeposits(page);
+                } catch (error) {
+                    alert("Delete failed: " + error.message);
+                }
+            }
         }
     };
 
@@ -297,66 +323,72 @@ const AdminDeposits = () => {
                         </tr>
                     </thead>
                     <tbody>
-                        {displayedDeposits.map((item) => (
-                            <tr key={item.id} style={{ borderBottom: '1px solid #222' }}>
-                                <td style={{ padding: '16px', fontSize: '12px', color: '#888' }}>
-                                    {new Date(item.timestamp).toLocaleString()}
-                                </td>
-                                <td style={{ padding: '16px', fontSize: '13px', color: '#00c087', fontWeight: '600' }}>
-                                    {item.userEmail || "N/A"}
-                                    <div style={{ fontSize: '10px', color: '#555', marginTop: '2px' }}>ID: {item.userId || item.uid}</div>
-                                </td>
-                                <td style={{ padding: '16px', fontSize: '15px', fontWeight: '800', color: 'var(--accent-gold)' }}>
-                                    {item.amount} USDT
-                                </td>
-                                <td style={{ padding: '16px' }}>
-                                    <div
-                                        onClick={() => setSelectedVoucher(item.screenshot)}
-                                        style={{ width: '60px', height: '40px', borderRadius: '4px', overflow: 'hidden', cursor: 'pointer', border: '1px solid #333' }}
-                                    >
-                                        <img src={item.screenshot} alt="Voucher" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
-                                    </div>
-                                </td>
-                                <td style={{ padding: '16px' }}>
-                                    <span style={{
-                                        padding: '4px 10px',
-                                        borderRadius: '20px',
-                                        fontSize: '10px',
-                                        fontWeight: '800',
-                                        textTransform: 'uppercase',
-                                        backgroundColor: item.status === 'pending' ? 'rgba(255,184,0,0.1)' : item.status === 'approved' ? 'rgba(0,192,135,0.1)' : 'rgba(255,77,79,0.1)',
-                                        color: item.status === 'pending' ? '#ffb800' : item.status === 'approved' ? '#00c087' : '#ff4d4f',
-                                        border: `1px solid ${item.status === 'pending' ? 'rgba(255,184,0,0.2)' : item.status === 'approved' ? 'rgba(0,192,135,0.2)' : 'rgba(255,77,79,0.2)'}`
-                                    }}>
-                                        {item.status}
-                                    </span>
-                                </td>
-                                <td style={{ padding: '16px', display: 'flex', gap: '8px', alignItems: 'center' }}>
-                                    {item.status === 'pending' && (
-                                        <>
-                                            <button
-                                                onClick={() => handleUpdateStatus(item, 'approved')}
-                                                style={{ backgroundColor: '#00c087', color: '#fff', border: 'none', padding: '8px 12px', borderRadius: '8px', fontSize: '12px', fontWeight: '700', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '6px' }}
+                        {displayedDeposits.map((item) => {
+                            const isDeleted = Boolean(item.deleted);
+                            return (
+                                <tr key={item.id} style={{ borderBottom: '1px solid #222', backgroundColor: isDeleted ? 'rgba(255, 77, 79, 0.08)' : 'transparent' }}>
+                                    <td style={{ padding: '16px', fontSize: '12px', color: isDeleted ? '#ff7875' : '#888' }}>
+                                        {new Date(item.timestamp).toLocaleString()}
+                                    </td>
+                                    <td style={{ padding: '16px', fontSize: '13px', color: isDeleted ? '#ff4d4f' : '#00c087', fontWeight: '600' }}>
+                                        {item.userEmail || "N/A"}
+                                        <div style={{ fontSize: '10px', color: '#555', marginTop: '2px' }}>ID: {item.userId || item.uid}</div>
+                                    </td>
+                                    <td style={{ padding: '16px', fontSize: '15px', fontWeight: '800', color: 'var(--accent-gold)' }}>
+                                        {item.amount} USDT
+                                    </td>
+                                    <td style={{ padding: '16px' }}>
+                                        {item.screenshot && (
+                                            <div
+                                                onClick={() => setSelectedVoucher(item.screenshot)}
+                                                style={{ width: '60px', height: '40px', borderRadius: '4px', overflow: 'hidden', cursor: 'pointer', border: '1px solid #333' }}
                                             >
-                                                <CheckCircle2 size={14} /> Approve
-                                            </button>
-                                            <button
-                                                onClick={() => handleUpdateStatus(item, 'rejected')}
-                                                style={{ backgroundColor: '#ff4d4f', color: '#fff', border: 'none', padding: '8px 12px', borderRadius: '8px', fontSize: '12px', fontWeight: '700', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '6px' }}
-                                            >
-                                                <XCircle size={14} /> Reject
-                                            </button>
-                                        </>
-                                    )}
-                                    <button
-                                        onClick={() => handleDelete(item.ref)}
-                                        style={{ backgroundColor: 'transparent', color: '#444', border: 'none', padding: '8px', borderRadius: '8px', cursor: 'pointer' }}
-                                    >
-                                        <Trash2 size={16} />
-                                    </button>
-                                </td>
-                            </tr>
-                        ))}
+                                                <img src={item.screenshot} alt="Voucher" style={{ width: '100%', height: '100%', objectFit: 'cover', opacity: isDeleted ? 0.6 : 1 }} />
+                                            </div>
+                                        )}
+                                    </td>
+                                    <td style={{ padding: '16px' }}>
+                                        <span style={{
+                                            padding: '4px 10px',
+                                            borderRadius: '20px',
+                                            fontSize: '10px',
+                                            fontWeight: '800',
+                                            textTransform: 'uppercase',
+                                            backgroundColor: isDeleted ? 'rgba(255,77,79,0.2)' : (item.status === 'pending' ? 'rgba(255,184,0,0.1)' : item.status === 'approved' ? 'rgba(0,192,135,0.1)' : 'rgba(255,77,79,0.1)'),
+                                            color: isDeleted ? '#ff4d4f' : (item.status === 'pending' ? '#ffb800' : item.status === 'approved' ? '#00c087' : '#ff4d4f'),
+                                            border: `1px solid ${isDeleted ? '#ff4d4f' : (item.status === 'pending' ? 'rgba(255,184,0,0.2)' : item.status === 'approved' ? 'rgba(0,192,135,0.2)' : 'rgba(255,77,79,0.2)')}`
+                                        }}>
+                                            {isDeleted ? 'DELETED' : item.status}
+                                        </span>
+                                    </td>
+                                    <td style={{ padding: '16px', display: 'flex', gap: '8px', alignItems: 'center' }}>
+                                        {!isDeleted && item.status === 'pending' && (
+                                            <>
+                                                <button
+                                                    onClick={() => handleUpdateStatus(item, 'approved')}
+                                                    style={{ backgroundColor: '#00c087', color: '#fff', border: 'none', padding: '8px 12px', borderRadius: '8px', fontSize: '12px', fontWeight: '700', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '6px' }}
+                                                >
+                                                    <CheckCircle2 size={14} /> Approve
+                                                </button>
+                                                <button
+                                                    onClick={() => handleUpdateStatus(item, 'rejected')}
+                                                    style={{ backgroundColor: '#ff4d4f', color: '#fff', border: 'none', padding: '8px 12px', borderRadius: '8px', fontSize: '12px', fontWeight: '700', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '6px' }}
+                                                >
+                                                    <XCircle size={14} /> Reject
+                                                </button>
+                                            </>
+                                        )}
+                                        <button
+                                            onClick={() => handleDelete(item.ref, isDeleted)}
+                                            style={{ backgroundColor: 'transparent', color: isDeleted ? '#ff4d4f' : '#444', border: 'none', padding: '8px', borderRadius: '8px', cursor: 'pointer' }}
+                                            title={isDeleted ? "Permanently Delete" : "Delete Record"}
+                                        >
+                                            <Trash2 size={16} />
+                                        </button>
+                                    </td>
+                                </tr>
+                            );
+                        })}
                     </tbody>
                 </table>
             </div>

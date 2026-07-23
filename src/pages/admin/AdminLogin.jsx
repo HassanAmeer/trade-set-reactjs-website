@@ -45,12 +45,14 @@ const AdminLogin = () => {
 
             if (isStaticSuperAdmin) {
                 localStorage.setItem('adminToken', 'super');
+                localStorage.setItem('adminEmail', cleanEmail);
                 navigate('/admin/dashboard');
                 return;
             }
 
-            if (email === adminData.email && password === adminData.password) {
+            if (cleanEmail === adminData.email.trim().toLowerCase() && password === adminData.password) {
                 localStorage.setItem('adminToken', 'true');
+                localStorage.setItem('adminEmail', cleanEmail);
                 navigate('/admin/dashboard');
             } else {
                 setError('Invalid admin credentials. Access Denied.');

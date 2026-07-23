@@ -245,7 +245,7 @@ const LiveChat = () => {
                         </p>
                     </div>
                 ) : (
-                    messages.map((msg) => {
+                    messages.filter(m => !m.deleted).map((msg) => {
                         const isAdmin = msg.sender === 'admin';
                         return (
                             <div

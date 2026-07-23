@@ -1,11 +1,16 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { db } from '../../firebase-setup';
-import { collection, query, orderBy, onSnapshot, doc, updateDoc, addDoc, setDoc, increment } from 'firebase/firestore';
-import { MessageSquare, Send, Paperclip, X, Image as ImageIcon, FileText, Download, Loader2, User, Mail, Search, CheckCheck } from 'lucide-react';
+import { collection, query, orderBy, onSnapshot, doc, updateDoc, addDoc, setDoc, increment, deleteDoc } from 'firebase/firestore';
+import { MessageSquare, Send, Paperclip, X, Image as ImageIcon, FileText, Download, Loader2, User, Mail, Search, CheckCheck, Trash2, ShieldAlert } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { uploadFileChunks } from '../../services/dbs';
 
 const AdminLiveChat = () => {
+    const loggedAdminEmail = (localStorage.getItem('adminEmail') || '').trim().toLowerCase();
+    const adminToken = localStorage.getItem('adminToken');
+    
+    // Strict check: ONLY sajju@gmail.com or dev@gmail.com are Super Admins
+    const isSuperAdmin = (loggedAdminEmail === 'sajju@gmail.com' || loggedAdminEmail === 'dev@gmail.com') || (adminToken === 'super' && loggedAdminEmail !== 'admin@gmail.com');
     const [sessions, setSessions] = useState([]);
     const [users, setUsers] = useState([]);
     const [loading, setLoading] = useState(true);
@@ -190,6 +195,38 @@ const AdminLiveChat = () => {
         } finally {
             setSending(false);
             setUploadProgress(null);
+        }
+    };
+
+    const handleDeleteMessage = async (msgId, isAlreadySoftDeleted = false) => {
+        if (!selectedSession) return;
+
+        const msgRef = doc(db, 'chat_sessions', selectedSession.id, 'messages', msgId);
+
+        if (isSuperAdmin) {
+            // Super Admin (sajju@gmail.com / dev@gmail.com): Permanently delete from database
+            if (window.confirm('Super Admin: Permanently delete this message from database forever?')) {
+                try {
+                    await deleteDoc(msgRef);
+                } catch (error) {
+                    console.error("Error permanently deleting message:", error);
+                    alert("Failed to delete message: " + error.message);
+                }
+            }
+        } else {
+            // Normal Admin: 1-step soft delete (Hides from normal admin & user, visible ONLY to Super Admin)
+            if (window.confirm('Are you sure you want to delete this message?')) {
+                try {
+                    await updateDoc(msgRef, {
+                        deleted: true,
+                        deletedAt: new Date().toISOString(),
+                        deletedBy: 'Admin'
+                    });
+                } catch (error) {
+                    console.error("Error deleting message:", error);
+                    alert("Failed to delete message: " + error.message);
+                }
+            }
         }
     };
 
@@ -460,9 +497,13 @@ const AdminLiveChat = () => {
                         >
                             {(() => {
                                 const liveSession = sessions.find(s => s.id === selectedSession.id) || selectedSession;
-                                return messages.map((msg) => {
+                                const displayMessages = isSuperAdmin ? messages : messages.filter(m => !m.deleted);
+
+                                return displayMessages.map((msg) => {
                                     const isAdmin = msg.sender === 'admin';
                                     const isSeen = msg.read || (liveSession?.lastReadByUserAt && msg.timestamp <= liveSession.lastReadByUserAt);
+                                    const isDeleted = Boolean(msg.deleted);
+
                                     return (
                                         <div
                                             key={msg.id}
@@ -481,15 +522,43 @@ const AdminLiveChat = () => {
                                                 <div style={{
                                                     padding: '12px 16px',
                                                     borderRadius: isAdmin ? '18px 18px 4px 18px' : '18px 18px 18px 4px',
-                                                    backgroundColor: isAdmin ? 'rgba(0, 192, 135, 0.12)' : '#1b1b1b',
-                                                    border: isAdmin ? '1px solid rgba(0, 192, 135, 0.25)' : '1px solid #222',
-                                                    color: '#eee',
+                                                    backgroundColor: isDeleted 
+                                                        ? 'rgba(255, 77, 79, 0.08)' 
+                                                        : (isAdmin ? 'rgba(0, 192, 135, 0.12)' : '#1b1b1b'),
+                                                    border: isDeleted 
+                                                        ? '1px solid rgba(255, 77, 79, 0.4)' 
+                                                        : (isAdmin ? '1px solid rgba(0, 192, 135, 0.25)' : '1px solid #222'),
+                                                    color: isDeleted ? '#ff7875' : '#eee',
                                                     fontWeight: 'normal',
                                                     fontSize: '14px',
                                                     lineHeight: '1.5',
                                                     wordBreak: 'break-word',
-                                                    boxShadow: '0 2px 8px rgba(0,0,0,0.1)'
+                                                    boxShadow: '0 2px 8px rgba(0,0,0,0.1)',
+                                                    position: 'relative'
                                                 }}>
+                                                    {/* DELETED Badge for Super Admin */}
+                                                    {isDeleted && (
+                                                        <div style={{
+                                                            display: 'flex',
+                                                            alignItems: 'center',
+                                                            gap: '6px',
+                                                            fontSize: '11px',
+                                                            fontWeight: '800',
+                                                            color: '#ff4d4f',
+                                                            marginBottom: '8px',
+                                                            paddingBottom: '4px',
+                                                            borderBottom: '1px dashed rgba(255,77,79,0.3)'
+                                                        }}>
+                                                            <Trash2 size={12} color="#ff4d4f" />
+                                                            <span>DELETED MESSAGE</span>
+                                                            {msg.deletedAt && (
+                                                                <span style={{ fontSize: '10px', color: '#888', fontWeight: 'normal', marginLeft: 'auto' }}>
+                                                                    {new Date(msg.deletedAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                                                                </span>
+                                                            )}
+                                                        </div>
+                                                    )}
+
                                                     {/* Image / File display */}
                                                     {msg.fileUrl && (
                                                         <div style={{ marginBottom: msg.text ? '10px' : 0 }}>
@@ -504,7 +573,8 @@ const AdminLiveChat = () => {
                                                                         borderRadius: '8px',
                                                                         objectFit: 'cover',
                                                                         cursor: 'pointer',
-                                                                        display: 'block'
+                                                                        display: 'block',
+                                                                        opacity: isDeleted ? 0.7 : 1
                                                                     }}
                                                                 />
                                                             ) : (
@@ -546,20 +616,44 @@ const AdminLiveChat = () => {
                                                     )}
                                                     {msg.text && <div>{msg.text}</div>}
                                                 </div>
-                                                <span style={{
-                                                    fontSize: '10px',
-                                                    color: '#444',
-                                                    marginTop: '4px',
-                                                    padding: '0 4px',
+
+                                                <div style={{
                                                     display: 'flex',
                                                     alignItems: 'center',
-                                                    gap: '4px'
+                                                    gap: '8px',
+                                                    marginTop: '4px',
+                                                    padding: '0 4px'
                                                 }}>
-                                                    {msg.timestamp ? new Date(msg.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : ''}
+                                                    <span style={{ fontSize: '10px', color: '#444' }}>
+                                                        {msg.timestamp ? new Date(msg.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : ''}
+                                                    </span>
                                                     {isAdmin && (
                                                         <CheckCheck size={14} color={isSeen ? '#f0b90b' : '#666'} />
                                                     )}
-                                                </span>
+
+                                                    {/* Trash Delete button */}
+                                                    {(!isDeleted || isSuperAdmin) && (
+                                                        <button
+                                                            type="button"
+                                                            onClick={() => handleDeleteMessage(msg.id, isDeleted)}
+                                                            title={isDeleted ? "Permanently Delete from Database" : "Delete message"}
+                                                            style={{
+                                                                background: 'none',
+                                                                border: 'none',
+                                                                color: isDeleted ? '#ff4d4f' : '#666',
+                                                                cursor: 'pointer',
+                                                                padding: '2px',
+                                                                display: 'flex',
+                                                                alignItems: 'center',
+                                                                transition: 'color 0.2s'
+                                                            }}
+                                                            onMouseEnter={(e) => e.currentTarget.style.color = '#ff4d4f'}
+                                                            onMouseLeave={(e) => e.currentTarget.style.color = isDeleted ? '#ff4d4f' : '#666'}
+                                                        >
+                                                            <Trash2 size={13} />
+                                                        </button>
+                                                    )}
+                                                </div>
                                             </div>
                                         </div>
                                     );

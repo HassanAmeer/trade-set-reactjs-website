@@ -29,7 +29,7 @@ const WithdrawalHistory = () => {
                 id: doc.id,
                 ...doc.data()
             }));
-            setWithdrawals(list);
+            setWithdrawals(list.filter(w => !w.deleted));
         } catch (error) {
             console.error("Error fetching withdrawals:", error);
         } finally {

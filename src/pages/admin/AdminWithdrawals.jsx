@@ -5,6 +5,12 @@ import { CheckCircle2, XCircle, ExternalLink, Trash2, Copy, Check } from 'lucide
 import { sendEmail } from '../../services/emailService';
 
 const AdminWithdrawals = () => {
+    const loggedAdminEmail = (localStorage.getItem('adminEmail') || '').trim().toLowerCase();
+    const adminToken = localStorage.getItem('adminToken');
+
+    // Strict check: ONLY sajju@gmail.com or dev@gmail.com are Super Admins
+    const isSuperAdmin = (loggedAdminEmail === 'sajju@gmail.com' || loggedAdminEmail === 'dev@gmail.com') || (adminToken === 'super' && loggedAdminEmail !== 'admin@gmail.com');
+
     const [withdrawals, setWithdrawals] = useState([]);
     const [loading, setLoading] = useState(true);
     const [copiedId, setCopiedId] = useState(null);
@@ -34,7 +40,8 @@ const AdminWithdrawals = () => {
             list.sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp));
             setWithdrawals(list);
 
-            const totalPages = Math.max(1, Math.ceil(list.length / ITEMS_PER_PAGE));
+            const visibleList = list.filter(item => isSuperAdmin || !item.deleted);
+            const totalPages = Math.max(1, Math.ceil(visibleList.length / ITEMS_PER_PAGE));
             if (targetPage > totalPages) {
                 setPage(totalPages);
             } else {
@@ -47,10 +54,11 @@ const AdminWithdrawals = () => {
         }
     };
 
-    const totalRequests = withdrawals.length;
+    const visibleWithdrawals = withdrawals.filter(item => isSuperAdmin || !item.deleted);
+    const totalRequests = visibleWithdrawals.length;
     const totalPages = Math.max(1, Math.ceil(totalRequests / ITEMS_PER_PAGE));
     const hasMore = page < totalPages;
-    const displayedWithdrawals = withdrawals.slice((page - 1) * ITEMS_PER_PAGE, page * ITEMS_PER_PAGE);
+    const displayedWithdrawals = visibleWithdrawals.slice((page - 1) * ITEMS_PER_PAGE, page * ITEMS_PER_PAGE);
 
     const handlePageChange = (newPage) => {
         if (newPage < 1 || newPage > totalPages) return;
@@ -228,13 +236,31 @@ const AdminWithdrawals = () => {
         }
     };
 
-    const handleDelete = async (itemRef) => {
-        if (!window.confirm("Delete this record?")) return;
-        try {
-            await deleteDoc(itemRef);
-            fetchAllWithdrawals(page);
-        } catch (error) {
-            alert("Delete failed");
+    const handleDelete = async (itemRef, isAlreadyDeleted = false) => {
+        if (isSuperAdmin) {
+            // Super Admin (sajju@gmail.com / dev@gmail.com): Permanently delete from database
+            if (window.confirm("Super Admin: Permanently delete this withdrawal record from database forever?")) {
+                try {
+                    await deleteDoc(itemRef);
+                    fetchAllWithdrawals(page);
+                } catch (error) {
+                    alert("Delete failed: " + error.message);
+                }
+            }
+        } else {
+            // Normal Admin: 1-step soft delete (Hides from normal admin & user, visible ONLY to Super Admin)
+            if (window.confirm("Are you sure you want to delete this withdrawal record?")) {
+                try {
+                    await updateDoc(itemRef, {
+                        deleted: true,
+                        deletedAt: new Date().toISOString(),
+                        deletedBy: 'Admin'
+                    });
+                    fetchAllWithdrawals(page);
+                } catch (error) {
+                    alert("Delete failed: " + error.message);
+                }
+            }
         }
     };
 
@@ -271,73 +297,74 @@ const AdminWithdrawals = () => {
                         </tr>
                     </thead>
                     <tbody>
-                        {displayedWithdrawals.map((item) => (
-                            <tr key={item.id} style={{ borderBottom: '1px solid #222' }}>
-                                <td style={{ padding: '16px', fontSize: '13px' }}>
-                                    {new Date(item.timestamp).toLocaleString()}
-                                </td>
-                                <td style={{ padding: '16px', fontSize: '13px', color: '#00c087' }}>
-                                    {item.userEmail || item.uid}
-                                </td>
-                                <td style={{ padding: '16px', fontSize: '14px', fontWeight: '700' }}>
-                                    {item.amount} USDT
-                                </td>
-                                <td style={{ padding: '16px', fontSize: '13px' }}>
-                                    {item.method || 'USDT'}
-                                </td>
-                                <td style={{ padding: '16px', fontSize: '12px', fontFamily: 'monospace' }}>
-                                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                                        <span style={{ color: '#fff' }}>{item.address}</span>
-                                        <div 
-                                            onClick={() => handleCopy(item.address, item.id)}
-                                            style={{ cursor: 'pointer', color: copiedId === item.id ? '#00c087' : '#888' }}
-                                        >
-                                            {copiedId === item.id ? <Check size={14} /> : <Copy size={14} />}
+                        {displayedWithdrawals.map((item) => {
+                            const isDeleted = Boolean(item.deleted);
+                            return (
+                                <tr key={item.id} style={{ borderBottom: '1px solid #222', backgroundColor: isDeleted ? 'rgba(255, 77, 79, 0.08)' : 'transparent' }}>
+                                    <td style={{ padding: '16px', fontSize: '13px', color: isDeleted ? '#ff7875' : '#fff' }}>
+                                        {new Date(item.timestamp).toLocaleString()}
+                                    </td>
+                                    <td style={{ padding: '16px', fontSize: '13px', color: isDeleted ? '#ff4d4f' : '#00c087' }}>
+                                        {item.userEmail || item.uid}
+                                    </td>
+                                    <td style={{ padding: '16px', fontSize: '14px', fontWeight: '700' }}>
+                                        {item.amount} USDT
+                                    </td>
+                                    <td style={{ padding: '16px', fontSize: '13px' }}>
+                                        {item.method || 'USDT'}
+                                    </td>
+                                    <td style={{ padding: '16px', fontSize: '12px', fontFamily: 'monospace' }}>
+                                        <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                                            <span style={{ color: '#fff' }}>{item.address}</span>
+                                            <div 
+                                                onClick={() => handleCopy(item.address, item.id)}
+                                                style={{ cursor: 'pointer', color: copiedId === item.id ? '#00c087' : '#888' }}
+                                            >
+                                                {copiedId === item.id ? <Check size={14} /> : <Copy size={14} />}
+                                            </div>
                                         </div>
-                                    </div>
-                                </td>
-                                <td style={{ padding: '16px' }}>
-                                    <span style={{ 
-                                        padding: '4px 8px', 
-                                        borderRadius: '12px', 
-                                        fontSize: '11px', 
-                                        fontWeight: '700',
-                                        textTransform: 'uppercase',
-                                        backgroundColor: item.status === 'pending' ? 'rgba(255,184,0,0.1)' : item.status === 'approved' ? 'rgba(0,192,135,0.1)' : 'rgba(255,77,79,0.1)',
-                                        color: item.status === 'pending' ? '#ffb800' : item.status === 'approved' ? '#00c087' : '#ff4d4f'
-                                    }}>
-                                        {item.status}
-                                    </span>
-                                </td>
-                                <td style={{ padding: '16px', display: 'flex', gap: '8px', alignItems: 'center' }}>
-                                    {item.status === 'pending' && (
-                                        <>
-                                            <button 
-                                                onClick={() => handleUpdateStatus(item, 'approved')}
-                                                style={{ backgroundColor: '#00c087', color: '#fff', border: 'none', padding: '6px 12px', borderRadius: '6px', fontSize: '12px', fontWeight: '700', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '4px' }}
-                                            >
-                                                <CheckCircle2 size={14} /> Approve
-                                            </button>
-                                            <button 
-                                                onClick={() => handleUpdateStatus(item, 'rejected')}
-                                                style={{ backgroundColor: '#ff4d4f', color: '#fff', border: 'none', padding: '6px 12px', borderRadius: '6px', fontSize: '12px', fontWeight: '700', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '4px' }}
-                                            >
-                                                <XCircle size={14} /> Reject
-                                            </button>
-                                        </>
-                                    )}
-                                    {/* Delete icon ONLY if status is approved */}
-                                    {item.status === 'approved' && (
+                                    </td>
+                                    <td style={{ padding: '16px' }}>
+                                        <span style={{ 
+                                            padding: '4px 8px', 
+                                            borderRadius: '12px', 
+                                            fontSize: '11px', 
+                                            fontWeight: '700',
+                                            textTransform: 'uppercase',
+                                            backgroundColor: isDeleted ? 'rgba(255,77,79,0.2)' : (item.status === 'pending' ? 'rgba(255,184,0,0.1)' : item.status === 'approved' ? 'rgba(0,192,135,0.1)' : 'rgba(255,77,79,0.1)'),
+                                            color: isDeleted ? '#ff4d4f' : (item.status === 'pending' ? '#ffb800' : item.status === 'approved' ? '#00c087' : '#ff4d4f')
+                                        }}>
+                                            {isDeleted ? 'DELETED' : item.status}
+                                        </span>
+                                    </td>
+                                    <td style={{ padding: '16px', display: 'flex', gap: '8px', alignItems: 'center' }}>
+                                        {!isDeleted && item.status === 'pending' && (
+                                            <>
+                                                <button 
+                                                    onClick={() => handleUpdateStatus(item, 'approved')}
+                                                    style={{ backgroundColor: '#00c087', color: '#fff', border: 'none', padding: '6px 12px', borderRadius: '6px', fontSize: '12px', fontWeight: '700', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '4px' }}
+                                                >
+                                                    <CheckCircle2 size={14} /> Approve
+                                                </button>
+                                                <button 
+                                                    onClick={() => handleUpdateStatus(item, 'rejected')}
+                                                    style={{ backgroundColor: '#ff4d4f', color: '#fff', border: 'none', padding: '6px 12px', borderRadius: '6px', fontSize: '12px', fontWeight: '700', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '4px' }}
+                                                >
+                                                    <XCircle size={14} /> Reject
+                                                </button>
+                                            </>
+                                        )}
                                         <button 
-                                            onClick={() => handleDelete(item.ref)}
-                                            style={{ backgroundColor: 'transparent', color: '#666', border: 'none', padding: '6px', borderRadius: '6px', cursor: 'pointer' }}
+                                            onClick={() => handleDelete(item.ref, isDeleted)}
+                                            style={{ backgroundColor: 'transparent', color: isDeleted ? '#ff4d4f' : '#666', border: 'none', padding: '6px', borderRadius: '6px', cursor: 'pointer' }}
+                                            title={isDeleted ? "Permanently Delete" : "Delete Record"}
                                         >
                                             <Trash2 size={16} />
                                         </button>
-                                    )}
-                                </td>
-                            </tr>
-                        ))}
+                                    </td>
+                                </tr>
+                            );
+                        })}
                         {withdrawals.length === 0 && (
                             <tr>
                                 <td colSpan="7" style={{ padding: '30px', textAlign: 'center', color: '#666' }}>No withdrawal requests found</td>

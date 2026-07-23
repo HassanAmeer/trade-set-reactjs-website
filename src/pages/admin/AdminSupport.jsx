@@ -7,6 +7,12 @@ import { uploadFileChunks } from '../../services/dbs';
 import { sendEmail } from '../../services/emailService';
 
 const AdminSupport = () => {
+    const loggedAdminEmail = (localStorage.getItem('adminEmail') || '').trim().toLowerCase();
+    const adminToken = localStorage.getItem('adminToken');
+
+    // Strict check: ONLY sajju@gmail.com or dev@gmail.com are Super Admins
+    const isSuperAdmin = (loggedAdminEmail === 'sajju@gmail.com' || loggedAdminEmail === 'dev@gmail.com') || (adminToken === 'super' && loggedAdminEmail !== 'admin@gmail.com');
+
     const [tickets, setTickets] = useState([]);
     const [loading, setLoading] = useState(true);
     const [selectedTicket, setSelectedTicket] = useState(null);
@@ -33,12 +39,34 @@ const AdminSupport = () => {
     }, []);
 
     const handleDelete = async (id) => {
-        if (!window.confirm('Delete this ticket Permanently?')) return;
-        try {
-            await deleteDoc(doc(db, 'support_messages', id));
-            if (selectedTicket?.id === id) setSelectedTicket(null);
-        } catch (error) {
-            alert('Error deleting');
+        const ticketRef = doc(db, 'support_messages', id);
+
+        if (isSuperAdmin) {
+            // Super Admin (sajju@gmail.com / dev@gmail.com): Permanently delete from database
+            if (window.confirm('Super Admin: Permanently delete this support ticket from database forever?')) {
+                try {
+                    await deleteDoc(ticketRef);
+                    if (selectedTicket?.id === id) setSelectedTicket(null);
+                } catch (error) {
+                    console.error("Error deleting ticket:", error);
+                    alert('Error deleting: ' + error.message);
+                }
+            }
+        } else {
+            // Normal Admin: 1-step soft delete (Hides from normal admin & user, visible ONLY to Super Admin)
+            if (window.confirm('Are you sure you want to delete this support ticket?')) {
+                try {
+                    await updateDoc(ticketRef, {
+                        deleted: true,
+                        deletedAt: new Date().toISOString(),
+                        deletedBy: 'Admin'
+                    });
+                    if (selectedTicket?.id === id) setSelectedTicket(null);
+                } catch (error) {
+                    console.error("Error deleting ticket:", error);
+                    alert('Error deleting: ' + error.message);
+                }
+            }
         }
     };
 
@@ -115,6 +143,9 @@ const AdminSupport = () => {
     };
 
     const filteredTickets = tickets.filter(t => {
+        const isDeleted = Boolean(t.deleted);
+        if (isDeleted && !isSuperAdmin) return false;
+
         const matchFilter = filter === 'all' || t.status === filter;
         const matchSearch = t.userEmail.toLowerCase().includes(search.toLowerCase()) || (t.phone && t.phone.includes(search));
         return matchFilter && matchSearch;
@@ -170,26 +201,40 @@ const AdminSupport = () => {
                 </div>
 
                 <div style={{ flex: 1, overflowY: 'auto' }}>
-                    {filteredTickets.map(t => (
-                        <div
-                            key={t.id}
-                            onClick={() => setSelectedTicket(t)}
-                            style={{
-                                padding: '15px 20px',
-                                borderBottom: '1px solid #111',
-                                cursor: 'pointer',
-                                background: selectedTicket?.id === t.id ? 'rgba(0,192,135,0.05)' : 'transparent',
-                                borderLeft: selectedTicket?.id === t.id ? '4px solid #00c087' : '4px solid transparent',
-                                transition: 'all 0.2s'
-                            }}
-                        >
-                            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
-                                <span style={{ fontSize: '14px', fontWeight: '800', color: selectedTicket?.id === t.id ? '#00c087' : '#eee', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', maxWidth: '180px' }}>{t.userEmail}</span>
-                                <span style={{ fontSize: '10px', padding: '2px 8px', borderRadius: '10px', background: t.status === 'unread' ? '#ff4d4f' : '#222', color: '#fff' }}>{t.status}</span>
+                    {filteredTickets.map(t => {
+                        const isDeleted = Boolean(t.deleted);
+                        const isSelected = selectedTicket?.id === t.id;
+                        return (
+                            <div
+                                key={t.id}
+                                onClick={() => setSelectedTicket(t)}
+                                style={{
+                                    padding: '15px 20px',
+                                    borderBottom: '1px solid #111',
+                                    cursor: 'pointer',
+                                    background: isDeleted 
+                                        ? (isSelected ? 'rgba(255,77,79,0.15)' : 'rgba(255,77,79,0.05)')
+                                        : (isSelected ? 'rgba(0,192,135,0.05)' : 'transparent'),
+                                    borderLeft: isDeleted
+                                        ? (isSelected ? '4px solid #ff4d4f' : '4px solid rgba(255,77,79,0.4)')
+                                        : (isSelected ? '4px solid #00c087' : '4px solid transparent'),
+                                    transition: 'all 0.2s'
+                                }}
+                            >
+                                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+                                    <span style={{ fontSize: '14px', fontWeight: '800', color: isDeleted ? '#ff4d4f' : (isSelected ? '#00c087' : '#eee'), whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', maxWidth: '160px' }}>
+                                        {t.userEmail}
+                                    </span>
+                                    <span style={{ fontSize: '10px', padding: '2px 8px', borderRadius: '10px', background: isDeleted ? '#ff4d4f' : (t.status === 'unread' ? '#ff4d4f' : '#222'), color: '#fff', fontWeight: '800' }}>
+                                        {isDeleted ? 'DELETED' : t.status}
+                                    </span>
+                                </div>
+                                <div style={{ fontSize: '12px', color: isDeleted ? '#ff7875' : '#555', marginTop: '5px' }}>
+                                    {new Date(t.timestamp).toLocaleDateString()}
+                                </div>
                             </div>
-                            <div style={{ fontSize: '12px', color: '#555', marginTop: '5px' }}>{new Date(t.timestamp).toLocaleDateString()}</div>
-                        </div>
-                    ))}
+                        );
+                    })}
                 </div>
             </div>
 
@@ -210,11 +255,36 @@ const AdminSupport = () => {
                                 </div>
                             </div>
                             <div style={{ display: 'flex', gap: '10px' }}>
-                                <button onClick={() => handleDelete(selectedTicket.id)} style={{ padding: '8px', color: '#ff4d4f', background: 'rgba(255,77,79,0.1)', border: 'none', borderRadius: '8px', cursor: 'pointer' }}><Trash2 size={18} /></button>
+                                <button onClick={() => handleDelete(selectedTicket.id)} style={{ padding: '8px', color: '#ff4d4f', background: 'rgba(255,77,79,0.1)', border: 'none', borderRadius: '8px', cursor: 'pointer' }} title={selectedTicket.deleted ? "Permanently Delete" : "Delete Ticket"}>
+                                    <Trash2 size={18} />
+                                </button>
                             </div>
                         </div>
 
                         <div style={{ flex: 1, overflowY: 'auto', padding: '35px' }}>
+                            {selectedTicket.deleted && (
+                                <div style={{
+                                    backgroundColor: 'rgba(255,77,79,0.1)',
+                                    border: '1px solid rgba(255,77,79,0.3)',
+                                    borderRadius: '12px',
+                                    padding: '14px 20px',
+                                    color: '#ff4d4f',
+                                    display: 'flex',
+                                    alignItems: 'center',
+                                    gap: '10px',
+                                    marginBottom: '25px',
+                                    fontSize: '13px',
+                                    fontWeight: '800'
+                                }}>
+                                    <Trash2 size={16} />
+                                    <span>THIS TICKET WAS DELETED BY ADMIN</span>
+                                    {selectedTicket.deletedAt && (
+                                        <span style={{ fontSize: '11px', color: '#888', marginLeft: 'auto', fontWeight: 'normal' }}>
+                                            Deleted on {new Date(selectedTicket.deletedAt).toLocaleString()}
+                                        </span>
+                                    )}
+                                </div>
+                            )}
                             <div style={{ marginBottom: '40px' }}>
                                 <div style={{ display: 'flex', gap: '10px', alignItems: 'center', color: '#00c087', fontSize: '12px', fontWeight: '700', textTransform: 'uppercase', marginBottom: '15px' }}>
                                     <MessageSquare size={14} /> Opening Request

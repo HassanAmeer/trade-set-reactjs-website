@@ -30,7 +30,7 @@ const DepositHistory = () => {
                 id: doc.id,
                 ...doc.data()
             }));
-            setDeposits(depositList);
+            setDeposits(depositList.filter(d => !d.deleted));
         } catch (error) {
             console.error("Error fetching deposits:", error);
         } finally {
