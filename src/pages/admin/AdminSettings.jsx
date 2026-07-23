@@ -3,7 +3,7 @@ import { db } from '../../firebase-setup';
 import { doc, getDoc, setDoc, updateDoc } from 'firebase/firestore';
 import { uploadFileChunks } from '../../services/dbs';
 import { motion } from 'framer-motion';
-import { Camera, Save, Loader2, User, Zap, Eye, EyeOff } from 'lucide-react';
+import { Camera, Save, Loader2, User, Zap, Eye, EyeOff, Power, Globe, ShieldAlert } from 'lucide-react';
 
 const AdminSettings = () => {
     const [adminData, setAdminData] = useState({
@@ -23,7 +23,8 @@ const AdminSettings = () => {
         referralCommission: 10,
         emailjsServiceId: '',
         emailjsTemplates: '',
-        emailjsPublicKey: ''
+        emailjsPublicKey: '',
+        isWebsiteEnabled: true
     });
     const [loading, setLoading] = useState(true);
     const [savingSection, setSavingSection] = useState(''); // 'account', 'branding', 'market', 'email'
@@ -75,6 +76,22 @@ const AdminSettings = () => {
             console.error("Error fetching configs:", error);
         } finally {
             setLoading(false);
+        }
+    };
+
+    const toggleWebsiteStatus = async () => {
+        const newStatus = !platformConfig.isWebsiteEnabled;
+        setSavingSection('websiteStatus');
+        try {
+            const platformRef = doc(db, 'admin_set', 'platform');
+            await setDoc(platformRef, { ...platformConfig, isWebsiteEnabled: newStatus }, { merge: true });
+            setPlatformConfig(prev => ({ ...prev, isWebsiteEnabled: newStatus }));
+            alert(`Website has been ${newStatus ? 'ENABLED (Live Mode)' : 'DISABLED (404 Not Found Mode)'}!`);
+        } catch (error) {
+            console.error("Error toggling website status:", error);
+            alert("Failed to update website status: " + error.message);
+        } finally {
+            setSavingSection('');
         }
     };
 
@@ -190,6 +207,89 @@ const AdminSettings = () => {
 
             <div className="settings-grid">
                 
+                {/* 0. Website Status Control Card */}
+                <div className="settings-card" style={{ gridColumn: '1 / -1', border: platformConfig.isWebsiteEnabled ? '1px solid rgba(0,192,135,0.3)' : '1px solid rgba(255,77,79,0.3)' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '15px' }}>
+                        <div>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '8px' }}>
+                                {platformConfig.isWebsiteEnabled ? (
+                                    <Globe size={22} color="#00c087" />
+                                ) : (
+                                    <ShieldAlert size={22} color="#ff4d4f" />
+                                )}
+                                <h3 style={{ ...sectionHeaderStyle, margin: 0, color: platformConfig.isWebsiteEnabled ? '#00c087' : '#ff4d4f' }}>
+                                    Website Access Control
+                                </h3>
+                            </div>
+                            <p style={{ color: '#888', fontSize: '13px', margin: 0 }}>
+                                Toggle client-side website availability. When disabled, all non-admin routes will return a <b>404 Page Not Found</b> error.
+                            </p>
+                        </div>
+
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '20px' }}>
+                            <div style={{
+                                padding: '6px 14px',
+                                borderRadius: '20px',
+                                fontSize: '12px',
+                                fontWeight: '800',
+                                backgroundColor: platformConfig.isWebsiteEnabled ? 'rgba(0,192,135,0.15)' : 'rgba(255,77,79,0.15)',
+                                color: platformConfig.isWebsiteEnabled ? '#00c087' : '#ff4d4f',
+                                border: platformConfig.isWebsiteEnabled ? '1px solid rgba(0,192,135,0.3)' : '1px solid rgba(255,77,79,0.3)'
+                            }}>
+                                {platformConfig.isWebsiteEnabled ? 'LIVE / ENABLED' : 'OFFLINE / 404 MODE'}
+                            </div>
+
+                            {/* Modern iOS Style Toggle Switch */}
+                            <div 
+                                onClick={savingSection === 'websiteStatus' ? undefined : toggleWebsiteStatus}
+                                style={{
+                                    display: 'flex',
+                                    alignItems: 'center',
+                                    gap: '10px',
+                                    cursor: savingSection === 'websiteStatus' ? 'not-allowed' : 'pointer',
+                                    userSelect: 'none'
+                                }}
+                            >
+                                <span style={{ fontSize: '13px', fontWeight: '700', color: platformConfig.isWebsiteEnabled ? '#00c087' : '#888' }}>
+                                    {platformConfig.isWebsiteEnabled ? 'Enabled' : 'Disabled'}
+                                </span>
+
+                                <div style={{
+                                    width: '56px',
+                                    height: '30px',
+                                    borderRadius: '15px',
+                                    backgroundColor: platformConfig.isWebsiteEnabled ? '#00c087' : '#2a2a2a',
+                                    border: platformConfig.isWebsiteEnabled ? '1px solid #00c087' : '1px solid #444',
+                                    padding: '2px',
+                                    position: 'relative',
+                                    transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
+                                    boxShadow: platformConfig.isWebsiteEnabled ? '0 0 12px rgba(0,192,135,0.4)' : 'none'
+                                }}>
+                                    <div style={{
+                                        width: '24px',
+                                        height: '24px',
+                                        borderRadius: '50%',
+                                        backgroundColor: '#ffffff',
+                                        position: 'absolute',
+                                        top: '2px',
+                                        left: '2px',
+                                        transform: platformConfig.isWebsiteEnabled ? 'translateX(26px)' : 'translateX(0px)',
+                                        transition: 'transform 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
+                                        display: 'flex',
+                                        alignItems: 'center',
+                                        justifyContent: 'center',
+                                        boxShadow: '0 2px 6px rgba(0,0,0,0.3)'
+                                    }}>
+                                        {savingSection === 'websiteStatus' && (
+                                            <Loader2 className="animate-spin" size={14} color="#00c087" />
+                                        )}
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
                 {/* 1. Admin Account Form */}
                 <form onSubmit={saveAccount} className="settings-card">
                     <h3 style={sectionHeaderStyle}>Admin Account</h3>

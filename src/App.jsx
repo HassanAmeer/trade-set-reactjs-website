@@ -1,9 +1,6 @@
 import React, { useEffect, useState, lazy, Suspense } from 'react';
 import { BrowserRouter as Router, Routes, Route, Link, useLocation } from 'react-router-dom';
 import { AnimatePresence, motion } from 'framer-motion';
-import { db } from './firebase-setup';
-import { doc, onSnapshot } from 'firebase/firestore';
-
 // Critical pages - load immediately
 import Home from './pages/Home';
 import Market from './pages/Market';
@@ -32,11 +29,13 @@ const BinaryHistory = lazy(() => import('./pages/BinaryHistory'));
 const LiveChat = lazy(() => import('./pages/LiveChat'));
 const P2P = lazy(() => import('./pages/P2P'));
 
+import ShimmerScreen from './components/ShimmerScreen';
+import NotFound from './pages/NotFound';
 import FloatingChatButton from './components/FloatingChatButton';
 import { Home as HomeIcon, BarChart2, Activity, Pickaxe, User } from 'lucide-react';
 import { MarketProvider } from './context/MarketContext';
 import { AuthProvider } from './context/AuthContext';
-import { BrandingProvider } from './context/BrandingContext';
+import { BrandingProvider, useBranding } from './context/BrandingContext';
 import './App.css';
 
 const BottomNav = () => {
@@ -118,20 +117,19 @@ const AppContent = () => {
   const location = useLocation();
   const path = location.pathname;
   const isAdminRoute = path.startsWith('/set') || path.startsWith('/admin');
+  const { isWebsiteEnabled, loading } = useBranding();
+
+  if (loading) {
+    return <ShimmerScreen />;
+  }
+
+  if (!isWebsiteEnabled && !isAdminRoute) {
+    return <NotFound />;
+  }
 
   return (
     <div className={isAdminRoute ? "admin-root-wrapper" : "mobile-layout-wrapper"}>
-      <Suspense fallback={
-        <div style={{
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'center',
-          minHeight: '100dvh',
-          backgroundColor: '#0a0a0a'
-        }}>
-          <div className="circular-loader-simple"></div>
-        </div>
-      }>
+      <Suspense fallback={<ShimmerScreen />}>
         <Routes>
           <Route path="/" element={<Home />} />
           <Route path="/market" element={<Market />} />
@@ -159,6 +157,9 @@ const AppContent = () => {
           {/* Admin Routes */}
           <Route path="/set" element={<AdminLogin />} />
           <Route path="/admin/*" element={<AdminDashboard />} />
+
+          {/* Catch-all fallback */}
+          <Route path="*" element={<NotFound />} />
         </Routes>
       </Suspense>
       <FloatingChatButton />

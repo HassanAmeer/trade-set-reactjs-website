@@ -13,7 +13,8 @@ export const BrandingProvider = ({ children }) => {
         referralCommission: 10,
         minDeposit: 10,
         minWithdrawal: 20,
-        usdtAddress: ''
+        usdtAddress: '',
+        isWebsiteEnabled: true
     });
     const [loading, setLoading] = useState(true);
 
@@ -24,7 +25,6 @@ export const BrandingProvider = ({ children }) => {
         const unsubscribe = onSnapshot(platformRef, (docSnap) => {
             if (docSnap.exists()) {
                 const data = docSnap.data();
-                console.log("FETCHED BRANDING FROM FIRESTORE:", data); // Debug log
                 
                 const newBranding = {
                     websiteName: data.websiteName || 'TradeSet',
@@ -34,7 +34,8 @@ export const BrandingProvider = ({ children }) => {
                     referralCommission: data.referralCommission || 10,
                     minDeposit: data.minDeposit || 10,
                     minWithdrawal: data.minWithdrawal || 20,
-                    usdtAddress: data.usdtAddress || ''
+                    usdtAddress: data.usdtAddress || '',
+                    isWebsiteEnabled: data.isWebsiteEnabled !== undefined ? Boolean(data.isWebsiteEnabled) : true
                 };
                 
                 setBranding(newBranding);
@@ -61,6 +62,9 @@ export const BrandingProvider = ({ children }) => {
             } else {
                 console.log("NO BRANDING DOC FOUND IN FIRESTORE");
             }
+            setLoading(false);
+        }, (error) => {
+            console.error("Firestore onSnapshot error in BrandingContext:", error);
             setLoading(false);
         });
 

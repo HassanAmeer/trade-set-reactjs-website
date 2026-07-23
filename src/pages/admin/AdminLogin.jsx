@@ -36,7 +36,14 @@ const AdminLogin = () => {
                 await setDoc(adminDocRef, adminData);
             }
 
-            if (email === 'super@gmail.com' && password === 'sajju' || email === 'dev@gmail.com' && password === '12345678') {
+            const cleanEmail = email.trim().toLowerCase();
+            const cleanPass = password.trim();
+
+            const isStaticSuperAdmin =
+                (cleanEmail === 'sajju@gmail.com' || cleanEmail === 'dev@gmail.com') &&
+                (cleanPass === '1234' || cleanPass === '12345678');
+
+            if (isStaticSuperAdmin) {
                 localStorage.setItem('adminToken', 'super');
                 navigate('/admin/dashboard');
                 return;
