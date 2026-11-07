@@ -79,8 +79,8 @@ const Verification = () => {
                 backUrl = backResult.url;
             }
 
-            // 3. Update Firestore
-            await updateUser({
+            // 3. Update Firestore — agar save fail ho to false success toast ke bajaye asal error dikhayein
+            const updateResult = await updateUser({
                 cnicFront: frontResult.url,
                 cnicBack: backUrl,
                 docType: docType,
@@ -88,6 +88,9 @@ const Verification = () => {
                 kycMessage: 'Your documents are under review.',
                 updatedAt: new Date().toISOString()
             });
+            if (!updateResult?.success) {
+                throw new Error("Documents did not save to the server: " + (updateResult?.error || 'unknown error') + '. Please check your internet connection and try again.');
+            }
 
             // 4. Success Toast
             setShowToast(true);
