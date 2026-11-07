@@ -1,0 +1,288 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Install App Tile - Demo</title>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; font-family: -apple-system, 'Segoe UI', Roboto, sans-serif; }
+  body {
+    background: #26282b;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    min-height: 100vh;
+    gap: 60px;
+    padding: 40px 20px;
+    flex-wrap: wrap;
+  }
+
+  /* ============ PHONE FRAME ============ */
+  .phone {
+    width: 390px;
+    height: 780px;
+    background: #0a0a0a;
+    border-radius: 44px;
+    border: 10px solid #1c1c1e;
+    box-shadow: 0 30px 80px rgba(0,0,0,0.7), inset 0 0 0 2px #333;
+    overflow: hidden;
+    position: relative;
+    flex-shrink: 0;
+  }
+  .notch {
+    position: absolute; top: 0; left: 50%; transform: translateX(-50%);
+    width: 150px; height: 28px; background: #1c1c1e; border-radius: 0 0 18px 18px; z-index: 50;
+  }
+  .screen {
+    height: 100%; overflow-y: auto; background:
+      radial-gradient(ellipse 120% 60% at 50% -10%, rgba(0,192,137,0.10), transparent 60%),
+      #0a0a0a;
+    padding: 56px 18px 40px;
+    scrollbar-width: none;
+  }
+  .screen::-webkit-scrollbar { display: none; }
+
+  /* ============ PROFILE HEADER ============ */
+  .p-row { display: flex; align-items: center; gap: 12px; margin-bottom: 22px; }
+  .avatar {
+    width: 55px; height: 55px; border-radius: 50%;
+    background: rgba(255,255,255,0.06);
+    border: 1px solid rgba(255,255,255,0.08);
+    display: flex; align-items: center; justify-content: center; font-size: 26px;
+  }
+  .p-name { color: #fff; font-weight: 700; font-size: 18px; }
+  .p-sub { color: rgba(255,255,255,0.45); font-size: 12px; margin-top: 3px; }
+
+  /* ============ ASSETS CARD ============ */
+  .assets {
+    background: rgba(255,255,255,0.04);
+    border: 1px solid rgba(255,255,255,0.06);
+    border-radius: 16px; padding: 20px; margin-bottom: 24px;
+  }
+  .a-grid { display: grid; grid-template-columns: 1fr 1fr; margin-bottom: 18px; }
+  .a-label { font-size: 11px; color: rgba(255,255,255,0.45); margin-bottom: 4px; }
+  .a-verified { color: #00c087; font-weight: 700; font-size: 15px; }
+  .a-balance { text-align: right; font-weight: 900; color: #f0b90b; font-size: 20px; }
+  .a-balance span { font-size: 12px; font-weight: 600; }
+  .a-mini { display: grid; grid-template-columns: repeat(3,1fr); gap: 12px; }
+  .a-mini > div { text-align: center; background: rgba(255,255,255,0.03); padding: 10px 5px; border-radius: 12px; }
+  .a-mini .l { font-size: 10px; color: rgba(255,255,255,0.45); text-transform: uppercase; margin-bottom: 4px; }
+  .a-mini .v { font-weight: 800; font-size: 15px; }
+  .gold { color: #f0b90b; } .green { color: #00c087; } .white { color: #fff; }
+
+  /* ================================================
+     INSTALL APP TILE  (naya feature)
+     ================================================ */
+  .install-tile {
+    position: relative;
+    border-radius: 20px;
+    padding: 20px;
+    margin-bottom: 24px;
+    overflow: hidden;
+    cursor: pointer;
+    /* halki opacity — light glass look */
+    background: linear-gradient(135deg, rgba(255,255,255,0.055), rgba(255,255,255,0.02));
+    border: 1px solid rgba(255,255,255,0.09);
+    backdrop-filter: blur(10px);
+  }
+  /* subtle glow dots background */
+  .install-tile::before {
+    content: '';
+    position: absolute; inset: 0;
+    background:
+      radial-gradient(circle 80px at 85% 20%, rgba(0,192,137,0.14), transparent 70%),
+      radial-gradient(circle 60px at 10% 100%, rgba(240,185,11,0.08), transparent 70%);
+    pointer-events: none;
+  }
+  .it-row { display: flex; align-items: center; gap: 14px; position: relative; }
+  .it-icon {
+    width: 52px; height: 52px; border-radius: 14px; flex-shrink: 0;
+    background: linear-gradient(135deg, #00c087, #009668);
+    display: flex; align-items: center; justify-content: center;
+    box-shadow: 0 6px 18px rgba(0,192,137,0.35);
+    font-size: 26px;
+  }
+  .it-title { color: #fff; font-weight: 800; font-size: 15.5px; letter-spacing: 0.2px; }
+  .it-desc { color: rgba(255,255,255,0.5); font-size: 12px; margin-top: 3px; line-height: 1.45; }
+  .it-btn {
+    margin-left: auto; flex-shrink: 0;
+    padding: 11px 18px;
+    border-radius: 12px;
+    background: linear-gradient(135deg, #f0b90b, #d9a406);
+    color: #1a1a1a; font-weight: 800; font-size: 13px;
+    box-shadow: 0 5px 16px rgba(240,185,11,0.3);
+    display: flex; align-items: center; gap: 7px;
+    transition: transform .15s;
+  }
+  .it-btn:active { transform: scale(0.95); }
+  .it-badge {
+    position: absolute; top: 14px; right: 16px;
+    font-size: 9px; font-weight: 800; letter-spacing: 0.8px;
+    color: #00c087; background: rgba(0,192,137,0.12);
+    border: 1px solid rgba(0,192,137,0.25);
+    padding: 3px 8px; border-radius: 20px;
+  }
+
+  /* ============ MENU LIST ============ */
+  .sec-title { font-size: 13px; font-weight: 800; color: #f0b90b; text-transform: uppercase; letter-spacing: 1px; padding: 0 4px 12px; }
+  .menu { background: rgba(255,255,255,0.03); border-radius: 16px; padding: 4px 16px; }
+  .m-item { display: flex; align-items: center; gap: 12px; padding: 15px 0; border-bottom: 1px solid rgba(255,255,255,0.05); }
+  .m-item:last-child { border-bottom: none; }
+  .m-icon { color: rgba(255,255,255,0.55); font-size: 16px; width: 20px; text-align: center; }
+  .m-label { color: #fff; font-size: 14px; }
+  .m-arrow { margin-left: auto; color: rgba(255,255,255,0.35); }
+
+  /* ============ SIDE PANEL (2nd phone) ============ */
+  .phone.right .screen { padding-top: 70px; }
+
+  /* Install progress modal */
+  .modal-bg { position: absolute; inset: 0; background: rgba(0,0,0,0.8); backdrop-filter: blur(8px); z-index: 100; display: flex; align-items: center; justify-content: center; padding: 20px; }
+  .modal {
+    width: 100%; max-width: 320px;
+    background: linear-gradient(135deg, #1a1a1a, #0a0a0a);
+    border: 1px solid rgba(255,255,255,0.1);
+    border-radius: 24px; padding: 30px 24px; text-align: center;
+  }
+  .app-big {
+    width: 72px; height: 72px; border-radius: 20px; margin: 0 auto 16px;
+    background: linear-gradient(135deg, #00c087, #009668);
+    display: flex; align-items: center; justify-content: center; font-size: 36px;
+    box-shadow: 0 10px 30px rgba(0,192,137,0.4);
+  }
+  .modal h3 { color: #fff; font-size: 17px; margin-bottom: 6px; }
+  .modal p { color: rgba(255,255,255,0.5); font-size: 12.5px; line-height: 1.5; margin-bottom: 20px; }
+  .progress-track { height: 8px; background: rgba(255,255,255,0.08); border-radius: 10px; overflow: hidden; margin-bottom: 10px; }
+  .progress-fill { height: 100%; width: 68%; border-radius: 10px; background: linear-gradient(90deg, #00c087, #f0b90b); }
+  .pct { color: #f0b90b; font-size: 12px; font-weight: 800; margin-bottom: 18px; }
+  .m-btn {
+    width: 100%; padding: 14px; border-radius: 14px; border: none;
+    background: linear-gradient(135deg, #00c087, #009668);
+    color: #fff; font-weight: 800; font-size: 14px;
+    box-shadow: 0 6px 20px rgba(0,192,137,0.35);
+  }
+  .m-btn.ghost { background: transparent; border: 1px solid rgba(255,255,255,0.12); color: rgba(255,255,255,0.6); margin-top: 10px; box-shadow: none; }
+
+  .caption { text-align: center; color: rgba(255,255,255,0.6); font-size: 14px; margin-top: 18px; font-weight: 600; }
+  .caption span { color: #f0b90b; }
+
+  /* home screen with installed app */
+  .hs-row { display: flex; gap: 26px; justify-content: center; margin-top: 40px; }
+  .hs-app { text-align: center; width: 70px; }
+  .hs-icon {
+    width: 58px; height: 58px; border-radius: 15px; margin: 0 auto 8px;
+    display: flex; align-items: center; justify-content: center; font-size: 30px;
+  }
+  .hs-icon.ts { background: linear-gradient(135deg, #00c087, #009668); box-shadow: 0 8px 22px rgba(0,192,137,0.4); }
+  .hs-icon.bx { background: linear-gradient(135deg, #f0b90b, #c99400); box-shadow: 0 8px 22px rgba(240,185,11,0.3); }
+  .hs-label { color: #fff; font-size: 11px; font-weight: 600; }
+  .statusbar { position: absolute; top: 8px; left: 0; right: 0; display: flex; justify-content: space-between; padding: 0 26px; color: rgba(255,255,255,0.7); font-size: 12px; z-index: 60; font-weight: 600; }
+</style>
+</head>
+<body>
+
+  <!-- ============ PHONE 1 : Profile page with tile ============ -->
+  <div>
+    <div class="phone">
+      <div class="notch"></div>
+      <div class="statusbar"><span>9:41</span><span>📶 🔋</span></div>
+      <div class="screen">
+        <div class="p-row">
+          <div class="avatar">👤</div>
+          <div>
+            <div class="p-name">Ali Raza</div>
+            <div class="p-sub">ID: 842913</div>
+          </div>
+        </div>
+
+        <div class="assets">
+          <div class="a-grid">
+            <div>
+              <div class="a-label">Account Status</div>
+              <div class="a-verified">Verified ›</div>
+            </div>
+            <div>
+              <div class="a-label" style="text-align:right;">TOTAL ASSETS</div>
+              <div class="a-balance">1,245.50 <span>USDT</span></div>
+            </div>
+          </div>
+          <div class="a-mini">
+            <div><div class="l">Ref Earn</div><div class="v gold">125.00</div></div>
+            <div><div class="l">Total Ref</div><div class="v white">8</div></div>
+            <div><div class="l">Trade Earn</div><div class="v green">540.20</div></div>
+          </div>
+        </div>
+
+        <!-- ★ INSTALL APP TILE ★ -->
+        <div class="install-tile">
+          <div class="it-badge">NEW</div>
+          <div class="it-row">
+            <div class="it-icon">📲</div>
+            <div>
+              <div class="it-title">Install App</div>
+              <div class="it-desc">TradeSet ko apne phone par install karein — faster experience</div>
+            </div>
+            <div class="it-btn">⬇ Install</div>
+          </div>
+        </div>
+
+        <div class="sec-title">Records & History</div>
+        <div class="menu">
+          <div class="m-item"><div class="m-icon">📄</div><div class="m-label">Trade Record</div><div class="m-arrow">›</div></div>
+          <div class="m-item"><div class="m-icon">📄</div><div class="m-label">Recharge Record</div><div class="m-arrow">›</div></div>
+          <div class="m-item"><div class="m-icon">📄</div><div class="m-label">Withdrawal Record</div><div class="m-arrow">›</div></div>
+          <div class="m-item"><div class="m-icon">👥</div><div class="m-label">P2P Merchants</div><div class="m-arrow">›</div></div>
+        </div>
+      </div>
+    </div>
+    <div class="caption">Profile page — top par <span>Install App tile</span> (halki opacity glass)</div>
+  </div>
+
+  <!-- ============ PHONE 2 : Click → install flow ============ -->
+  <div>
+    <div class="phone right">
+      <div class="notch"></div>
+      <div class="statusbar"><span>9:41</span><span>📶 🔋</span></div>
+      <div class="screen">
+        <div class="modal-bg">
+          <div class="modal">
+            <div class="app-big">📲</div>
+            <h3>Install TradeSet?</h3>
+            <p>App home screen par add ho jayegi aur full-screen (standalone) mode mein chalegi — bilkul native app ki tarah.</p>
+            <div class="progress-track"><div class="progress-fill"></div></div>
+            <div class="pct">Installing… 68%</div>
+            <button class="m-btn">✓ Install</button>
+            <button class="m-btn ghost">Not Now</button>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="caption">Click par — <span>install confirm dialog</span></div>
+  </div>
+
+  <!-- ============ PHONE 3 : Home screen installed ============ -->
+  <div>
+    <div class="phone right">
+      <div class="notch"></div>
+      <div class="statusbar"><span>9:41</span><span>📶 🔋</span></div>
+      <div class="screen" style="background: linear-gradient(180deg, #1a1a2e 0%, #0a0a0a 100%); display: flex; flex-direction: column; align-items: center; padding-top: 120px;">
+        <div style="color: rgba(255,255,255,0.3); font-size: 12px; letter-spacing: 2px; margin-bottom: 8px;">HOME SCREEN</div>
+        <div class="hs-row">
+          <div class="hs-app">
+            <div class="hs-icon ts">📲</div>
+            <div class="hs-label">TradeSet</div>
+          </div>
+          <div class="hs-app">
+            <div class="hs-icon bx">📈</div>
+            <div class="hs-label">Trading</div>
+          </div>
+        </div>
+        <div style="margin-top: 60px; color: rgba(255,255,255,0.45); font-size: 12.5px; text-align: center; line-height: 1.7;">
+          Install hone ke baad app icon<br/>home screen par aa jayega<br/>aur full-screen app ban jayegi ✅
+        </div>
+      </div>
+    </div>
+    <div class="caption">Install ke baad — <span>home screen app icon</span></div>
+  </div>
+
+</body>
+</html>
