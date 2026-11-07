@@ -31,6 +31,8 @@ const AdminSettings = () => {
     const [showPassword, setShowPassword] = useState(false);
     const [uploading, setUploading] = useState(false);
     const [uploadingBranding, setUploadingBranding] = useState(''); // 'logo' or 'favicon'
+    const [storageMode, setStorageMode] = useState('native'); // 'native' (default) | 'api'
+    const [storageSaving, setStorageSaving] = useState(false);
     const fileInputRef = useRef(null);
     const logoInputRef = useRef(null);
     const faviconInputRef = useRef(null);
@@ -72,6 +74,15 @@ const AdminSettings = () => {
                 };
                 setPlatformConfig(defaultPlatform);
             }
+
+            // Storage Mode (native = cPanel PHP storage by default)
+            const storageRef = doc(db, 'admin_set', 'storage');
+            const storageSnapshot = await getDoc(storageRef);
+            if (storageSnapshot.exists() && storageSnapshot.data()?.mode) {
+                setStorageMode(storageSnapshot.data().mode);
+            } else {
+                setStorageMode('native');
+            }
         } catch (error) {
             console.error("Error fetching configs:", error);
         } finally {
@@ -92,6 +103,21 @@ const AdminSettings = () => {
             alert("Failed to update website status: " + error.message);
         } finally {
             setSavingSection('');
+        }
+    };
+
+    const toggleStorageMode = async (mode) => {
+        if (mode === storageMode || storageSaving) return;
+        setStorageSaving(true);
+        try {
+            await setDoc(doc(db, 'admin_set', 'storage'), { mode }, { merge: true });
+            setStorageMode(mode);
+            alert(`File Storage switched to ${mode === 'native' ? 'NATIVE (cPanel / PHP)' : 'API (thelocalrent.com)'} — applies immediately to all uploads & displays.`);
+        } catch (error) {
+            console.error("Error switching storage mode:", error);
+            alert("Failed to switch storage mode: " + error.message);
+        } finally {
+            setStorageSaving(false);
         }
     };
 
@@ -287,6 +313,109 @@ const AdminSettings = () => {
                                 </div>
                             </div>
                         </div>
+                    </div>
+                </div>
+
+                {/* 0.5 File Storage Mode — where uploads are stored & served from */}
+                <div className="settings-card">
+                    <h3 style={sectionHeaderStyle}>File Storage Mode</h3>
+                    <p style={{ color: '#888', fontSize: '13px', lineHeight: 1.6, marginBottom: '18px' }}>
+                        Choose where uploaded files (KYC documents, deposit slips, chat attachments, avatars, blog &amp; banner images) are stored and served from.
+                        <b style={{ color: '#fff' }}> Native</b> = TradeSet&apos;s own PHP storage on your cPanel (default). <b style={{ color: '#fff' }}>API</b> = legacy external service (thelocalrent.com).
+                    </p>
+
+                    <div style={{ display: 'grid', gap: '12px' }}>
+                        {/* Native (default) */}
+                        <button
+                            type="button"
+                            onClick={() => toggleStorageMode('native')}
+                            disabled={storageSaving}
+                            style={{
+                                textAlign: 'left',
+                                padding: '16px',
+                                borderRadius: '14px',
+                                border: storageMode === 'native' ? '2px solid #00c087' : '1px solid #333',
+                                background: storageMode === 'native' ? 'rgba(0,192,135,0.08)' : 'rgba(255,255,255,0.02)',
+                                cursor: storageSaving ? 'wait' : 'pointer',
+                                display: 'flex',
+                                alignItems: 'center',
+                                gap: '14px',
+                                transition: 'all 0.2s ease'
+                            }}
+                        >
+                            <div style={{
+                                width: '44px', height: '44px', borderRadius: '12px', flexShrink: 0,
+                                background: storageMode === 'native' ? 'linear-gradient(135deg,#00c087,#009668)' : '#1a1a1a',
+                                display: 'flex', alignItems: 'center', justifyContent: 'center'
+                            }}>
+                                <ShieldAlert size={22} color={storageMode === 'native' ? '#fff' : '#555'} />
+                            </div>
+                            <div style={{ flex: 1, minWidth: 0 }}>
+                                <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
+                                    <span style={{ color: '#fff', fontWeight: 800, fontSize: '14px' }}>Native Storage</span>
+                                    <span style={{ fontSize: '10px', fontWeight: 800, letterSpacing: 0.6, padding: '2px 8px', borderRadius: '20px', background: 'rgba(0,192,135,0.15)', color: '#00c087', border: '1px solid rgba(0,192,135,0.3)' }}>DEFAULT</span>
+                                </div>
+                                <div style={{ color: '#888', fontSize: '11.5px', marginTop: '4px', lineHeight: 1.5 }}>cPanel PHP API — files stored in /storage on fxtrade.international. Fast, no third-party limit.</div>
+                            </div>
+                            <div style={{
+                                width: '24px', height: '24px', borderRadius: '50%', flexShrink: 0,
+                                border: storageMode === 'native' ? '2px solid #00c087' : '2px solid #444',
+                                background: storageMode === 'native' ? '#00c087' : 'transparent',
+                                display: 'flex', alignItems: 'center', justifyContent: 'center'
+                            }}>
+                                {storageMode === 'native' && <Power size={13} color="#000" strokeWidth={3} />}
+                            </div>
+                        </button>
+
+                        {/* API (legacy) */}
+                        <button
+                            type="button"
+                            onClick={() => toggleStorageMode('api')}
+                            disabled={storageSaving}
+                            style={{
+                                textAlign: 'left',
+                                padding: '16px',
+                                borderRadius: '14px',
+                                border: storageMode === 'api' ? '2px solid #f0b90b' : '1px solid #333',
+                                background: storageMode === 'api' ? 'rgba(240,185,11,0.06)' : 'rgba(255,255,255,0.02)',
+                                cursor: storageSaving ? 'wait' : 'pointer',
+                                display: 'flex',
+                                alignItems: 'center',
+                                gap: '14px',
+                                transition: 'all 0.2s ease'
+                            }}
+                        >
+                            <div style={{
+                                width: '44px', height: '44px', borderRadius: '12px', flexShrink: 0,
+                                background: storageMode === 'api' ? 'linear-gradient(135deg,#f0b90b,#d9a406)' : '#1a1a1a',
+                                display: 'flex', alignItems: 'center', justifyContent: 'center'
+                            }}>
+                                <Zap size={22} color={storageMode === 'api' ? '#1a1a1a' : '#555'} />
+                            </div>
+                            <div style={{ flex: 1, minWidth: 0 }}>
+                                <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
+                                    <span style={{ color: '#fff', fontWeight: 800, fontSize: '14px' }}>API Storage</span>
+                                    <span style={{ fontSize: '10px', fontWeight: 800, letterSpacing: 0.6, padding: '2px 8px', borderRadius: '20px', background: 'rgba(240,185,11,0.15)', color: '#f0b90b', border: '1px solid rgba(240,185,11,0.3)' }}>LEGACY</span>
+                                </div>
+                                <div style={{ color: '#888', fontSize: '11.5px', marginTop: '4px', lineHeight: 1.5 }}>External third-party upload service (thelocalrent.com). Keeps the pre-existing system as a fallback.</div>
+                            </div>
+                            <div style={{
+                                width: '24px', height: '24px', borderRadius: '50%', flexShrink: 0,
+                                border: storageMode === 'api' ? '2px solid #f0b90b' : '2px solid #444',
+                                background: storageMode === 'api' ? '#f0b90b' : 'transparent',
+                                display: 'flex', alignItems: 'center', justifyContent: 'center'
+                            }}>
+                                {storageMode === 'api' && <Power size={13} color="#1a1a1a" strokeWidth={3} />}
+                            </div>
+                        </button>
+                    </div>
+
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginTop: '14px', fontSize: '11px', color: '#555' }}>
+                        {storageSaving ? (
+                            <><Loader2 size={12} className="animate-spin" /> Saving storage mode…</>
+                        ) : (
+                            <>Current mode: <b style={{ color: storageMode === 'native' ? '#00c087' : '#f0b90b' }}>{storageMode === 'native' ? 'NATIVE (cPanel / PHP)' : 'API (thelocalrent.com)'}</b> — applies instantly to all uploads in the app.</>
+                        )}
                     </div>
                 </div>
 

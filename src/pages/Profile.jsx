@@ -307,7 +307,7 @@ const Profile = () => {
                         </div>
                         <div style={{ minWidth: 0 }}>
                             <div style={{ color: '#fff', fontWeight: 800, fontSize: 15.5, letterSpacing: 0.2 }}>Install App</div>
-                            <div style={{ color: 'rgba(255,255,255,0.5)', fontSize: 12, marginTop: 3, lineHeight: 1.45 }}>TradeSet ko apne phone par install karein — faster experience</div>
+                            <div style={{ color: 'rgba(255,255,255,0.5)', fontSize: 12, marginTop: 3, lineHeight: 1.45 }}>Install TradeSet on your phone for a faster experience</div>
                         </div>
                         <div style={{
                             marginLeft: 'auto', flexShrink: 0,
@@ -920,12 +920,12 @@ const Profile = () => {
                             {/iPhone|iPad/i.test(navigator.userAgent) ? (
                                 <>
                                     <p style={{ color: 'rgba(255,255,255,0.5)', fontSize: 12.5, lineHeight: 1.6, marginBottom: 16 }}>
-                                        iPhone/iPad par Apple ki policy ki wajah se direct APK install possible nahi hai. App Safari se home screen par add hoti hai — neechay steps follow karein.
+                                        Apple does not allow direct APK installation on iPhone or iPad. You can add TradeSet to your Home Screen through Safari — follow the steps below.
                                     </p>
                                     <div style={{ textAlign: 'left', color: 'rgba(255,255,255,0.75)', fontSize: 12.5, lineHeight: 1.7, marginBottom: 20 }}>
-                                        <div>1. Safari mein neechay <Share size={13} style={{ verticalAlign: -2 }} /> Share button tap karein</div>
-                                        <div>2. <b>“Add to Home Screen”</b> select karein</div>
-                                        <div>3. <b>Add</b> par tap karein — app icon home screen par aa jayega</div>
+                                        <div>1. Tap the <Share size={13} style={{ verticalAlign: -2 }} /> Share button at the bottom of Safari</div>
+                                        <div>2. Select <b>“Add to Home Screen”</b></div>
+                                        <div>3. Tap <b>Add</b> — the TradeSet icon will appear on your Home Screen</div>
                                     </div>
                                     <button
                                         onClick={() => setShowInstallHelp(false)}
@@ -937,7 +937,7 @@ const Profile = () => {
                             ) : (
                                 <>
                                     <p style={{ color: 'rgba(255,255,255,0.5)', fontSize: 12.5, lineHeight: 1.6, marginBottom: 16 }}>
-                                        Ek tap mein TradeSet ka official APK download ho jayega — file tap karke install kar dein. App home screen par add ho jayegi aur full-screen mode mein chalegi.
+                                        Download the official TradeSet APK with one tap — open the downloaded file and tap Install. The app will be added to your Home Screen and will run in full-screen mode.
                                     </p>
                                     <a
                                         href="/TradeSet.apk"
@@ -952,7 +952,7 @@ const Profile = () => {
                                         </button>
                                     </a>
                                     <div style={{ fontSize: 11, color: '#666', lineHeight: 1.5, marginTop: 12 }}>
-                                        Download hone ke baad browser ke download bar se <b>TradeSet.apk</b> file tap karein aur <b>Install</b> confirm karein (agar puche to “Install unknown apps” allow karein).
+                                        Once the download completes, open <b>TradeSet.apk</b> from your browser’s downloads and tap <b>Install</b> (if asked, allow “Install from unknown sources”).
                                     </div>
                                     <button
                                         onClick={() => setShowInstallHelp(false)}
