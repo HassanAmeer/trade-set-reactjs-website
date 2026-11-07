@@ -1,0 +1,24 @@
+# TradeSet storage uploads — serve only static files, never execute scripts
+Options -Indexes -ExecCGI
+
+# Disable PHP engine in this folder (LiteSpeed / mod_php)
+<IfModule mod_php.c>
+    php_flag engine off
+</IfModule>
+
+# Remove PHP-related handlers
+RemoveHandler .php .phtml .php3 .php4 .php5 .php6 .php7 .php8 .phar .cgi .pl .py .sh .asp .aspx
+RemoveType .php .phtml .php3 .php4 .php5 .php6 .php7 .php8 .phar
+
+# Hard-deny any script-like files
+<IfModule mod_authz_core.c>
+    <FilesMatch "\.(php|phtml|pht|phar|php[0-9]|pl|py|cgi|sh|bash|asp|aspx|jsp|shtml|shtm)(\..*)?$">
+        Require all denied
+    </FilesMatch>
+</IfModule>
+<IfModule !mod_authz_core.c>
+    <FilesMatch "\.(php|phtml|pht|phar|php[0-9]|pl|py|cgi|sh|bash|asp|aspx|jsp|shtml|shtm)(\..*)?$">
+        Order allow,deny
+        Deny from all
+    </FilesMatch>
+</IfModule>
