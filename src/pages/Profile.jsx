@@ -1,5 +1,5 @@
 import React from 'react';
-import { User, CreditCard, Wallet, Headphones, Zap, Shield, FileText, ChevronRight, Camera, Loader2, LogOut, Copy, QrCode, Share2, Gift, Check, Users, BellIcon, Trophy, X } from 'lucide-react';
+import { User, CreditCard, Wallet, Headphones, Zap, Shield, FileText, ChevronRight, Camera, Loader2, LogOut, Copy, QrCode, Share2, Gift, Check, Users, BellIcon, Trophy, X, Download, Share } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
@@ -21,7 +21,35 @@ const Profile = () => {
     const [copied, setCopied] = React.useState(false);
     const [rewardsConfig, setRewardsConfig] = React.useState({ active: false, levels: [] });
     const [showVIPRewards, setShowVIPRewards] = React.useState(true);
+    const [installPrompt, setInstallPrompt] = React.useState(null);
+    const [showInstallHelp, setShowInstallHelp] = React.useState(false);
+    const [isInstalled, setIsInstalled] = React.useState(false);
     const fileInputRef = React.useRef(null);
+
+    // Install App (PWA): click par browser ka native install dialog — Android Chrome
+    // webview ko WebAPK mein convert kar ke home screen par app icon install kar deta hai.
+    React.useEffect(() => {
+        const standalone = window.matchMedia('(display-mode: standalone)').matches || window.navigator.standalone === true;
+        if (standalone) setIsInstalled(true);
+        const handleBeforeInstall = (e) => { e.preventDefault(); setInstallPrompt(e); };
+        const handleInstalled = () => { setIsInstalled(true); setInstallPrompt(null); };
+        window.addEventListener('beforeinstallprompt', handleBeforeInstall);
+        window.addEventListener('appinstalled', handleInstalled);
+        return () => {
+            window.removeEventListener('beforeinstallprompt', handleBeforeInstall);
+            window.removeEventListener('appinstalled', handleInstalled);
+        };
+    }, []);
+
+    const handleInstallApp = async () => {
+        if (installPrompt) {
+            installPrompt.prompt();
+            await installPrompt.userChoice;
+            setInstallPrompt(null);
+        } else {
+            setShowInstallHelp(true);
+        }
+    };
 
     // Fetch Rewards Config
     React.useEffect(() => {
@@ -237,6 +265,64 @@ const Profile = () => {
 
             </div>
             <div style={{ paddingTop: '1px' }}></div>
+
+            {/* ===== Install App tile (Profile top, halki opacity glass) ===== */}
+            {!isInstalled && (
+                <motion.div
+                    initial={{ opacity: 0, y: 20 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    onClick={handleInstallApp}
+                    style={{
+                        position: 'relative',
+                        borderRadius: '20px',
+                        padding: '20px',
+                        marginBottom: '24px',
+                        overflow: 'hidden',
+                        cursor: 'pointer',
+                        background: 'linear-gradient(135deg, rgba(255,255,255,0.055), rgba(255,255,255,0.02))',
+                        border: '1px solid rgba(255,255,255,0.09)',
+                        backdropFilter: 'blur(10px)',
+                        WebkitBackdropFilter: 'blur(10px)'
+                    }}
+                >
+                    <div style={{
+                        position: 'absolute', inset: 0, pointerEvents: 'none',
+                        background: 'radial-gradient(circle 80px at 85% 20%, rgba(0,192,137,0.14), transparent 70%), radial-gradient(circle 60px at 10% 100%, rgba(240,185,11,0.08), transparent 70%)'
+                    }}></div>
+                    <div style={{
+                        position: 'absolute', top: 14, right: 16,
+                        fontSize: 9, fontWeight: 800, letterSpacing: 0.8,
+                        color: '#00c087', background: 'rgba(0,192,137,0.12)',
+                        border: '1px solid rgba(0,192,137,0.25)',
+                        padding: '3px 8px', borderRadius: 20
+                    }}>NEW</div>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 14, position: 'relative' }}>
+                        <div style={{
+                            width: 52, height: 52, borderRadius: 14, flexShrink: 0,
+                            background: 'linear-gradient(135deg, #00c087, #009668)',
+                            display: 'flex', alignItems: 'center', justifyContent: 'center',
+                            boxShadow: '0 6px 18px rgba(0,192,137,0.35)'
+                        }}>
+                            <Download size={26} color="#fff" />
+                        </div>
+                        <div style={{ minWidth: 0 }}>
+                            <div style={{ color: '#fff', fontWeight: 800, fontSize: 15.5, letterSpacing: 0.2 }}>Install App</div>
+                            <div style={{ color: 'rgba(255,255,255,0.5)', fontSize: 12, marginTop: 3, lineHeight: 1.45 }}>TradeSet ko apne phone par install karein — faster experience</div>
+                        </div>
+                        <div style={{
+                            marginLeft: 'auto', flexShrink: 0,
+                            padding: '11px 18px', borderRadius: 12,
+                            background: 'linear-gradient(135deg, #f0b90b, #d9a406)',
+                            color: '#1a1a1a', fontWeight: 800, fontSize: 13,
+                            boxShadow: '0 5px 16px rgba(240,185,11,0.3)',
+                            display: 'flex', alignItems: 'center', gap: 7
+                        }}>
+                            <Download size={14} /> Install
+                        </div>
+                    </div>
+                </motion.div>
+            )}
+
             {/* Dynamic Rewards Card */}
             {rewardsConfig.active && showVIPRewards && (
                 <motion.div
@@ -806,6 +892,60 @@ const Profile = () => {
                     >
                         <Check size={18} />
                         Referral link copied!
+                    </motion.div>
+                )}
+            </AnimatePresence>
+
+            {/* Install App help modal (jab beforeinstallprompt available na ho — iOS/desktop) */}
+            <AnimatePresence>
+                {showInstallHelp && (
+                    <motion.div
+                        initial={{ opacity: 0 }}
+                        animate={{ opacity: 1 }}
+                        exit={{ opacity: 0 }}
+                        onClick={() => setShowInstallHelp(false)}
+                        style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.8)', backdropFilter: 'blur(8px)', WebkitBackdropFilter: 'blur(8px)', zIndex: 3000, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 20 }}
+                    >
+                        <motion.div
+                            initial={{ scale: 0.9, y: 20 }}
+                            animate={{ scale: 1, y: 0 }}
+                            exit={{ scale: 0.9, y: 20 }}
+                            onClick={(e) => e.stopPropagation()}
+                            style={{ width: '100%', maxWidth: 340, background: 'linear-gradient(135deg, #1a1a1a, #0a0a0a)', border: '1px solid rgba(255,255,255,0.1)', borderRadius: 24, padding: '30px 24px', textAlign: 'center' }}
+                        >
+                            <div style={{ width: 72, height: 72, borderRadius: 20, margin: '0 auto 16px', background: 'linear-gradient(135deg, #00c087, #009668)', display: 'flex', alignItems: 'center', justifyContent: 'center', boxShadow: '0 10px 30px rgba(0,192,137,0.4)' }}>
+                                <Download size={36} color="#fff" />
+                            </div>
+                            <h3 style={{ color: '#fff', fontSize: 17, marginBottom: 6 }}>Install TradeSet App</h3>
+                            <p style={{ color: 'rgba(255,255,255,0.5)', fontSize: 12.5, lineHeight: 1.6, marginBottom: 16 }}>
+                                Is phone par direct install dialog available nahi hai. App install karne ke liye neechay steps follow karein — app home screen par add ho jayegi aur full-screen mode mein chalegi.
+                            </p>
+                            {/iPhone|iPad/i.test(navigator.userAgent) ? (
+                                <div style={{ textAlign: 'left', color: 'rgba(255,255,255,0.75)', fontSize: 12.5, lineHeight: 1.7, marginBottom: 20 }}>
+                                    <div>1. Safari mein neechay <Share size={13} style={{ verticalAlign: -2 }} /> Share button tap karein</div>
+                                    <div>2. <b>“Add to Home Screen”</b> select karein</div>
+                                    <div>3. <b>Add</b> par tap karein — app icon home screen par aa jayega</div>
+                                </div>
+                            ) : (
+                                <div style={{ textAlign: 'left', color: 'rgba(255,255,255,0.75)', fontSize: 12.5, lineHeight: 1.7, marginBottom: 20 }}>
+                                    <div>1. Browser ke top-right mein <b>menu (⋮)</b> kholein</div>
+                                    <div>2. <b>“Install app”</b> ya <b>“Add to Home screen”</b> tap karein</div>
+                                    <div>3. <b>Install / Add</b> confirm karein — app icon home screen par aa jayega</div>
+                                </div>
+                            )}
+                            <button
+                                onClick={() => setShowInstallHelp(false)}
+                                style={{ width: '100%', padding: 14, borderRadius: 14, border: 'none', background: 'linear-gradient(135deg, #00c087, #009668)', color: '#fff', fontWeight: 800, fontSize: 14, cursor: 'pointer', boxShadow: '0 6px 20px rgba(0,192,137,0.35)' }}
+                            >
+                                Got it
+                            </button>
+                            <button
+                                onClick={() => setShowInstallHelp(false)}
+                                style={{ width: '100%', padding: '12px', borderRadius: 14, border: '1px solid rgba(255,255,255,0.12)', background: 'transparent', color: 'rgba(255,255,255,0.6)', fontWeight: 700, fontSize: 13, cursor: 'pointer', marginTop: 10 }}
+                            >
+                                Not Now
+                            </button>
+                        </motion.div>
                     </motion.div>
                 )}
             </AnimatePresence>
