@@ -917,34 +917,51 @@ const Profile = () => {
                                 <Download size={36} color="#fff" />
                             </div>
                             <h3 style={{ color: '#fff', fontSize: 17, marginBottom: 6 }}>Install TradeSet App</h3>
-                            <p style={{ color: 'rgba(255,255,255,0.5)', fontSize: 12.5, lineHeight: 1.6, marginBottom: 16 }}>
-                                Is phone par direct install dialog available nahi hai. App install karne ke liye neechay steps follow karein — app home screen par add ho jayegi aur full-screen mode mein chalegi.
-                            </p>
                             {/iPhone|iPad/i.test(navigator.userAgent) ? (
-                                <div style={{ textAlign: 'left', color: 'rgba(255,255,255,0.75)', fontSize: 12.5, lineHeight: 1.7, marginBottom: 20 }}>
-                                    <div>1. Safari mein neechay <Share size={13} style={{ verticalAlign: -2 }} /> Share button tap karein</div>
-                                    <div>2. <b>“Add to Home Screen”</b> select karein</div>
-                                    <div>3. <b>Add</b> par tap karein — app icon home screen par aa jayega</div>
-                                </div>
+                                <>
+                                    <p style={{ color: 'rgba(255,255,255,0.5)', fontSize: 12.5, lineHeight: 1.6, marginBottom: 16 }}>
+                                        iPhone/iPad par Apple ki policy ki wajah se direct APK install possible nahi hai. App Safari se home screen par add hoti hai — neechay steps follow karein.
+                                    </p>
+                                    <div style={{ textAlign: 'left', color: 'rgba(255,255,255,0.75)', fontSize: 12.5, lineHeight: 1.7, marginBottom: 20 }}>
+                                        <div>1. Safari mein neechay <Share size={13} style={{ verticalAlign: -2 }} /> Share button tap karein</div>
+                                        <div>2. <b>“Add to Home Screen”</b> select karein</div>
+                                        <div>3. <b>Add</b> par tap karein — app icon home screen par aa jayega</div>
+                                    </div>
+                                    <button
+                                        onClick={() => setShowInstallHelp(false)}
+                                        style={{ width: '100%', padding: 14, borderRadius: 14, border: 'none', background: 'linear-gradient(135deg, #00c087, #009668)', color: '#fff', fontWeight: 800, fontSize: 14, cursor: 'pointer', boxShadow: '0 6px 20px rgba(0,192,137,0.35)' }}
+                                    >
+                                        Got it
+                                    </button>
+                                </>
                             ) : (
-                                <div style={{ textAlign: 'left', color: 'rgba(255,255,255,0.75)', fontSize: 12.5, lineHeight: 1.7, marginBottom: 20 }}>
-                                    <div>1. Browser ke top-right mein <b>menu (⋮)</b> kholein</div>
-                                    <div>2. <b>“Install app”</b> ya <b>“Add to Home screen”</b> tap karein</div>
-                                    <div>3. <b>Install / Add</b> confirm karein — app icon home screen par aa jayega</div>
-                                </div>
+                                <>
+                                    <p style={{ color: 'rgba(255,255,255,0.5)', fontSize: 12.5, lineHeight: 1.6, marginBottom: 16 }}>
+                                        Ek tap mein TradeSet ka official APK download ho jayega — file tap karke install kar dein. App home screen par add ho jayegi aur full-screen mode mein chalegi.
+                                    </p>
+                                    <a
+                                        href="/TradeSet.apk"
+                                        download="TradeSet.apk"
+                                        onClick={() => setShowInstallHelp(false)}
+                                        style={{ textDecoration: 'none' }}
+                                    >
+                                        <button
+                                            style={{ width: '100%', padding: 14, borderRadius: 14, border: 'none', background: 'linear-gradient(135deg, #00c087, #009668)', color: '#fff', fontWeight: 800, fontSize: 14, cursor: 'pointer', boxShadow: '0 6px 20px rgba(0,192,137,0.35)', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 10 }}
+                                        >
+                                            <Download size={18} /> Direct Install (APK)
+                                        </button>
+                                    </a>
+                                    <div style={{ fontSize: 11, color: '#666', lineHeight: 1.5, marginTop: 12 }}>
+                                        Download hone ke baad browser ke download bar se <b>TradeSet.apk</b> file tap karein aur <b>Install</b> confirm karein (agar puche to “Install unknown apps” allow karein).
+                                    </div>
+                                    <button
+                                        onClick={() => setShowInstallHelp(false)}
+                                        style={{ width: '100%', padding: '12px', borderRadius: 14, border: '1px solid rgba(255,255,255,0.12)', background: 'transparent', color: 'rgba(255,255,255,0.6)', fontWeight: 700, fontSize: 13, cursor: 'pointer', marginTop: 12 }}
+                                    >
+                                        Cancel
+                                    </button>
+                                </>
                             )}
-                            <button
-                                onClick={() => setShowInstallHelp(false)}
-                                style={{ width: '100%', padding: 14, borderRadius: 14, border: 'none', background: 'linear-gradient(135deg, #00c087, #009668)', color: '#fff', fontWeight: 800, fontSize: 14, cursor: 'pointer', boxShadow: '0 6px 20px rgba(0,192,137,0.35)' }}
-                            >
-                                Got it
-                            </button>
-                            <button
-                                onClick={() => setShowInstallHelp(false)}
-                                style={{ width: '100%', padding: '12px', borderRadius: 14, border: '1px solid rgba(255,255,255,0.12)', background: 'transparent', color: 'rgba(255,255,255,0.6)', fontWeight: 700, fontSize: 13, cursor: 'pointer', marginTop: 10 }}
-                            >
-                                Not Now
-                            </button>
                         </motion.div>
                     </motion.div>
                 )}
