@@ -8,6 +8,7 @@ import {
     CheckCircle2, AlertCircle, Bitcoin, TrendingUp, Gem, ChevronDown, BarChart2
 } from 'lucide-react';
 import AdminCoinsAIBot from './AdminCoinsAIBot';
+import { fetchMetalsBundle, fetchStockQuotes } from '../../services/api';
 
 const TWELVEDATA_API_KEY = '85011945dda54cbf8d47fe5cb19be206';
 
@@ -431,23 +432,17 @@ const AdminCoinsSettings = () => {
                     ...baseStockSymbols,
                     ...(extraCoins.stocks || [])
                 ].filter((v, i, a) => a.indexOf(v) === i);
-                const symbolsParam = allSymbols.join(',');
-                const res = await fetch(
-                    `https://api.twelvedata.com/price?symbol=${symbolsParam}&apikey=${TWELVEDATA_API_KEY}`
-                );
-                if (!res.ok) throw new Error('TwelveData API error: ' + res.status);
-                const rawData = await res.json();
+                const rawData = await fetchStockQuotes(allSymbols);
+                if (!rawData || !Object.keys(rawData).length) throw new Error('TwelveData returned no quotes');
                 console.log('[AdminCoins][Stocks] API response from TwelveData:', rawData);
                 await setDoc(doc(db, 'coins_rates_stocks', 'latest'), {
                     rates: rawData,
                     syncedAt: now,
                 });
-                const newCfg = {
-                    ...config,
-                    stocks: { ...config.stocks, lastSyncedAt: now },
-                };
-                await setDoc(doc(db, 'admin_set', 'coins_config'), newCfg);
-                setConfig(newCfg);
+                await setDoc(doc(db, 'admin_set', 'coins_config'), {
+                    stocks: { lastSyncedAt: now },
+                }, { merge: true });
+                setConfig(prev => ({ ...prev, stocks: { ...prev.stocks, lastSyncedAt: now } }));
                 setLiveRates(prev => ({ ...prev, stocks: rawData }));
                 showToast('success', 'Stocks synced successfully!');
                 setSyncing('');
@@ -503,63 +498,76 @@ const AdminCoinsSettings = () => {
                     rates: freshData,
                     syncedAt: now,
                 });
-                const newCfg = {
-                    ...config,
-                    crypto: { ...config.crypto, lastSyncedAt: now },
-                };
-                await setDoc(doc(db, 'admin_set', 'coins_config'), newCfg);
-                setConfig(newCfg);
+                await setDoc(doc(db, 'admin_set', 'coins_config'), {
+                    crypto: { lastSyncedAt: now },
+                }, { merge: true });
+                setConfig(prev => ({ ...prev, crypto: { ...prev.crypto, lastSyncedAt: now } }));
                 setLiveRates(prev => ({ ...prev, crypto: freshData }));
                 showToast('success', 'Cryptocurrency synced successfully!');
                 setSyncing('');
                 return;
             } else if (tab === 'forex' || tab === 'metals') {
-                const url = 'https://api.metals.dev/v1/latest?api_key=DCU40FCSUKCJAJ3WJVJI9823WJVJI&currency=USD&unit=toz';
-                const res = await fetch(url, {
-                    headers: { 'Accept': 'application/json' }
-                });
-                if (!res.ok) throw new Error(`Metals.dev API error: ${res.status}`);
-                const result = await res.json();
-                console.log('[AdminCoins][Forex/Metals] API response fetched from metals.dev:', result);
-                if (result.status === 'success') {
-                    let updatedForex = null;
-                    let updatedMetals = null;
+                const bundle = await fetchMetalsBundle();
+                console.log('[AdminCoins][Forex/Metals] API response fetched from metals.dev:', bundle);
 
-                    if (result.currencies) {
-                        updatedForex = {
-                            provider: 'metals.dev',
-                            rates: result.currencies,
-                            syncedAt: now,
-                        };
-                        await setDoc(doc(db, 'coins_rates_forex', 'latest'), updatedForex);
-                    }
+                const [prevForexSnap, prevMetalsSnap] = await Promise.all([
+                    getDoc(doc(db, 'coins_rates_forex', 'latest')),
+                    getDoc(doc(db, 'coins_rates_metals', 'latest')),
+                ]);
+                const prevForex = prevForexSnap.exists() ? prevForexSnap.data() : null;
+                const prevMetals = prevMetalsSnap.exists() ? prevMetalsSnap.data() : null;
 
-                    if (result.metals) {
-                        updatedMetals = result.metals;
-                        await setDoc(doc(db, 'coins_rates_metals', 'latest'), {
-                            rates: updatedMetals,
-                            syncedAt: now,
-                        });
-                    }
-
-                    setLiveRates(prev => ({
-                        ...prev,
-                        ...(updatedForex ? { forex: updatedForex } : {}),
-                        ...(updatedMetals ? { metals: updatedMetals } : {}),
-                    }));
-
-                    const newCfg = {
-                        ...config,
-                        forex: { ...config.forex, lastSyncedAt: now },
-                        metals: { ...config.metals, lastSyncedAt: now },
+                const buildBaseline = (prevDoc) => {
+                    const keepOld = prevDoc?.baseline && now - (prevDoc.baselineAt || 0) < 48 * 60 * 60 * 1000;
+                    return {
+                        baseline: keepOld ? prevDoc.baseline : (prevDoc?.rates || null),
+                        baselineAt: keepOld ? (prevDoc.baselineAt || now) : (prevDoc?.syncedAt || now),
                     };
-                    await setDoc(doc(db, 'admin_set', 'coins_config'), newCfg);
-                    setConfig(newCfg);
+                };
 
-                    showToast('success', `Forex and Metals synced successfully!`);
-                } else {
-                    throw new Error('Metals.dev API returned invalid structure');
+                let updatedForex = null;
+                let updatedMetals = null;
+
+                if (bundle.currencies && Object.keys(bundle.currencies).length) {
+                    updatedForex = {
+                        provider: 'metals.dev',
+                        rates: bundle.currencies,
+                        syncedAt: now,
+                        ...buildBaseline(prevForex),
+                    };
+                    await setDoc(doc(db, 'coins_rates_forex', 'latest'), updatedForex);
                 }
+
+                if (bundle.metals && Object.keys(bundle.metals).length) {
+                    const previousMetals = prevMetals?.rates || {};
+                    const nextMetals = bundle.partial
+                        ? { ...previousMetals, ...bundle.metals }
+                        : bundle.metals;
+                    updatedMetals = {
+                        rates: nextMetals,
+                        syncedAt: now,
+                        ...buildBaseline(prevMetals),
+                    };
+                    await setDoc(doc(db, 'coins_rates_metals', 'latest'), updatedMetals);
+                }
+
+                setLiveRates(prev => ({
+                    ...prev,
+                    ...(updatedForex ? { forex: updatedForex } : {}),
+                    ...(updatedMetals ? { metals: updatedMetals.rates } : {}),
+                }));
+
+                await setDoc(doc(db, 'admin_set', 'coins_config'), {
+                    forex: { lastSyncedAt: now },
+                    metals: { lastSyncedAt: now },
+                }, { merge: true });
+                setConfig(prev => ({
+                    ...prev,
+                    forex: { ...prev.forex, lastSyncedAt: now },
+                    metals: { ...prev.metals, lastSyncedAt: now },
+                }));
+
+                showToast('success', `Forex and Metals synced successfully!`);
             }
         } catch (err) {
             showToast('error', 'Sync failed: ' + err.message);
@@ -605,14 +613,16 @@ const AdminCoinsSettings = () => {
                     throw new Error(`Stock symbol "${code}" not found on TwelveData.`);
                 }
                 const updatedStocks = [...(extraCoins.stocks || []), code];
+                const restoredDeleted = (extraCoins.deletedCoins.stocks || []).filter(id => id !== `stock-${code}`);
                 const newDocData = {
                     stocks: updatedStocks,
-                    deletedCoins: extraCoins.deletedCoins.stocks || [],
+                    deletedCoins: restoredDeleted,
                 };
                 await setDoc(doc(db, 'coins_list_stocks', 'latest'), newDocData);
                 setExtraCoins(prev => ({
                     ...prev,
                     stocks: updatedStocks,
+                    deletedCoins: { ...prev.deletedCoins, stocks: restoredDeleted },
                 }));
                 setNewCoinCode('');
                 showToast('success', `${code} added successfully!`);
@@ -633,14 +643,16 @@ const AdminCoinsSettings = () => {
                     throw new Error(`Coin "${code}" not found on LiveCoinWatch.`);
                 }
                 const updatedCrypto = [...(extraCoins.crypto || []), code];
+                const restoredDeleted = (extraCoins.deletedCoins.crypto || []).filter(id => id !== `${code}USDT`);
                 const newDocData = {
                     crypto: updatedCrypto,
-                    deletedCoins: extraCoins.deletedCoins.crypto || [],
+                    deletedCoins: restoredDeleted,
                 };
                 await setDoc(doc(db, 'coins_list_crypto', 'latest'), newDocData);
                 setExtraCoins(prev => ({
                     ...prev,
                     crypto: updatedCrypto,
+                    deletedCoins: { ...prev.deletedCoins, crypto: restoredDeleted },
                 }));
                 setNewCoinCode('');
                 showToast('success', `${code} added successfully!`);
@@ -662,14 +674,16 @@ const AdminCoinsSettings = () => {
                     throw new Error(`Currency code "${code}" not supported by API.`);
                 }
                 const updatedForex = [...(extraCoins.forex || []), code];
+                const restoredDeleted = (extraCoins.deletedCoins.forex || []).filter(id => id !== `fx-${code.toLowerCase()}`);
                 const newDocData = {
                     forex: updatedForex,
-                    deletedCoins: extraCoins.deletedCoins.forex || [],
+                    deletedCoins: restoredDeleted,
                 };
                 await setDoc(doc(db, 'coins_list_forex', 'latest'), newDocData);
                 setExtraCoins(prev => ({
                     ...prev,
                     forex: updatedForex,
+                    deletedCoins: { ...prev.deletedCoins, forex: restoredDeleted },
                 }));
                 setNewCoinCode('');
                 showToast('success', `${code} added successfully!`);
@@ -931,8 +945,9 @@ const AdminCoinsSettings = () => {
             // coin.id is like 'stock-AMZN', symbol is uppercase after 'stock-'
             const symbol = coin.id.replace('stock-', '').toUpperCase();
             const raw = cachedStocks[symbol];
-            if (raw && raw.price !== undefined) {
-                const price = parseFloat(raw.price);
+            const rawPrice = raw ? (raw.price ?? raw.close) : null;
+            if (rawPrice !== undefined && rawPrice !== null) {
+                const price = parseFloat(rawPrice);
                 if (!isNaN(price)) {
                     return price > 100
                         ? price.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })

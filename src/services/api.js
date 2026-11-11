@@ -5,8 +5,106 @@
 const CMC_API_KEY = '055fbbf5675e46e589d62f10f894a56d';
 const CMC_BASE_URL = 'https://pro-api.coinmarketcap.com/v1';
 
-const METALS_DEV_KEY = 'DNOEU1OR0Q4QPTXKHGE1802XKHGE1';
+const METALS_DEV_KEY = 'DCU40FCSUKCJAJ3WJVJI9823WJVJI';
 const GOLD_API_KEY = 'goldapi-cd9d69369cfe98af15d8f6fa095fb59e-io'; // Add your GoldAPI.io key here if Metals.dev fails
+const TWELVEDATA_API_KEY = '85011945dda54cbf8d47fe5cb19be206';
+
+// metals.dev returns every metal per troy ounce when unit=toz. Base metals
+// (LME) are normally quoted per metric tonne, so convert those back.
+const TROY_OUNCES_PER_METRIC_TONNE = 32150.7466;
+const BASE_METAL_KEYS = ['copper', 'aluminum', 'lead', 'nickel', 'zinc'];
+const PRECIOUS_FALLBACK_SYMBOLS = { gold: 'XAU', silver: 'XAG', platinum: 'XPT', palladium: 'XPD' };
+
+// Free, key-less spot source used only when metals.dev fails or is out of quota.
+async function fetchPreciousMetalsFallback() {
+    const entries = await Promise.all(
+        Object.entries(PRECIOUS_FALLBACK_SYMBOLS).map(async ([key, symbol]) => {
+            try {
+                const response = await fetch(`https://api.gold-api.com/price/${symbol}`);
+                if (!response.ok) return null;
+                const data = await response.json();
+                return Number.isFinite(data?.price) ? [key, data.price] : null;
+            } catch (_) {
+                return null;
+            }
+        })
+    );
+    const metals = Object.fromEntries(entries.filter(Boolean));
+    return Object.keys(metals).length ? metals : null;
+}
+
+/**
+ * Fetches the full metals.dev payload once and normalises units.
+ * - Precious metals stay USD per troy ounce.
+ * - Base metals are converted to USD per metric tonne using the LME series.
+ * - If metals.dev fails (quota/network), precious metals fall back to gold-api.com
+ *   and `partial` is true (base metals must then be merged with the cache).
+ * @returns {Promise<{metals: Object, currencies: Object, timestamps: Object, partial: boolean}>}
+ */
+export const fetchMetalsBundle = async () => {
+    const url = `https://api.metals.dev/v1/latest?api_key=${METALS_DEV_KEY}&currency=USD&unit=toz`;
+    try {
+        const response = await fetch(url, { headers: { Accept: 'application/json' } });
+        if (!response.ok) {
+            const error = new Error(`Metals.dev API error: ${response.status}`);
+            error.status = response.status;
+            throw error;
+        }
+        const result = await response.json();
+        if (result.status !== 'success') {
+            const error = new Error(result.error_message || 'Metals.dev returned an invalid response');
+            error.status = response.status;
+            throw error;
+        }
+
+        const rawMetals = result.metals || {};
+        const metals = { ...rawMetals };
+        for (const key of BASE_METAL_KEYS) {
+            const perOunce = rawMetals[`lme_${key}`] ?? rawMetals[key];
+            if (typeof perOunce === 'number' && perOunce > 0) {
+                metals[key] = Number((perOunce * TROY_OUNCES_PER_METRIC_TONNE).toFixed(2));
+            }
+        }
+
+        return {
+            metals,
+            currencies: result.currencies || {},
+            timestamps: result.timestamps || {},
+            partial: false,
+        };
+    } catch (primaryError) {
+        const fallbackMetals = await fetchPreciousMetalsFallback();
+        if (fallbackMetals) {
+            console.warn('[api] metals.dev unavailable, using gold-api fallback for precious metals.', primaryError?.message);
+            return {
+                metals: fallbackMetals,
+                currencies: {},
+                timestamps: {},
+                partial: true,
+            };
+        }
+        throw primaryError;
+    }
+};
+
+/**
+ * Fetches quotes (price + real change) for the given stock symbols.
+ * @param {string[]} symbols
+ * @returns {Promise<Object>} Raw TwelveData quote map keyed by symbol.
+ */
+export const fetchStockQuotes = async (symbols = []) => {
+    const unique = [...new Set(symbols.filter(Boolean))];
+    if (!unique.length) return {};
+    const response = await fetch(
+        `https://api.twelvedata.com/quote?symbol=${unique.join(',')}&apikey=${TWELVEDATA_API_KEY}`
+    );
+    if (!response.ok) {
+        const error = new Error(`TwelveData API error: ${response.status}`);
+        error.status = response.status;
+        throw error;
+    }
+    return response.json();
+};
 
 export const fetchCryptoMarkets = async () => {
     try {
@@ -173,7 +271,7 @@ export const fetchForexMarkets = async () => {
                 id: `fx-${pair.id}`,
                 name: pair.symbol,
                 rate: rate.toFixed(6),
-                change: `${(Math.random() * 0.4 - 0.2).toFixed(2)}%`, // Mock change as free API doesn't provide it
+                change: '0.00%', // Free exchangerate-api has no change data; MarketContext derives it
                 flag: `https://flagcdn.com/w40/${pair.flag}.png`,
                 category: 'Foreign Exchange',
                 isLive: true
@@ -192,18 +290,8 @@ export const fetchForexMarkets = async () => {
 export const fetchMetalMarkets = async () => {
     console.log('API: Starting Metal Fetching...');
     try {
-        const url = 'https://api.metals.dev/v1/latest?api_key=DCU40FCSUKCJAJ3WJVJI9823WJVJI&currency=USD&unit=toz';
-        const response = await fetch(url, {
-            headers: {
-                'Accept': 'application/json',
-            },
-        });
-        if (!response.ok) throw new Error(`Metals.dev API error: ${response.status}`);
-        const result = await response.json();
-
-        if (result.status === 'success' && result.metals) {
-            return result.metals;
-        }
+        const { metals } = await fetchMetalsBundle();
+        return metals;
     } catch (error) {
         console.error('API: Failed to fetch metals data:', error);
     }

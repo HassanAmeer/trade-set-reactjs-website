@@ -1,0 +1,106 @@
+{
+  "name": "projects/trade-set/databases/(default)/documents/admin_set/coins_custom_rates",
+  "fields": {
+    "crypto": {
+      "mapValue": {
+        "fields": {
+          "BTCUSDT": {
+            "stringValue": "99999"
+          }
+        }
+      }
+    },
+    "forex": {
+      "mapValue": {
+        "fields": {
+          "fx-aud": {
+            "stringValue": "0.70651"
+          },
+          "fx-aed": {
+            "stringValue": "0.2723"
+          },
+          "fx-cad": {
+            "stringValue": "1.40074"
+          },
+          "fx-eur": {
+            "stringValue": "1.1606"
+          },
+          "fx-gbp": {
+            "stringValue": "1.3394"
+          },
+          "fx-chf": {
+            "stringValue": "0.7949"
+          },
+          "fx-hkd": {
+            "stringValue": "7.8323"
+          },
+          "fx-krw": {
+            "stringValue": "1514.3900"
+          },
+          "fx-jpy": {
+            "stringValue": "160.3370"
+          },
+          "fx-nzd": {
+            "stringValue": "0.5810"
+          }
+        }
+      }
+    },
+    "stocks": {
+      "mapValue": {
+        "fields": {
+          "stock-NVDA": {
+            "stringValue": "212.45"
+          },
+          "stock-TSLA": {
+            "stringValue": "411.15"
+          },
+          "stock-AMZN": {
+            "stringValue": "246.02"
+          },
+          "stock-AAPL": {
+            "stringValue": "296.42"
+          },
+          "stock-NDAQ": {
+            "stringValue": "91.04"
+          }
+        }
+      }
+    },
+    "metals": {
+      "mapValue": {
+        "fields": {
+          "metal-2": {
+            "stringValue": "70.45"
+          },
+          "metal-6": {
+            "stringValue": "6.47"
+          },
+          "metal-10": {
+            "stringValue": "8.0014"
+          },
+          "metal-11": {
+            "stringValue": "0.8862"
+          },
+          "metal-1": {
+            "stringValue": "4358.10"
+          },
+          "metal-5": {
+            "stringValue": "1371.50"
+          },
+          "metal-7": {
+            "stringValue": "1.5907"
+          },
+          "metal-4": {
+            "stringValue": "1804.50"
+          },
+          "metal-9": {
+            "stringValue": "1.6122"
+          }
+        }
+      }
+    }
+  },
+  "createTime": "2026-06-04T08:33:24.187228Z",
+  "updateTime": "2026-06-16T12:04:31.023224Z"
+}
